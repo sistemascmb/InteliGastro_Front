@@ -2,114 +2,122 @@ import React, { useState } from 'react';
 import {
   Box,
   CssBaseline,
-  Drawer,
-  AppBar,
-  Toolbar,
-  Typography,
   IconButton,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
-import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import logoClinica from '../../assets/images/logo-clinica.png';
 
 const drawerWidth = 280;
 
 const MainLayout = ({ children }) => {
-  const navigate = useNavigate();
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
-
-  const handleLogoClick = () => {
-    navigate('/');
+  const handleSidebarToggle = () => {
+    setSidebarOpen(!sidebarOpen);
   };
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box sx={{ display: 'flex', height: '100vh' }}>
       <CssBaseline />
-      <AppBar
-        position="fixed"
-        sx={{
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          ml: { sm: `${drawerWidth}px` },
-        }}
-      >
-        <Toolbar>
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: 'none' } }}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Box
-            onClick={handleLogoClick}
-            sx={{ 
-              display: 'flex',
-              alignItems: 'center',
-              cursor: 'pointer',
-              '&:hover': {
-                opacity: 0.8
-              }
-            }}
-          >
-            <img 
-              src={logoClinica} 
-              alt="Clínica María Belén" 
-              style={{ 
-                height: '40px',
-                marginRight: '12px'
-              }}
-            />
-          </Box>
-        </Toolbar>
-      </AppBar>
       
       <Box
-        component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+        sx={{
+          width: sidebarOpen ? drawerWidth : 0,
+          flexShrink: 0,
+          transition: 'width 0.4s ease-in-out',
+          overflow: 'hidden',
+          position: 'relative'
+        }}
       >
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{
-            keepMounted: true,
-          }}
+        <Box
           sx={{
-            display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+            width: drawerWidth,
+            height: '100vh',
+            transform: sidebarOpen ? 'translateX(0)' : `translateX(-${drawerWidth}px)`,
+            transition: 'transform 0.4s ease-in-out'
           }}
         >
           <Sidebar />
-        </Drawer>
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
-          }}
-          open
-        >
-          <Sidebar />
-        </Drawer>
+        </Box>
       </Box>
       
       <Box
-        component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          display: 'flex',
+          flexDirection: 'column',
+          backgroundColor: '#f8f9fa',
+          minHeight: '100vh'
         }}
       >
-        <Toolbar />
-        {children}
+        <Box
+          sx={{
+            height: '20%',
+            backgroundColor: '#f8f9fa'
+          }}
+        />
+
+        <Box
+          sx={{
+            height: '80%',
+            display: 'flex',
+            flexDirection: 'column',
+            backgroundColor: '#e8eaf0',
+            position: 'relative'
+          }}
+        >
+          <Box
+            sx={{
+              position: 'sticky',
+              top: '5%',
+              backgroundColor: 'white',
+              border: '1px solid #d0d7de',
+              borderRadius: '8px',
+              height: '60px',
+              display: 'flex',
+              alignItems: 'center',
+              px: 2,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              mx: '5%',
+              mt: '5%',
+              mb: 2,
+              zIndex: 10,
+              flexShrink: 0
+            }}
+          >
+            <IconButton
+              onClick={handleSidebarToggle}
+              sx={{ 
+                mr: 2,
+                padding: '8px',
+                border: '1px solid #d0d7de',
+                borderRadius: '4px',
+                '&:hover': {
+                  backgroundColor: '#f6f8fa'
+                }
+              }}
+            >
+              <MenuIcon sx={{ fontSize: '20px' }} />
+            </IconButton>
+          </Box>
+          
+          <Box
+            component="main"
+            sx={{
+              flexGrow: 1,
+              backgroundColor: 'white',
+              border: '1px solid #d0d7de',
+              borderRadius: '8px',
+              p: 3,
+              overflow: 'auto',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              mx: '5%',
+              mb: '5%'
+            }}
+          >
+            {children}
+          </Box>
+        </Box>
       </Box>
     </Box>
   );

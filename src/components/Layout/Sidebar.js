@@ -6,13 +6,10 @@ import {
   ListItemIcon,
   ListItemText,
   Collapse,
-  Divider,
   Typography,
-  Toolbar,
 } from '@mui/material';
 import logoClinica from '../../assets/images/logo-clinica.png';
 import {
-  Dashboard,
   PersonAdd,
   CalendarToday,
   MedicalServices,
@@ -143,16 +140,27 @@ const Sidebar = () => {
           }}
           sx={{
             pl: 2 + level * 2,
+            color: 'white',
             '&:hover': {
-              backgroundColor: 'rgba(0, 0, 0, 0.04)',
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
             }
           }}
         >
-          <ListItemIcon sx={{ minWidth: 40 }}>
+          <ListItemIcon sx={{ 
+            minWidth: 40,
+            color: 'white'
+          }}>
             {item.icon}
           </ListItemIcon>
-          <ListItemText primary={item.title} />
-          {hasChildren && (isOpen ? <ExpandLess /> : <ExpandMore />)}
+          <ListItemText 
+            primary={item.title}
+            sx={{
+              '& .MuiListItemText-primary': {
+                color: 'white'
+              }
+            }}
+          />
+          {hasChildren && (isOpen ? <ExpandLess sx={{ color: 'white' }} /> : <ExpandMore sx={{ color: 'white' }} />)}
         </ListItemButton>
 
         {hasChildren && (
@@ -167,34 +175,42 @@ const Sidebar = () => {
   };
 
   return (
-    <Box sx={{ height: '100vh', backgroundColor: '#f5f5f5' }}>
-      <Toolbar 
+    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <Box 
         sx={{ 
-          backgroundColor: '#1976d2', 
+          height: '20%',
+          backgroundColor: '#2184be', 
           color: 'white',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           cursor: 'pointer',
           '&:hover': {
-            backgroundColor: '#1565c0'
+            backgroundColor: '#1e75a6'
           }
         }}
         onClick={() => navigate('/')}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-          <img 
-            src={logoClinica} 
-            alt="Clínica María Belén" 
-            style={{ 
-              height: '35px',
-              marginRight: '8px'
-            }}
-          />
-        </Box>
-        
-      </Toolbar>
-      <Divider />
-      <List sx={{ pt: 1 }}>
-        {menuItems.map((item) => renderMenuItem(item))}
-      </List>
+        <img 
+          src={logoClinica} 
+          alt="Clínica María Belén" 
+          style={{ 
+            height: '60px',
+            maxWidth: '90%',
+            objectFit: 'contain'
+          }}
+        />
+      </Box>
+      
+      <Box sx={{ 
+        height: '80%',
+        backgroundColor: '#2184be',
+        overflow: 'auto'
+      }}>
+        <List sx={{ pt: 1 }}>
+          {menuItems.map((item) => renderMenuItem(item))}
+        </List>
+      </Box>
     </Box>
   );
 };
