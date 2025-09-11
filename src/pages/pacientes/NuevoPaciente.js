@@ -40,9 +40,26 @@ const SectionHeader = ({ title }) => (
   </Box>
 );
 
+// Creación del componente FieldRow para las filas de campos
+const FieldRow = memo(({children})=>(
+  <Box 
+    sx={{ 
+      display: 'flex',
+      flexDirection: { xs: 'column', md: 'row' },
+      gap: 2,
+      mb: 3,
+      alignItems: 'center' }}> 
+    
+    {children} 
+  </Box>
+));
+
+FieldRow.displayName = 'FieldRow'; // Agregar displayName para mejor debugging
+
+
 // Componente para layout responsive de campos - FUERA del componente principal y memoizado
 const ResponsiveField = memo(({ label, children, required = false }) => (
-  <Box sx={{ mb: 3, display: 'flex', alignItems: 'center' }}>
+  <Box sx={{flex: 1}}>
     {/* Layout para pantallas grandes */}
     <Box sx={{ display: { xs: 'none', md: 'flex' }, width: '100%', alignItems: 'center' }}>
       {/* Etiqueta del campo - ancho fijo para alineación perfecta */}
@@ -55,31 +72,15 @@ const ResponsiveField = memo(({ label, children, required = false }) => (
           }}
         >
           {label}
+          {required && ' *'}
         </Typography>
       </Box>
-      
-      {/* Campo de entrada - flex grow para ocupar el espacio restante */}
-      <Box sx={{ flexGrow: 1, mr: 2 }}>
+      <Box sx={{flexGrow: 1}}>
         {children}
-      </Box>
-      
-      {/* Asterisco obligatorio - ancho fijo */}
-      <Box sx={{ width: '20px' }}>
-        {required && (
-          <Typography 
-            variant="body1" 
-            sx={{ 
-              color: '#000',
-              fontWeight: 'bold'
-            }}
-          >
-            *
-          </Typography>
-        )}
       </Box>
     </Box>
 
-    {/* Layout para pantallas pequeñas (móvil) */}
+    {/* Layout para pantallas pequeñas*/}
     <Box sx={{ display: { xs: 'block', md: 'none' }, width: '100%' }}>
       <Typography 
         variant="body1" 
@@ -249,7 +250,7 @@ const NuevoPaciente = () => {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
-      <Container maxWidth="lg" sx={{ py: 1, px: 16 }}>
+      <Container maxWidth="lg" sx={{ py: 1, px: 2, maxWidth: '100% !important' }}>
         {/* Breadcrumb Navigation */}
         <Breadcrumbs
           separator={<NavigateNext fontSize="small" />}
@@ -280,171 +281,184 @@ const NuevoPaciente = () => {
             <SectionHeader title="Información Básica" />
             <Box sx={{ p: 4 }}>
               
-              {/* Estado */}
-              <ResponsiveField label="Estado" required>
-                <FormControl fullWidth required error={!!errors.estado}>
-                  <Select
-                    value={formData.estado}
-                    onChange={(e) => handleSelectChangeWithCascade('estado', e.target.value)}
-                    displayEmpty
+              {/* Fila 1 */}
+              <FieldRow>
+                {/* Estado */}
+                <ResponsiveField label="Estado" required>
+                  <FormControl fullWidth required error={!!errors.estado}>
+                    <Select
+                      value={formData.estado}
+                      onChange={(e) => handleSelectChangeWithCascade('estado', e.target.value)}
+                      displayEmpty
+                      sx={{
+                        '& .MuiSelect-select': {
+                          color: formData.estado ? '#000' : '#999'
+                        }
+                      }}
+                    >
+                      <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                      <MenuItem value="activo">Activo</MenuItem>
+                      <MenuItem value="inactivo">Inactivo</MenuItem>
+                    </Select>
+                  </FormControl>
+                </ResponsiveField>
+
+                {/* Tipo de Documento */}
+                <ResponsiveField label="Tipo de Documento" required>
+                  <FormControl fullWidth required error={!!errors.tipoDocumento}>
+                    <Select
+                      value={formData.tipoDocumento}
+                      onChange={(e) => handleSelectChangeWithCascade('tipoDocumento', e.target.value)}
+                      displayEmpty
+                      sx={{
+                        '& .MuiSelect-select': {
+                          color: formData.tipoDocumento ? '#000' : '#999'
+                        }
+                      }}
+                    >
+                      <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                      <MenuItem value="DNI">DNI</MenuItem>
+                      <MenuItem value="CE">Carnet de Extranjería</MenuItem>
+                      <MenuItem value="PP">Pasaporte</MenuItem>
+                    </Select>
+                  </FormControl>
+                </ResponsiveField>
+
+              </FieldRow>
+
+              {/* Fila 2 */}
+              <FieldRow>
+                {/* Nombres */}
+                <ResponsiveField label="Nombres" required>
+                  <TextField
+                    fullWidth
+                    required
+                    placeholder="Ingrese nombres"
+                    value={formData.nombres}
+                    onChange={(e) => handleInputChange('nombres', e.target.value)}
+                    error={!!errors.nombres}
+                    helperText={errors.nombres}
                     sx={{
-                      '& .MuiSelect-select': {
-                        color: formData.estado ? '#000' : '#999'
+                      '& .MuiOutlinedInput-input::placeholder': {
+                        color: '#999',
+                        opacity: 1
                       }
                     }}
-                  >
-                    <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
-                    <MenuItem value="activo">Activo</MenuItem>
-                    <MenuItem value="inactivo">Inactivo</MenuItem>
-                  </Select>
-                </FormControl>
-              </ResponsiveField>
+                  />
+                </ResponsiveField>
 
-              {/* Tipo de Documento */}
-              <ResponsiveField label="Tipo de Documento" required>
-                <FormControl fullWidth required error={!!errors.tipoDocumento}>
-                  <Select
-                    value={formData.tipoDocumento}
-                    onChange={(e) => handleSelectChangeWithCascade('tipoDocumento', e.target.value)}
-                    displayEmpty
+                {/* Apellidos */}
+                <ResponsiveField label="Apellidos" required>
+                  <TextField
+                    fullWidth
+                    required
+                    placeholder="Ingrese apellidos"
+                    value={formData.apellidos}
+                    onChange={(e) => handleInputChange('apellidos', e.target.value)}
+                    error={!!errors.apellidos}
+                    helperText={errors.apellidos}
                     sx={{
-                      '& .MuiSelect-select': {
-                        color: formData.tipoDocumento ? '#000' : '#999'
+                      '& .MuiOutlinedInput-input::placeholder': {
+                        color: '#999',
+                        opacity: 1
                       }
                     }}
-                  >
-                    <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
-                    <MenuItem value="DNI">DNI</MenuItem>
-                    <MenuItem value="CE">Carnet de Extranjería</MenuItem>
-                    <MenuItem value="PP">Pasaporte</MenuItem>
-                  </Select>
-                </FormControl>
-              </ResponsiveField>
+                  />
+                </ResponsiveField>
+              </FieldRow>
 
-              {/* Nombres */}
-              <ResponsiveField label="Nombres" required>
-                <TextField
-                  fullWidth
-                  required
-                  placeholder="Ingrese nombres"
-                  value={formData.nombres}
-                  onChange={(e) => handleInputChange('nombres', e.target.value)}
-                  error={!!errors.nombres}
-                  helperText={errors.nombres}
-                  sx={{
-                    '& .MuiOutlinedInput-input::placeholder': {
-                      color: '#999',
-                      opacity: 1
-                    }
-                  }}
-                />
-              </ResponsiveField>
-
-              {/* Apellidos */}
-              <ResponsiveField label="Apellidos" required>
-                <TextField
-                  fullWidth
-                  required
-                  placeholder="Ingrese apellidos"
-                  value={formData.apellidos}
-                  onChange={(e) => handleInputChange('apellidos', e.target.value)}
-                  error={!!errors.apellidos}
-                  helperText={errors.apellidos}
-                  sx={{
-                    '& .MuiOutlinedInput-input::placeholder': {
-                      color: '#999',
-                      opacity: 1
-                    }
-                  }}
-                />
-              </ResponsiveField>
-
-              {/* Fecha de Nacimiento */}
-              <ResponsiveField label="Fecha de Nacimiento" required>
-                <DatePicker
-                  value={formData.fechaNacimiento}
-                  onChange={(newValue) => {
-                    handleInputChange('fechaNacimiento', newValue);
-                  }}
-                  format="dd/MM/yyyy"
-                  slotProps={{
-                    textField: {
-                      fullWidth: true,
-                      required: true,
-                      placeholder: "dd/mm/aaaa",
-                      error: !!errors.fechaNacimiento,
-                      helperText: errors.fechaNacimiento,
-                      sx: {
-                        '& .MuiOutlinedInput-input::placeholder': {
-                          color: '#999',
-                          opacity: 1
+              {/* Fila 3 */}
+              <FieldRow>
+                {/* Fecha de Nacimiento */}
+                <ResponsiveField label="Fecha de Nacimiento" required>
+                  <DatePicker
+                    value={formData.fechaNacimiento}
+                    onChange={(newValue) => {
+                      handleInputChange('fechaNacimiento', newValue);
+                    }}
+                    format="dd/MM/yyyy"
+                    slotProps={{
+                      textField: {
+                        fullWidth: true,
+                        required: true,
+                        placeholder: "dd/mm/aaaa",
+                        error: !!errors.fechaNacimiento,
+                        helperText: errors.fechaNacimiento,
+                        sx: {
+                          '& .MuiOutlinedInput-input::placeholder': {
+                            color: '#999',
+                            opacity: 1
+                          }
                         }
                       }
-                    }
-                  }}
-                />
-              </ResponsiveField>
+                    }}
+                  />
+                </ResponsiveField>
 
-              {/* Género */}
-              <ResponsiveField label="Género" required>
-                <FormControl fullWidth required error={!!errors.genero}>
-                  <Select
-                    value={formData.genero}
-                    onChange={(e) => handleSelectChangeWithCascade('genero', e.target.value)}
-                    displayEmpty
+                {/* Género */}
+                <ResponsiveField label="Género" required>
+                  <FormControl fullWidth required error={!!errors.genero}>
+                    <Select
+                      value={formData.genero}
+                      onChange={(e) => handleSelectChangeWithCascade('genero', e.target.value)}
+                      displayEmpty
+                      sx={{
+                        '& .MuiSelect-select': {
+                          color: formData.genero ? '#000' : '#999'
+                        }
+                      }}
+                    >
+                      <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                      <MenuItem value="masculino">Masculino</MenuItem>
+                      <MenuItem value="femenino">Femenino</MenuItem>
+                      <MenuItem value="otro">Otro</MenuItem>
+                    </Select>
+                  </FormControl>
+                </ResponsiveField>
+              </FieldRow>
+
+              {/* Fila 4 */}
+              <FieldRow>
+                      
+                {/* Estado Marital */}
+                <ResponsiveField label="Estado Marital">
+                  <FormControl fullWidth>
+                    <Select
+                      value={formData.estadoMarital}
+                      onChange={(e) => handleSelectChangeWithCascade('estadoMarital', e.target.value)}
+                      displayEmpty
+                      sx={{
+                        '& .MuiSelect-select': {
+                          color: formData.estadoMarital ? '#000' : '#999'
+                        }
+                      }}
+                    >
+                      <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                      <MenuItem value="soltero">Soltero(a)</MenuItem>
+                      <MenuItem value="casado">Casado(a)</MenuItem>
+                      <MenuItem value="divorciado">Divorciado(a)</MenuItem>
+                      <MenuItem value="viudo">Viudo(a)</MenuItem>
+                      <MenuItem value="union_libre">Unión Libre</MenuItem>
+                    </Select>
+                  </FormControl>
+                </ResponsiveField>
+
+                {/* Nacionalidad */}
+                <ResponsiveField label="Nacionalidad">
+                  <TextField
+                    fullWidth
+                    placeholder="Ingrese nacionalidad"
+                    value={formData.nacionalidad}
+                    onChange={(e) => handleInputChange('nacionalidad', e.target.value)}
                     sx={{
-                      '& .MuiSelect-select': {
-                        color: formData.genero ? '#000' : '#999'
+                      '& .MuiOutlinedInput-input::placeholder': {
+                        color: '#999',
+                        opacity: 1
                       }
                     }}
-                  >
-                    <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
-                    <MenuItem value="masculino">Masculino</MenuItem>
-                    <MenuItem value="femenino">Femenino</MenuItem>
-                    <MenuItem value="otro">Otro</MenuItem>
-                  </Select>
-                </FormControl>
-              </ResponsiveField>
-
-              {/* Estado Marital */}
-              <ResponsiveField label="Estado Marital">
-                <FormControl fullWidth>
-                  <Select
-                    value={formData.estadoMarital}
-                    onChange={(e) => handleSelectChangeWithCascade('estadoMarital', e.target.value)}
-                    displayEmpty
-                    sx={{
-                      '& .MuiSelect-select': {
-                        color: formData.estadoMarital ? '#000' : '#999'
-                      }
-                    }}
-                  >
-                    <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
-                    <MenuItem value="soltero">Soltero(a)</MenuItem>
-                    <MenuItem value="casado">Casado(a)</MenuItem>
-                    <MenuItem value="divorciado">Divorciado(a)</MenuItem>
-                    <MenuItem value="viudo">Viudo(a)</MenuItem>
-                    <MenuItem value="union_libre">Unión Libre</MenuItem>
-                  </Select>
-                </FormControl>
-              </ResponsiveField>
-
-              {/* Nacionalidad */}
-              <ResponsiveField label="Nacionalidad">
-                <TextField
-                  fullWidth
-                  placeholder="Ingrese nacionalidad"
-                  value={formData.nacionalidad}
-                  onChange={(e) => handleInputChange('nacionalidad', e.target.value)}
-                  sx={{
-                    '& .MuiOutlinedInput-input::placeholder': {
-                      color: '#999',
-                      opacity: 1
-                    }
-                  }}
-                />
-              </ResponsiveField>
-
+                  />
+                </ResponsiveField>
+              </FieldRow>
             </Box>
           </Paper>
 
@@ -453,25 +467,31 @@ const NuevoPaciente = () => {
             <SectionHeader title="Centro" />
             <Box sx={{ p: 4 }}>
               
-              {/* Nombre */}
-              <ResponsiveField label="Nombre" required>
-                <FormControl fullWidth required error={!!errors.nombre}>
-                  <Select
-                    value={formData.nombre}
-                    onChange={(e) => handleSelectChangeWithCascade('nombre', e.target.value)}
-                    displayEmpty
-                    sx={{
-                      '& .MuiSelect-select': {
-                        color: formData.nombre ? '#000' : '#999'
-                      }
-                    }}
-                  >
-                    <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
-                    <MenuItem value="clinica_maria_belen">Clínica María Belén</MenuItem>
-                  </Select>
-                </FormControl>
-              </ResponsiveField>
+              <FieldRow>
+                {/* Nombre */}
+                <ResponsiveField label="Nombre" required>
+                  <FormControl fullWidth required error={!!errors.nombre}>
+                    <Select
+                      value={formData.nombre}
+                      onChange={(e) => handleSelectChangeWithCascade('nombre', e.target.value)}
+                      displayEmpty
+                      sx={{
+                        '& .MuiSelect-select': {
+                          color: formData.nombre ? '#000' : '#999'
+                        }
+                      }}
+                    >
+                      <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                      <MenuItem value="clinica_maria_belen">Clínica María Belén</MenuItem>
+                    </Select>
+                  </FormControl>
+                </ResponsiveField>
 
+                <ResponsiveField label="  ">
+                  {/* Espacio vacío para mantener alineación */}
+                </ResponsiveField>
+
+              </FieldRow>
             </Box>
           </Paper>
 
@@ -479,129 +499,138 @@ const NuevoPaciente = () => {
           <Paper sx={{ mb: 3, boxShadow: 2 }}>
             <SectionHeader title="Información de Residencia" />
             <Box sx={{ p: 4 }}>
+
+              {/* Fila 1 */}
+              <FieldRow>
+                {/* Calle */}
+                <ResponsiveField label="Calle">
+                  <TextField
+                    fullWidth
+                    placeholder="Ingrese calle"
+                    value={formData.calle}
+                    onChange={(e) => handleInputChange('calle', e.target.value)}
+                    sx={{
+                      '& .MuiOutlinedInput-input::placeholder': {
+                        color: '#999',
+                        opacity: 1
+                      }
+                    }}
+                  />
+                </ResponsiveField>
+
+                {/* Código Postal */}
+                <ResponsiveField label="Código Postal">
+                  <TextField
+                    fullWidth
+                    placeholder="Ingrese código postal"
+                    value={formData.codPostal}
+                    onChange={(e) => handleInputChange('codPostal', e.target.value)}
+                    sx={{
+                      '& .MuiOutlinedInput-input::placeholder': {
+                        color: '#999',
+                        opacity: 1
+                      }
+                    }}
+                  />
+                </ResponsiveField>
+              </FieldRow>
+
+              {/* Fila 2 */}
+              <FieldRow>
+                {/* País */}
+                <ResponsiveField label="País">
+                  <FormControl fullWidth>
+                    <Select
+                      value={formData.pais}
+                      onChange={(e) => handleSelectChangeWithCascade('pais', e.target.value)}
+                      displayEmpty
+                      sx={{
+                        '& .MuiSelect-select': {
+                          color: formData.pais ? '#000' : '#999'
+                        }
+                      }}
+                    >
+                      <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                      <MenuItem value="peru">Perú</MenuItem>
+                    </Select>
+                  </FormControl>
+                </ResponsiveField>
+
+                {/* Departamento */}
+                <ResponsiveField label="Departamento">
+                  <FormControl fullWidth disabled={formData.pais !== 'peru'}>
+                    <Select
+                      value={formData.departamento}
+                      onChange={(e) => handleSelectChangeWithCascade('departamento', e.target.value)}
+                      displayEmpty
+                      sx={{
+                        '& .MuiSelect-select': {
+                          color: formData.departamento ? '#000' : '#999'
+                        }
+                      }}
+                    >
+                      <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                      {formData.pais === 'peru' && (
+                        <MenuItem value="cajamarca">Cajamarca</MenuItem>
+                      )}
+                    </Select>
+                  </FormControl>
+                </ResponsiveField>
+              </FieldRow>
               
-              {/* Calle */}
-              <ResponsiveField label="Calle">
-                <TextField
-                  fullWidth
-                  placeholder="Ingrese calle"
-                  value={formData.calle}
-                  onChange={(e) => handleInputChange('calle', e.target.value)}
-                  sx={{
-                    '& .MuiOutlinedInput-input::placeholder': {
-                      color: '#999',
-                      opacity: 1
-                    }
-                  }}
-                />
-              </ResponsiveField>
-
-              {/* Código Postal */}
-              <ResponsiveField label="Código Postal">
-                <TextField
-                  fullWidth
-                  placeholder="Ingrese código postal"
-                  value={formData.codPostal}
-                  onChange={(e) => handleInputChange('codPostal', e.target.value)}
-                  sx={{
-                    '& .MuiOutlinedInput-input::placeholder': {
-                      color: '#999',
-                      opacity: 1
-                    }
-                  }}
-                />
-              </ResponsiveField>
-
-              {/* País */}
-              <ResponsiveField label="País">
-                <FormControl fullWidth>
-                  <Select
-                    value={formData.pais}
-                    onChange={(e) => handleSelectChangeWithCascade('pais', e.target.value)}
-                    displayEmpty
-                    sx={{
-                      '& .MuiSelect-select': {
-                        color: formData.pais ? '#000' : '#999'
+              
+              {/* Fila 3 */}
+              <FieldRow>
+                {/* Provincia */}
+                <ResponsiveField label="Provincia">
+                  <FormControl fullWidth disabled={formData.departamento !== 'cajamarca'}>
+                    <Select
+                      value={formData.provincia}
+                      onChange={(e) => handleSelectChangeWithCascade('provincia', e.target.value)}
+                      displayEmpty
+                      sx={{
+                        '& .MuiSelect-select': {
+                          color: formData.provincia ? '#000' : '#999'
+                        }
+                      }}
+                    >
+                      <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                      {formData.departamento === 'cajamarca' && 
+                        provincias.cajamarca.map(provincia => (
+                          <MenuItem key={provincia.value} value={provincia.value}>
+                            {provincia.label}
+                          </MenuItem>
+                        ))
                       }
-                    }}
-                  >
-                    <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
-                    <MenuItem value="peru">Perú</MenuItem>
-                  </Select>
-                </FormControl>
-              </ResponsiveField>
+                    </Select>
+                  </FormControl>
+                </ResponsiveField>
 
-              {/* Departamento */}
-              <ResponsiveField label="Departamento">
-                <FormControl fullWidth disabled={formData.pais !== 'peru'}>
-                  <Select
-                    value={formData.departamento}
-                    onChange={(e) => handleSelectChangeWithCascade('departamento', e.target.value)}
-                    displayEmpty
-                    sx={{
-                      '& .MuiSelect-select': {
-                        color: formData.departamento ? '#000' : '#999'
+                {/* Distrito */}
+                <ResponsiveField label="Distrito">
+                  <FormControl fullWidth disabled={!formData.provincia || !distritos[formData.provincia]}>
+                    <Select
+                      value={formData.distrito}
+                      onChange={(e) => handleSelectChangeWithCascade('distrito', e.target.value)}
+                      displayEmpty
+                      sx={{
+                        '& .MuiSelect-select': {
+                          color: formData.distrito ? '#000' : '#999'
+                        }
+                      }}
+                    >
+                      <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                      {formData.provincia && distritos[formData.provincia] &&
+                        distritos[formData.provincia].map(distrito => (
+                          <MenuItem key={distrito.value} value={distrito.value}>
+                            {distrito.label}
+                          </MenuItem>
+                        ))
                       }
-                    }}
-                  >
-                    <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
-                    {formData.pais === 'peru' && (
-                      <MenuItem value="cajamarca">Cajamarca</MenuItem>
-                    )}
-                  </Select>
-                </FormControl>
-              </ResponsiveField>
-
-              {/* Provincia */}
-              <ResponsiveField label="Provincia">
-                <FormControl fullWidth disabled={formData.departamento !== 'cajamarca'}>
-                  <Select
-                    value={formData.provincia}
-                    onChange={(e) => handleSelectChangeWithCascade('provincia', e.target.value)}
-                    displayEmpty
-                    sx={{
-                      '& .MuiSelect-select': {
-                        color: formData.provincia ? '#000' : '#999'
-                      }
-                    }}
-                  >
-                    <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
-                    {formData.departamento === 'cajamarca' && 
-                      provincias.cajamarca.map(provincia => (
-                        <MenuItem key={provincia.value} value={provincia.value}>
-                          {provincia.label}
-                        </MenuItem>
-                      ))
-                    }
-                  </Select>
-                </FormControl>
-              </ResponsiveField>
-
-              {/* Distrito */}
-              <ResponsiveField label="Distrito">
-                <FormControl fullWidth disabled={!formData.provincia || !distritos[formData.provincia]}>
-                  <Select
-                    value={formData.distrito}
-                    onChange={(e) => handleSelectChangeWithCascade('distrito', e.target.value)}
-                    displayEmpty
-                    sx={{
-                      '& .MuiSelect-select': {
-                        color: formData.distrito ? '#000' : '#999'
-                      }
-                    }}
-                  >
-                    <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
-                    {formData.provincia && distritos[formData.provincia] &&
-                      distritos[formData.provincia].map(distrito => (
-                        <MenuItem key={distrito.value} value={distrito.value}>
-                          {distrito.label}
-                        </MenuItem>
-                      ))
-                    }
-                  </Select>
-                </FormControl>
-              </ResponsiveField>
-
+                    </Select>
+                  </FormControl>
+                </ResponsiveField>
+              </FieldRow>
             </Box>
           </Paper>
 
@@ -610,55 +639,64 @@ const NuevoPaciente = () => {
             <SectionHeader title="Información de Contacto" />
             <Box sx={{ p: 4 }}>
               
-              {/* Teléfono */}
-              <ResponsiveField label="Teléfono">
-                <TextField
-                  fullWidth
-                  placeholder="Ingrese teléfono"
-                  value={formData.telefono}
-                  onChange={(e) => handleInputChange('telefono', e.target.value)}
-                  sx={{
-                    '& .MuiOutlinedInput-input::placeholder': {
-                      color: '#999',
-                      opacity: 1
-                    }
-                  }}
-                />
-              </ResponsiveField>
+              {/* Fila 1 */}
+              <FieldRow>
+                {/* Teléfono */}
+                <ResponsiveField label="Teléfono">
+                  <TextField
+                    fullWidth
+                    placeholder="Ingrese teléfono"
+                    value={formData.telefono}
+                    onChange={(e) => handleInputChange('telefono', e.target.value)}
+                    sx={{
+                      '& .MuiOutlinedInput-input::placeholder': {
+                        color: '#999',
+                        opacity: 1
+                      }
+                    }}
+                  />
+                </ResponsiveField>
 
-              {/* Celular */}
-              <ResponsiveField label="Celular">
-                <TextField
-                  fullWidth
-                  placeholder="Ingrese celular"
-                  value={formData.celular}
-                  onChange={(e) => handleInputChange('celular', e.target.value)}
-                  sx={{
-                    '& .MuiOutlinedInput-input::placeholder': {
-                      color: '#999',
-                      opacity: 1
-                    }
-                  }}
-                />
+                {/* Celular */}
+                <ResponsiveField label="Celular">
+                  <TextField
+                    fullWidth
+                    placeholder="Ingrese celular"
+                    value={formData.celular}
+                    onChange={(e) => handleInputChange('celular', e.target.value)}
+                    sx={{
+                      '& .MuiOutlinedInput-input::placeholder': {
+                        color: '#999',
+                        opacity: 1
+                      }
+                    }}
+                  />
               </ResponsiveField>
+              </FieldRow>
 
-              {/* Correo */}
-              <ResponsiveField label="Correo">
-                <TextField
-                  fullWidth
-                  type="email"
-                  placeholder="Ingrese correo electrónico"
-                  value={formData.correo}
-                  onChange={(e) => handleInputChange('correo', e.target.value)}
-                  sx={{
-                    '& .MuiOutlinedInput-input::placeholder': {
-                      color: '#999',
-                      opacity: 1
-                    }
-                  }}
-                />
-              </ResponsiveField>
+              {/* Fila 2 */}
+              <FieldRow>
+                {/* Correo */}
+                <ResponsiveField label="Correo">
+                  <TextField
+                    fullWidth
+                    type="email"
+                    placeholder="Ingrese correo electrónico"
+                    value={formData.correo}
+                    onChange={(e) => handleInputChange('correo', e.target.value)}
+                    sx={{
+                      '& .MuiOutlinedInput-input::placeholder': {
+                        color: '#999',
+                        opacity: 1
+                      }
+                    }}
+                  />
+                </ResponsiveField>
 
+                <ResponsiveField label="&nbsp;">
+                  {/* Espacio vacío para mantener el layout */}
+                </ResponsiveField>
+              </FieldRow>
             </Box>
           </Paper>
 

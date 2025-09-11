@@ -74,7 +74,7 @@ const MainLayout = ({ children }) => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            px: 8, // ESPACIADO: Padding horizontal reducido para caja más ancha
+            px: 4, // ESPACIADO: Padding horizontal reducido para caja más ancha
             py: 2, // ESPACIADO: Padding vertical de 16px
             flexShrink: 0 // COMPORTAMIENTO: No se encoge, mantiene su altura
           }}
@@ -164,15 +164,19 @@ const MainLayout = ({ children }) => {
             CONTENIDO PRINCIPAL (80%): Área donde se muestran las páginas
             ═══════════════════════════════════════════════════════════════════ */}
         <Box
-          component="main" // SEMÁNTICA: Elemento HTML <main> para contenido principal
+          component="main"
           sx={{
-            backgroundColor: '#f3f3f3', // DISEÑO: Fondo blanco para el contenido
-            minHeight: '80vh', // TAMAÑO: Mínimo 80% de la altura del viewport
-            flexGrow: 1 // COMPORTAMIENTO: Ocupa el espacio restante
+            backgroundColor: '#f3f3f3',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            px: 4, // ESPACIADO: Padding horizontal reducido para caja más ancha
+            py: 2, // ESPACIADO: Padding vertical de 16px
+            flexShrink: 0, // COMPORTAMIENTO: No se encoge, mantiene su altura
+            width: '100%',
           }}
         >
-          {/* CONTENIDO DINÁMICO: Aquí se renderizan las páginas según la opción del sidebar */}
-          {children} {/* REACT: Componente hijo que cambia según la ruta (Home, Citas, Pacientes, etc.) */}
+          {children}
         </Box>
       </Box>
     </Box>
