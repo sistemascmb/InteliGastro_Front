@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import MainLayout from './components/Layout/MainLayout';
 import Home from './pages/Home';
-import Centros from './pages/administracion/Centros';
 import CitaMedica from './pages/admision/CitaMedica';
 import ProcedimientoAdmision from './pages/admision/ProcedimientoAdmision';
 import Agendadas from './pages/citas/Agendadas';
@@ -16,6 +15,21 @@ import BuscarPaciente from './pages/pacientes/BuscarPaciente';
 import Suministros from './pages/info-clinica/Suministros';
 import Examenes from './pages/info-clinica/Examenes';
 import Cie10 from './pages/info-clinica/Cie10';
+import Centros from './pages/administracion/Centros';
+import Estudios from './pages/administracion/Estudios';
+import ExamenesAdmi from './pages/administracion/Examenes';
+import Horario from './pages/administracion/Horario';
+import Macros from './pages/administracion/Macros';
+import MedicosRef from './pages/administracion/MedicosRef';
+import Personal from './pages/administracion/Personal';
+import Plantillas from './pages/administracion/Plantillas';
+import Preparacion from './pages/administracion/Preparacion';
+import Recursos from './pages/administracion/Recursos';
+import Roles from './pages/administracion/Roles';
+import Salas from './pages/administracion/Salas';
+import Seguros from './pages/administracion/Seguros';
+import Usuarios from './pages/administracion/Usuarios';
+
 
 const theme = createTheme({
   palette: {
@@ -49,6 +63,8 @@ function App() {
             <Route path="/info-clinica/cie10" element={<Cie10 />} />
             <Route path="/info-clinica/examenes" element={<Examenes />} />
             <Route path="/admin/centros" element={<Centros />} />
+            <Route path="/admin/personal" element={<Personal />} />
+            <Route path="/admin/estudios" element={<Estudios />} />
             <Route path="*" element={<Home />} />
           </Routes>
         </MainLayout>
