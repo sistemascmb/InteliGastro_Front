@@ -27,11 +27,12 @@ import {
   Delete,
   Save,
   ArrowBack,
-  Close
+  Close,
+  Search
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
-// Componente de header de secci�n
+// Componente de header de sección
 const SectionHeader = ({ title }) => (
   <Box
     sx={{
@@ -91,8 +92,11 @@ const Suministros = () => {
   });
 
   const [errors, setErrors] = useState({});
+  
+  // Estado para búsqueda
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // Funci�n para limpiar el formulario
+  // Función para limpiar el formulario
   const clearForm = () => {
     setFormData({
       nombre: '',
@@ -112,7 +116,7 @@ const Suministros = () => {
     }
   }, [errors]);
 
-  // Validaci�n del formulario
+  // Validación del formulario
   const validateForm = () => {
     const newErrors = {};
     
@@ -169,7 +173,7 @@ const Suministros = () => {
     setSelectedSuministro(null);
   };
 
-  // Funci�n para agregar suministro
+  // Función para agregar suministro
   const handleAddSuministro = (e) => {
     e.preventDefault();
     
@@ -207,11 +211,18 @@ const Suministros = () => {
     }
   };
 
-  // Funci�n para eliminar suministro
+  // Función para eliminar suministro
   const handleDeleteSuministro = () => {
     setSuministros(prev => prev.filter(s => s.id !== selectedSuministro.id));
     handleCloseDeleteConfirm();
   };
+
+  // Filtrar suministros basado en la búsqueda
+  const filteredSuministros = suministros.filter(suministro => 
+    suministro.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    suministro.comentarios.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    suministro.cargo.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <Container maxWidth="lg" sx={{ py: 1, px: 2, maxWidth: '100% !important' }}>
@@ -254,6 +265,39 @@ const Suministros = () => {
         </Button>
       </Box>
 
+      {/* Barra de Búsqueda */}
+      <Box sx={{ mb: 3 }}>
+        <TextField
+          fullWidth
+          size="small"
+          placeholder="Buscar suministros por nombre, comentarios o cargo..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <Search sx={{ color: '#666', mr: 1 }} />
+            ),
+          }}
+          sx={{
+            maxWidth: '400px',
+            '& .MuiOutlinedInput-root': {
+              backgroundColor: '#f8f9fa',
+              '&:hover': {
+                backgroundColor: '#e9ecef',
+              },
+              '&.Mui-focused': {
+                backgroundColor: '#fff',
+              }
+            }
+          }}
+        />
+        {searchTerm && (
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+            {filteredSuministros.length} resultado(s) de {suministros.length} suministros
+          </Typography>
+        )}
+      </Box>
+
       {/* Tabla de Suministros */}
       <Paper sx={{ boxShadow: 2 }}>
         <SectionHeader title="Lista de Suministros" />
@@ -269,7 +313,16 @@ const Suministros = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {suministros.map((suministro) => (
+              {filteredSuministros.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                    <Typography variant="body1" color="text.secondary">
+                      {searchTerm ? 'No se encontraron suministros que coincidan con la búsqueda' : 'No hay suministros registrados'}
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredSuministros.map((suministro) => (
                 <TableRow key={suministro.id} hover>
                   <TableCell>{suministro.nombre}</TableCell>
                   <TableCell>S/. {suministro.importe.toFixed(2)}</TableCell>
@@ -295,7 +348,8 @@ const Suministros = () => {
                     </IconButton>
                   </TableCell>
                 </TableRow>
-              ))}
+              ))
+              )}
             </TableBody>
           </Table>
         </TableContainer>
@@ -514,7 +568,7 @@ const Suministros = () => {
       </Dialog>
 
 
-      {/* Modal de Confirmaci�n para Eliminar */}
+      {/* Modal de Confirmación para Eliminar */}
       <Dialog 
         open={openDeleteConfirm} 
         onClose={handleCloseDeleteConfirm}
