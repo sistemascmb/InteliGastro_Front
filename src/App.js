@@ -13,6 +13,9 @@ import AgendaHoy from './pages/procedimientos/AgendaHoy';
 import Ordenes from './pages/procedimientos/Ordenes';
 import NuevoPaciente from './pages/pacientes/NuevoPaciente';
 import BuscarPaciente from './pages/pacientes/BuscarPaciente';
+import Suministros from './pages/info-clinica/Suministros';
+import Examenes from './pages/info-clinica/Examenes';
+import Cie10 from './pages/info-clinica/Cie10';
 
 const theme = createTheme({
   palette: {
@@ -42,6 +45,9 @@ function App() {
             <Route path="/procedimientos/ordenes" element={<Ordenes />} />
             <Route path="/pacientes/nuevo-paciente" element={<NuevoPaciente />} />
             <Route path="/pacientes/buscar-paciente" element={<BuscarPaciente />} />
+            <Route path="/info-clinica/suministros" element={<Suministros />} />
+            <Route path="/info-clinica/cie10" element={<Cie10 />} />
+            <Route path="/info-clinica/examenes" element={<Examenes />} />
             <Route path="/admin/centros" element={<Centros />} />
             <Route path="*" element={<Home />} />
           </Routes>

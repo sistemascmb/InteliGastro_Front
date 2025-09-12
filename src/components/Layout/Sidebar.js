@@ -195,8 +195,8 @@ const Sidebar = () => {
           src={logoClinica} 
           alt="Clínica María Belén" 
           style={{ 
-            height: '60px',
-            maxWidth: '90%',
+            height: '160px',
+            maxWidth: '95%',
             objectFit: 'contain'
           }}
         />
