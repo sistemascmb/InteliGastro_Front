@@ -106,20 +106,20 @@ const Sidebar = () => {
       title: 'Administración',
       icon: <Settings />,
       children: [
-        { title: 'Centros', icon: <Business />, path: '/admin/centros' },
-        { title: 'Personal', icon: <People />, path: '/admin/personal' },
-        { title: 'Horarios', icon: <Schedule />, path: '/admin/horarios' },
-        { title: 'Estudios', icon: <LocalHospital />, path: '/admin/estudios' },
-        { title: 'Salas', icon: <MeetingRoom />, path: '/admin/salas' },
-        { title: 'Recursos', icon: <Inventory />, path: '/admin/recursos' },
-        { title: 'Exámenes', icon: <Assessment />, path: '/admin/examenes' },
-        { title: 'Preparación', icon: <Healing />, path: '/admin/preparacion' },
-        { title: 'Seguros', icon: <Security />, path: '/admin/seguros' },
-        { title: 'Roles', icon: <AccountCircle />, path: '/admin/roles' },
-        { title: 'Usuarios', icon: <People />, path: '/admin/usuarios' },
-        { title: 'Plantillas', icon: <Description />, path: '/admin/plantillas' },
-        { title: 'Macros', icon: <Code />, path: '/admin/macros' },
-        { title: 'Médicos Ref.', icon: <PersonSearch />, path: '/admin/medicos-referencia' }
+        { title: 'Centros', icon: <Business />, path: '/administracion/centros' },
+        { title: 'Personal', icon: <People />, path: '/administracion/personal' },
+        { title: 'Horarios', icon: <Schedule />, path: '/administracion/horarios' },
+        { title: 'Estudios', icon: <LocalHospital />, path: '/administracion/estudios' },
+        { title: 'Salas', icon: <MeetingRoom />, path: '/administracion/salas' },
+        { title: 'Recursos', icon: <Inventory />, path: '/administracion/recursos' },
+        { title: 'Exámenes', icon: <Assessment />, path: '/administracion/examenes' },
+        { title: 'Preparación', icon: <Healing />, path: '/administracion/preparacion' },
+        { title: 'Seguros', icon: <Security />, path: '/administracion/seguros' },
+        { title: 'Roles', icon: <AccountCircle />, path: '/administracion/roles' },
+        { title: 'Usuarios', icon: <People />, path: '/administracion/usuarios' },
+        { title: 'Plantillas', icon: <Description />, path: '/administracion/plantillas' },
+        { title: 'Macros', icon: <Code />, path: '/administracion/macros' },
+        { title: 'Médicos Ref.', icon: <PersonSearch />, path: '/administracion/medicos-referencia' }
       ]
     }
   ];

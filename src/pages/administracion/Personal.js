@@ -1193,165 +1193,486 @@ const Personal = () => {
           </IconButton>
         </DialogTitle>
         <form onSubmit={handleEditPersonal}>
-          <DialogContent dividers sx={{ p: 4 }}>
+          <DialogContent dividers sx={{ p: 4, maxHeight: '80vh', overflowY: 'auto' }}>
+            
             {/* Información Básica */}
-            <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f8f9fa' }}>
-              <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
-                Información Básica
-              </Typography>
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={4}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="Documento"
-                    value={formData.documento}
-                    onChange={(e) => handleInputChange('documento', e.target.value)}
-                    error={!!errors.documento}
-                    helperText={errors.documento}
-                  />
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="Nombre"
-                    value={formData.nombre}
-                    onChange={(e) => handleInputChange('nombre', e.target.value)}
-                    error={!!errors.nombre}
-                    helperText={errors.nombre}
-                  />
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="Apellido"
-                    value={formData.apellido}
-                    onChange={(e) => handleInputChange('apellido', e.target.value)}
-                    error={!!errors.apellido}
-                    helperText={errors.apellido}
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="Fecha de Nacimiento"
-                    type="date"
-                    value={formData.fechaNacimiento}
-                    onChange={(e) => handleInputChange('fechaNacimiento', e.target.value)}
-                    error={!!errors.fechaNacimiento}
-                    helperText={errors.fechaNacimiento}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth required error={!!errors.genero}>
-                    <Typography variant="body2" sx={{ mb: 0.5, fontWeight: 'bold' }}>Género *</Typography>
-                    <Select
-                      value={formData.genero}
-                      onChange={(e) => handleInputChange('genero', e.target.value)}
-                      displayEmpty
-                    >
-                      <MenuItem value="">Seleccionar género</MenuItem>
-                      <MenuItem value="masculino">Masculino</MenuItem>
-                      <MenuItem value="femenino">Femenino</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-              </Grid>
+            <Paper sx={{ mb: 3, boxShadow: 2 }}>
+              <SectionHeader title="Información Básica" />
+              <Box sx={{ p: 4 }}>
+                
+                {/* Fila 1: Documento, Nombre, Apellido */}
+                <FieldRow>
+                  <ResponsiveField label="Documento" required>
+                    <TextField
+                      fullWidth
+                      required
+                      placeholder="Ingrese el número de documento"
+                      value={formData.documento}
+                      onChange={(e) => handleInputChange('documento', e.target.value)}
+                      error={!!errors.documento}
+                      helperText={errors.documento}
+                      sx={{
+                        '& .MuiOutlinedInput-input::placeholder': {
+                          color: '#999',
+                          opacity: 1
+                        }
+                      }}
+                    />
+                  </ResponsiveField>
+
+                  <ResponsiveField label="Nombre" required>
+                    <TextField
+                      fullWidth
+                      required
+                      placeholder="Ingrese el nombre"
+                      value={formData.nombre}
+                      onChange={(e) => handleInputChange('nombre', e.target.value)}
+                      error={!!errors.nombre}
+                      helperText={errors.nombre}
+                      sx={{
+                        '& .MuiOutlinedInput-input::placeholder': {
+                          color: '#999',
+                          opacity: 1
+                        }
+                      }}
+                    />
+                  </ResponsiveField>
+
+                  <ResponsiveField label="Apellido" required>
+                    <TextField
+                      fullWidth
+                      required
+                      placeholder="Ingrese el apellido"
+                      value={formData.apellido}
+                      onChange={(e) => handleInputChange('apellido', e.target.value)}
+                      error={!!errors.apellido}
+                      helperText={errors.apellido}
+                      sx={{
+                        '& .MuiOutlinedInput-input::placeholder': {
+                          color: '#999',
+                          opacity: 1
+                        }
+                      }}
+                    />
+                  </ResponsiveField>
+                </FieldRow>
+
+                {/* Fila 2: Fecha de Nacimiento, Género */}
+                <FieldRow>
+                  <ResponsiveField label="Fecha de Nacimiento" required>
+                    <TextField
+                      fullWidth
+                      required
+                      type="date"
+                      value={formData.fechaNacimiento}
+                      onChange={(e) => handleInputChange('fechaNacimiento', e.target.value)}
+                      error={!!errors.fechaNacimiento}
+                      helperText={errors.fechaNacimiento}
+                      InputLabelProps={{ shrink: true }}
+                    />
+                  </ResponsiveField>
+
+                  <ResponsiveField label="Género" required>
+                    <FormControl fullWidth required error={!!errors.genero}>
+                      <Select
+                        value={formData.genero}
+                        onChange={(e) => handleSelectChangeWithCascade('genero', e.target.value)}
+                        displayEmpty
+                        sx={{
+                          '& .MuiSelect-select': {
+                            color: formData.genero ? '#000' : '#999'
+                          }
+                        }}
+                      >
+                        <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                        <MenuItem value="masculino">Masculino</MenuItem>
+                        <MenuItem value="femenino">Femenino</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </ResponsiveField>
+                </FieldRow>
+              </Box>
             </Paper>
 
-            {/* Centro y Datos Profesionales */}
-            <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f8f9fa' }}>
-              <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
-                Centro y Datos Profesionales
-              </Typography>
-              <Grid container spacing={3}>
-                <Grid item xs={12}>
-                  <FormControl fullWidth required error={!!errors.centro}>
-                    <Typography variant="body2" sx={{ mb: 0.5, fontWeight: 'bold' }}>Centro *</Typography>
-                    <Select
-                      value={formData.centro}
-                      onChange={(e) => handleInputChange('centro', e.target.value)}
-                      displayEmpty
-                    >
-                      <MenuItem value="">Seleccionar centro</MenuItem>
-                      {centros.map(centro => (
-                        <MenuItem key={centro.value} value={centro.value}>
-                          {centro.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="Título"
-                    value={formData.titulo}
-                    onChange={(e) => handleInputChange('titulo', e.target.value)}
-                    error={!!errors.titulo}
-                    helperText={errors.titulo}
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="Número de Licencia"
-                    value={formData.numeroLicencia}
-                    onChange={(e) => handleInputChange('numeroLicencia', e.target.value)}
-                    error={!!errors.numeroLicencia}
-                    helperText={errors.numeroLicencia}
-                  />
-                </Grid>
-              </Grid>
+            {/* Centro */}
+            <Paper sx={{ mb: 3, boxShadow: 2 }}>
+              <SectionHeader title="Centro" />
+              <Box sx={{ p: 4 }}>
+                <FieldRow>
+                  <ResponsiveField label="Nombre" required>
+                    <FormControl fullWidth required error={!!errors.centro}>
+                      <Select
+                        value={formData.centro}
+                        onChange={(e) => handleSelectChangeWithCascade('centro', e.target.value)}
+                        displayEmpty
+                        sx={{
+                          '& .MuiSelect-select': {
+                            color: formData.centro ? '#000' : '#999'
+                          }
+                        }}
+                      >
+                        <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                        {centros.map(centro => (
+                          <MenuItem key={centro.value} value={centro.value}>
+                            {centro.label}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </ResponsiveField>
+
+                  <ResponsiveField label="  ">
+                    {/* Espacio vacío para mantener alineación */}
+                  </ResponsiveField>
+                </FieldRow>
+              </Box>
             </Paper>
 
-            {/* Contacto */}
-            <Paper sx={{ p: 3, backgroundColor: '#f8f9fa' }}>
-              <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
-                Información de Contacto
-              </Typography>
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={4}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="Teléfono"
-                    value={formData.telefono}
-                    onChange={(e) => handleInputChange('telefono', e.target.value)}
-                    error={!!errors.telefono}
-                    helperText={errors.telefono}
-                  />
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="Celular"
-                    value={formData.celular}
-                    onChange={(e) => handleInputChange('celular', e.target.value)}
-                    error={!!errors.celular}
-                    helperText={errors.celular}
-                  />
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <TextField
-                    fullWidth
-                    required
-                    label="Correo"
-                    type="email"
-                    value={formData.correo}
-                    onChange={(e) => handleInputChange('correo', e.target.value)}
-                    error={!!errors.correo}
-                    helperText={errors.correo}
-                  />
-                </Grid>
-              </Grid>
+            {/* Información del Personal */}
+            <Paper sx={{ mb: 3, boxShadow: 2 }}>
+              <SectionHeader title="Información del Personal" />
+              <Box sx={{ p: 4 }}>
+                
+                {/* Fila 1: Estatus, Título, Grado */}
+                <FieldRow>
+                  <ResponsiveField label="Estatus" required>
+                    <FormControl fullWidth required error={!!errors.estatus}>
+                      <Select
+                        value={formData.estatus}
+                        onChange={(e) => handleSelectChangeWithCascade('estatus', e.target.value)}
+                        displayEmpty
+                        sx={{
+                          '& .MuiSelect-select': {
+                            color: formData.estatus ? '#000' : '#999'
+                          }
+                        }}
+                      >
+                        <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                        <MenuItem value="activo">Activo</MenuItem>
+                        <MenuItem value="inactivo">Inactivo</MenuItem>
+                        <MenuItem value="suspendido">Suspendido</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </ResponsiveField>
+
+                  <ResponsiveField label="Título" required>
+                    <TextField
+                      fullWidth
+                      required
+                      placeholder="Ej: Doctor, Doctora, Lic."
+                      value={formData.titulo}
+                      onChange={(e) => handleInputChange('titulo', e.target.value)}
+                      error={!!errors.titulo}
+                      helperText={errors.titulo}
+                      sx={{
+                        '& .MuiOutlinedInput-input::placeholder': {
+                          color: '#999',
+                          opacity: 1
+                        }
+                      }}
+                    />
+                  </ResponsiveField>
+
+                  <ResponsiveField label="Grado" required>
+                    <FormControl fullWidth required error={!!errors.grado}>
+                      <Select
+                        value={formData.grado}
+                        onChange={(e) => handleSelectChangeWithCascade('grado', e.target.value)}
+                        displayEmpty
+                        sx={{
+                          '& .MuiSelect-select': {
+                            color: formData.grado ? '#000' : '#999'
+                          }
+                        }}
+                      >
+                        <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                        <MenuItem value="especialista">Especialista</MenuItem>
+                        <MenuItem value="residente">Residente</MenuItem>
+                        <MenuItem value="interno">Interno</MenuItem>
+                        <MenuItem value="tecnico">Técnico</MenuItem>
+                        <MenuItem value="auxiliar">Auxiliar</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </ResponsiveField>
+                </FieldRow>
+
+                {/* Fila 2: Número de Licencia, Tipo, Fecha de Contratación */}
+                <FieldRow>
+                  <ResponsiveField label="Número de Licencia" required>
+                    <TextField
+                      fullWidth
+                      required
+                      placeholder="Ej: LIC-001-2024"
+                      value={formData.numeroLicencia}
+                      onChange={(e) => handleInputChange('numeroLicencia', e.target.value)}
+                      error={!!errors.numeroLicencia}
+                      helperText={errors.numeroLicencia}
+                      sx={{
+                        '& .MuiOutlinedInput-input::placeholder': {
+                          color: '#999',
+                          opacity: 1
+                        }
+                      }}
+                    />
+                  </ResponsiveField>
+
+                  <ResponsiveField label="Tipo" required>
+                    <FormControl fullWidth required error={!!errors.tipo}>
+                      <Select
+                        value={formData.tipo}
+                        onChange={(e) => handleSelectChangeWithCascade('tipo', e.target.value)}
+                        displayEmpty
+                        sx={{
+                          '& .MuiSelect-select': {
+                            color: formData.tipo ? '#000' : '#999'
+                          }
+                        }}
+                      >
+                        <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                        <MenuItem value="medico">Médico</MenuItem>
+                        <MenuItem value="enfermera">Enfermera</MenuItem>
+                        <MenuItem value="tecnico">Técnico</MenuItem>
+                        <MenuItem value="administrativo">Administrativo</MenuItem>
+                        <MenuItem value="limpieza">Limpieza</MenuItem>
+                        <MenuItem value="seguridad">Seguridad</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </ResponsiveField>
+
+                  <ResponsiveField label="Fecha de Contratación" required>
+                    <TextField
+                      fullWidth
+                      required
+                      type="date"
+                      value={formData.fechaContratacion}
+                      onChange={(e) => handleInputChange('fechaContratacion', e.target.value)}
+                      error={!!errors.fechaContratacion}
+                      helperText={errors.fechaContratacion}
+                      InputLabelProps={{ shrink: true }}
+                    />
+                  </ResponsiveField>
+                </FieldRow>
+
+                {/* Fila 3: Fecha de Cese */}
+                <FieldRow>
+                  <ResponsiveField label="Fecha de Cese">
+                    <TextField
+                      fullWidth
+                      type="date"
+                      value={formData.fechaCese}
+                      onChange={(e) => handleInputChange('fechaCese', e.target.value)}
+                      InputLabelProps={{ shrink: true }}
+                    />
+                  </ResponsiveField>
+
+                  <ResponsiveField label="  ">
+                    {/* Espacio vacío para mantener alineación */}
+                  </ResponsiveField>
+                </FieldRow>
+              </Box>
+            </Paper>
+
+            {/* Dirección */}
+            <Paper sx={{ mb: 3, boxShadow: 2 }}>
+              <SectionHeader title="Dirección" />
+              <Box sx={{ p: 4 }}>
+                
+                {/* Fila 1: Dirección, Código Postal */}
+                <FieldRow>
+                  <ResponsiveField label="Dirección" required>
+                    <TextField
+                      fullWidth
+                      required
+                      placeholder="Ingrese la dirección completa"
+                      value={formData.direccion}
+                      onChange={(e) => handleInputChange('direccion', e.target.value)}
+                      error={!!errors.direccion}
+                      helperText={errors.direccion}
+                      sx={{
+                        '& .MuiOutlinedInput-input::placeholder': {
+                          color: '#999',
+                          opacity: 1
+                        }
+                      }}
+                    />
+                  </ResponsiveField>
+
+                  <ResponsiveField label="Código Postal" required>
+                    <TextField
+                      fullWidth
+                      required
+                      placeholder="Código postal"
+                      value={formData.codPostal}
+                      onChange={(e) => handleInputChange('codPostal', e.target.value)}
+                      error={!!errors.codPostal}
+                      helperText={errors.codPostal}
+                      sx={{
+                        '& .MuiOutlinedInput-input::placeholder': {
+                          color: '#999',
+                          opacity: 1
+                        }
+                      }}
+                    />
+                  </ResponsiveField>
+                </FieldRow>
+
+                {/* Fila 2: País, Departamento */}
+                <FieldRow>
+                  <ResponsiveField label="País" required>
+                    <FormControl fullWidth required error={!!errors.pais}>
+                      <Select
+                        value={formData.pais}
+                        onChange={(e) => handleSelectChangeWithCascade('pais', e.target.value)}
+                        displayEmpty
+                        sx={{
+                          '& .MuiSelect-select': {
+                            color: formData.pais ? '#000' : '#999'
+                          }
+                        }}
+                      >
+                        <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                        <MenuItem value="peru">Perú</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </ResponsiveField>
+
+                  <ResponsiveField label="Departamento" required>
+                    <FormControl fullWidth required disabled={formData.pais !== 'peru'} error={!!errors.departamento}>
+                      <Select
+                        value={formData.departamento}
+                        onChange={(e) => handleSelectChangeWithCascade('departamento', e.target.value)}
+                        displayEmpty
+                        sx={{
+                          '& .MuiSelect-select': {
+                            color: formData.departamento ? '#000' : '#999'
+                          }
+                        }}
+                      >
+                        <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                        {formData.pais === 'peru' && (
+                          <MenuItem value="cajamarca">Cajamarca</MenuItem>
+                        )}
+                      </Select>
+                    </FormControl>
+                  </ResponsiveField>
+                </FieldRow>
+
+                {/* Fila 3: Provincia, Distrito */}
+                <FieldRow>
+                  <ResponsiveField label="Provincia" required>
+                    <FormControl fullWidth required disabled={formData.departamento !== 'cajamarca'} error={!!errors.provincia}>
+                      <Select
+                        value={formData.provincia}
+                        onChange={(e) => handleSelectChangeWithCascade('provincia', e.target.value)}
+                        displayEmpty
+                        sx={{
+                          '& .MuiSelect-select': {
+                            color: formData.provincia ? '#000' : '#999'
+                          }
+                        }}
+                      >
+                        <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                        {formData.departamento === 'cajamarca' && 
+                          provincias.cajamarca.map(provincia => (
+                            <MenuItem key={provincia.value} value={provincia.value}>
+                              {provincia.label}
+                            </MenuItem>
+                          ))
+                        }
+                      </Select>
+                    </FormControl>
+                  </ResponsiveField>
+
+                  <ResponsiveField label="Distrito" required>
+                    <FormControl fullWidth required disabled={!formData.provincia || !distritos[formData.provincia]} error={!!errors.distrito}>
+                      <Select
+                        value={formData.distrito}
+                        onChange={(e) => handleSelectChangeWithCascade('distrito', e.target.value)}
+                        displayEmpty
+                        sx={{
+                          '& .MuiSelect-select': {
+                            color: formData.distrito ? '#000' : '#999'
+                          }
+                        }}
+                      >
+                        <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                        {formData.provincia && distritos[formData.provincia] &&
+                          distritos[formData.provincia].map(distrito => (
+                            <MenuItem key={distrito.value} value={distrito.value}>
+                              {distrito.label}
+                            </MenuItem>
+                          ))
+                        }
+                      </Select>
+                    </FormControl>
+                  </ResponsiveField>
+                </FieldRow>
+              </Box>
+            </Paper>
+
+            {/* Información Personal */}
+            <Paper sx={{ mb: 3, boxShadow: 2 }}>
+              <SectionHeader title="Información Personal" />
+              <Box sx={{ p: 4 }}>
+                
+                {/* Fila 1: Teléfono, Celular, Correo */}
+                <FieldRow>
+                  <ResponsiveField label="Teléfono" required>
+                    <TextField
+                      fullWidth
+                      required
+                      placeholder="Número de teléfono"
+                      value={formData.telefono}
+                      onChange={(e) => handleInputChange('telefono', e.target.value)}
+                      error={!!errors.telefono}
+                      helperText={errors.telefono}
+                      sx={{
+                        '& .MuiOutlinedInput-input::placeholder': {
+                          color: '#999',
+                          opacity: 1
+                        }
+                      }}
+                    />
+                  </ResponsiveField>
+
+                  <ResponsiveField label="Celular" required>
+                    <TextField
+                      fullWidth
+                      required
+                      placeholder="Número de celular"
+                      value={formData.celular}
+                      onChange={(e) => handleInputChange('celular', e.target.value)}
+                      error={!!errors.celular}
+                      helperText={errors.celular}
+                      sx={{
+                        '& .MuiOutlinedInput-input::placeholder': {
+                          color: '#999',
+                          opacity: 1
+                        }
+                      }}
+                    />
+                  </ResponsiveField>
+
+                  <ResponsiveField label="Correo" required>
+                    <TextField
+                      fullWidth
+                      required
+                      type="email"
+                      placeholder="Correo electrónico"
+                      value={formData.correo}
+                      onChange={(e) => handleInputChange('correo', e.target.value)}
+                      error={!!errors.correo}
+                      helperText={errors.correo}
+                      sx={{
+                        '& .MuiOutlinedInput-input::placeholder': {
+                          color: '#999',
+                          opacity: 1
+                        }
+                      }}
+                    />
+                  </ResponsiveField>
+                </FieldRow>
+              </Box>
             </Paper>
           </DialogContent>
           <DialogActions sx={{ p: 3, gap: 2 }}>

@@ -62,9 +62,10 @@ function App() {
             <Route path="/info-clinica/suministros" element={<Suministros />} />
             <Route path="/info-clinica/cie10" element={<Cie10 />} />
             <Route path="/info-clinica/examenes" element={<Examenes />} />
-            <Route path="/admin/centros" element={<Centros />} />
-            <Route path="/admin/personal" element={<Personal />} />
-            <Route path="/admin/estudios" element={<Estudios />} />
+            <Route path="/administracion/centros" element={<Centros />} />
+            <Route path="/administracion/personal" element={<Personal />} />
+            <Route path="/administracion/horarios" element={<Horario />} />
+            <Route path="/administracion/estudios" element={<Estudios />} />
             <Route path="*" element={<Home />} />
           </Routes>
         </MainLayout>
