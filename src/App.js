@@ -109,6 +109,9 @@ function App() {
             <Route path="/administracion/personal" element={<Personal />} />
             <Route path="/administracion/horarios" element={<Horario />} />
             <Route path="/administracion/estudios" element={<Estudios />} />
+            <Route path="/administracion/recursos" element={<Recursos />} />
+            <Route path="/administracion/examenes" element={<ExamenesAdmi />} />
+            <Route path="/administracion/salas" element={<Salas />} />
             <Route path="*" element={<Home />} />
           </Routes>
         </MainLayout>
