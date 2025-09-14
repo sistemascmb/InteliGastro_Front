@@ -40,6 +40,49 @@ const theme = createTheme({
       main: '#dc004e',
     },
   },
+  typography: {
+    // Reducir todos los tamaños de fuente en un 10%
+    fontSize: 14, // Base por defecto es 14, reducido de ~15.6
+    h1: {
+      fontSize: '5.4rem', // Reducido de 6rem
+    },
+    h2: {
+      fontSize: '3.42rem', // Reducido de 3.8rem  
+    },
+    h3: {
+      fontSize: '2.7rem', // Reducido de 3rem
+    },
+    h4: {
+      fontSize: '1.935rem', // Reducido de 2.15rem
+    },
+    h5: {
+      fontSize: '1.35rem', // Reducido de 1.5rem
+    },
+    h6: {
+      fontSize: '1.125rem', // Reducido de 1.25rem
+    },
+    subtitle1: {
+      fontSize: '0.9rem', // Reducido de 1rem
+    },
+    subtitle2: {
+      fontSize: '0.785rem', // Reducido de 0.875rem
+    },
+    body1: {
+      fontSize: '0.9rem', // Reducido de 1rem
+    },
+    body2: {
+      fontSize: '0.785rem', // Reducido de 0.875rem
+    },
+    button: {
+      fontSize: '0.785rem', // Reducido de 0.875rem
+    },
+    caption: {
+      fontSize: '0.675rem', // Reducido de 0.75rem
+    },
+    overline: {
+      fontSize: '0.675rem', // Reducido de 0.75rem
+    },
+  },
 });
 
 function App() {

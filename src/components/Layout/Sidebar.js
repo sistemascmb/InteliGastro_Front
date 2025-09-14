@@ -175,38 +175,61 @@ const Sidebar = () => {
   };
 
   return (
-    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <Box 
-        sx={{ 
-          height: '20%',
-          backgroundColor: '#2184be', 
-          color: 'white',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          '&:hover': {
-            backgroundColor: '#1e75a6'
-          }
-        }}
-        onClick={() => navigate('/')}
-      >
-        <img 
-          src={logoClinica} 
-          alt="Clínica María Belén" 
-          style={{ 
-            height: '160px',
-            maxWidth: '95%',
-            objectFit: 'contain'
-          }}
-        />
-      </Box>
-      
+    <Box sx={{ 
+      height: '100vh', 
+      display: 'flex', 
+      flexDirection: 'column',
+      backgroundColor: '#2184be'
+    }}>
+      {/* Contenedor con scroll que incluye logo y menú */}
       <Box sx={{ 
-        height: '80%',
+        height: '100vh',
         backgroundColor: '#2184be',
-        overflow: 'auto'
+        overflow: 'auto',
+        // Estilos personalizados para la barra de scroll
+        '&::-webkit-scrollbar': {
+          width: '8px',
+        },
+        '&::-webkit-scrollbar-track': {
+          backgroundColor: '#2184be', // Mismo color del sidebar
+        },
+        '&::-webkit-scrollbar-thumb': {
+          backgroundColor: '#1e75a6', // Color más oscuro para la barra
+          borderRadius: '4px',
+        },
+        '&::-webkit-scrollbar-thumb:hover': {
+          backgroundColor: '#1565c0', // Color aún más oscuro al hover
+        }
       }}>
+        {/* Logo que ahora se desliza con el scroll */}
+        <Box 
+          sx={{ 
+            height: '20vh', // Mismo tamaño que el header principal
+            backgroundColor: '#2184be', 
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            flexShrink: 0, // No se encoge
+            '&:hover': {
+              backgroundColor: '#1e75a6'
+            }
+          }}
+          onClick={() => navigate('/')}
+        >
+          <img 
+            src={logoClinica} 
+            alt="Clínica María Belén" 
+            style={{ 
+              height: '130px',
+              maxWidth: '95%',
+              objectFit: 'contain'
+            }}
+          />
+        </Box>
+        
+        {/* Menú que continúa después del logo */}
         <List sx={{ pt: 1 }}>
           {menuItems.map((item) => renderMenuItem(item))}
         </List>
