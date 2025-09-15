@@ -6,7 +6,6 @@ import {
   ListItemIcon,
   ListItemText,
   Collapse,
-  Typography,
 } from '@mui/material';
 import logoClinica from '../../assets/images/logo-clinica.png';
 import {
@@ -119,7 +118,7 @@ const Sidebar = () => {
         { title: 'Usuarios', icon: <People />, path: '/administracion/usuarios' },
         { title: 'Plantillas', icon: <Description />, path: '/administracion/plantillas' },
         { title: 'Macros', icon: <Code />, path: '/administracion/macros' },
-        { title: 'Médicos Ref.', icon: <PersonSearch />, path: '/administracion/medicos-referencia' }
+        { title: 'Médicos Ref.', icon: <PersonSearch />, path: '/administracion/medicos-ref' }
       ]
     }
   ];

@@ -37,8 +37,7 @@ import {
   Close,
   Search,
   Visibility,
-  VisibilityOff,
-  Info
+  VisibilityOff
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
@@ -699,7 +698,7 @@ const Usuarios = () => {
                             sx={{ mr: 1 }}
                             title="Ver Detalles"
                           >
-                            <Info />
+                            <Visibility />
                           </IconButton>
                           <IconButton
                             color="primary"
