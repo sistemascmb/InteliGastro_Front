@@ -119,6 +119,7 @@ function App() {
             <Route path="/procedimientos/ordenes" element={<Ordenes />} />
             <Route path="/procedimientos/agendados" element={<Agendados />} />
             <Route path="/procedimientos/completados" element={<Completados />} />
+            <Route path="/procedimientos/altas" element={<Altas />} />
             
             <Route path="/pacientes/nuevo-paciente" element={<NuevoPaciente />} />
             <Route path="/pacientes/buscar-paciente" element={<BuscarPaciente />} />
@@ -137,9 +138,16 @@ function App() {
             <Route path="/administracion/personal" element={<PersonalAdministracion />} />
             <Route path="/administracion/horarios" element={<Horario />} />
             <Route path="/administracion/estudios" element={<Estudios />} />
+            <Route path="/administracion/salas" element={<Salas />} />
             <Route path="/administracion/recursos" element={<Recursos />} />
             <Route path="/administracion/examenes" element={<ExamenesAdministracion />} />
-            <Route path="/administracion/salas" element={<Salas />} />
+            <Route path="/administracion/preparacion" element={<Preparacion />} />
+            <Route path="/administracion/seguros" element={<Seguros />} />
+            <Route path="/administracion/roles" element={<Roles />} />
+            <Route path="/administracion/usuarios" element={<Usuarios />} />
+            <Route path="/administracion/plantillas" element={<Plantillas />} />
+            <Route path="/administracion/macros" element={<Macros />} />
+            <Route path="/administracion/medicos-ref" element={<MedicosRef />} />
             <Route path="*" element={<Home />} />
           </Routes>
         </MainLayout>

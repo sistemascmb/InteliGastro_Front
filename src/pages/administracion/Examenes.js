@@ -34,7 +34,6 @@ import {
   Save,
   Close,
   Search,
-  Science
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
@@ -550,7 +549,7 @@ const Examenes = () => {
                       filteredExamenes.map((examen) => (
                       <TableRow key={examen.id} hover>
                         <TableCell>
-                          <Typography variant="body2" fontWeight="bold">
+                          <Typography variant="body2">
                             {examen.descripcion}
                           </Typography>
                         </TableCell>
