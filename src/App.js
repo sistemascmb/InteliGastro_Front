@@ -17,8 +17,9 @@ import Agendados from './pages/procedimientos/Agendados';
 import Completados from './pages/procedimientos/Completados';
 import Altas from './pages/procedimientos/Altas';
 
-import NuevoPaciente from './pages/pacientes/NuevoPaciente';
+import Pacientes from './pages/pacientes/Pacientes';
 import BuscarPaciente from './pages/pacientes/BuscarPaciente';
+import NuevoPaciente from './pages/pacientes/NuevoPaciente';
 
 import Examenes from './pages/info-clinica/Examenes';
 import Suministros from './pages/info-clinica/Suministros';
@@ -121,6 +122,7 @@ function App() {
             <Route path="/procedimientos/completados" element={<Completados />} />
             <Route path="/procedimientos/altas" element={<Altas />} />
             
+            <Route path="/pacientes/pacientes" element={<Pacientes />} />
             <Route path="/pacientes/nuevo-paciente" element={<NuevoPaciente />} />
             <Route path="/pacientes/buscar-paciente" element={<BuscarPaciente />} />
             
