@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, memo } from 'react';
 import {
   Container,
   Paper,
@@ -15,7 +15,6 @@ import {
   FormControl,
   Select,
   MenuItem,
-  InputLabel,
   Card,
   CardContent,
   Avatar,
@@ -39,11 +38,9 @@ import {
   Save,
   Phone,
   Email,
-  Business,
-  LocalHospital,
   MedicalServices,
-  Security,
-  Assignment
+  Home,
+  LocationOn
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
@@ -139,30 +136,48 @@ const ProcedimientoAdmision = () => {
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
 
   // Datos simulados de pacientes
-  const pacientesSimulados = [
+    const pacientesSimulados = [
     {
       id: 1,
       documento: '12345678',
-      nombre: 'María Elena González',
-      apellidos: 'Martínez López',
-      telefono: '987654321',
-      email: 'maria.gonzalez@email.com',
+      nombres: 'María Elena',
+      apellidos: 'González Martínez',
       fechaNacimiento: '1985-03-15',
       edad: 38,
-      genero: 'Femenino',
-      direccion: 'Av. Principal 123, Lima'
+      nacionalidad: 'Peruana',
+      historiaClinica: 'HC-2024-001',
+      // Domicilio
+      calle: 'Av. Principal 123, Dpto. 201',
+      codigoPostal: '15001',
+      pais: 'Perú',
+      departamento: 'Lima',
+      provincia: 'Lima',
+      distrito: 'Miraflores',
+      // Información de contacto
+      telefono: '01-4567890',
+      celular: '987654321',
+      correo: 'maria.gonzalez@email.com'
     },
     {
       id: 2,
       documento: '87654321',
-      nombre: 'Carlos Antonio Rodríguez',
-      apellidos: 'Silva Torres',
-      telefono: '912345678',
-      email: 'carlos.rodriguez@email.com',
+      nombres: 'Carlos Antonio',
+      apellidos: 'Rodríguez Silva',
       fechaNacimiento: '1978-08-22',
       edad: 45,
-      genero: 'Masculino',
-      direccion: 'Jr. Los Andes 456, Lima'
+      nacionalidad: 'Peruana',
+      historiaClinica: 'HC-2024-002',
+      // Domicilio
+      calle: 'Jr. Los Andes 456',
+      codigoPostal: '15036',
+      pais: 'Perú',
+      departamento: 'Lima',
+      provincia: 'Lima',
+      distrito: 'San Isidro',
+      // Información de contacto
+      telefono: '01-2345678',
+      celular: '912345678',
+      correo: 'carlos.rodriguez@email.com'
     }
   ];
 
@@ -298,7 +313,7 @@ const ProcedimientoAdmision = () => {
                           </Avatar>
                           <Box sx={{ flex: 1 }}>
                             <Typography variant="h6" fontWeight="bold">
-                              {pacienteSeleccionado.nombre} {pacienteSeleccionado.apellidos}
+                              {pacienteSeleccionado.nombres} {pacienteSeleccionado.apellidos}
                             </Typography>
                             <Chip
                               label="Paciente Encontrado"
@@ -317,38 +332,118 @@ const ProcedimientoAdmision = () => {
                             Editar
                           </Button>
                         </Box>
+
                         <Divider sx={{ mb: 2 }} />
-                        <Grid container spacing={2}>
+                        {/* Información del Paciente */}
+                        <Grid container spacing={3}>
+                          <Grid item xs={12}>
+                            <Typography variant="h6" fontWeight="bold" sx={{ color: '#2184be', mb: 2 }}>
+                              Información del Paciente
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={12} md={4}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                              <Person sx={{ color: '#2184be', mr: 1, fontSize: 20 }} />
+                              <Typography variant="body2" color="text.secondary">
+                                <strong>Nombres:</strong> {pacienteSeleccionado.nombres}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                              <Person sx={{ color: '#2184be', mr: 1, fontSize: 20 }} />
+                              <Typography variant="body2" color="text.secondary">
+                                <strong>Apellidos:</strong> {pacienteSeleccionado.apellidos}
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={12} md={4}>
+                            <Typography variant="body2" color="text.secondary">
+                              <strong>Fecha Nacimiento:</strong> {pacienteSeleccionado.fechaNacimiento}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              <strong>Edad:</strong> {pacienteSeleccionado.edad} años
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={12} md={4}>
+                            <Typography variant="body2" color="text.secondary">
+                              <strong>Nacionalidad:</strong> {pacienteSeleccionado.nacionalidad}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              <strong>Historia Clínica:</strong> {pacienteSeleccionado.historiaClinica}
+                            </Typography>
+                          </Grid>
+                        </Grid>
+
+                        <Divider sx={{ my: 2 }} />
+
+                        {/* Domicilio */}
+                        <Grid container spacing={3}>
+                          <Grid item xs={12}>
+                            <Typography variant="h6" fontWeight="bold" sx={{ color: '#2184be', mb: 2 }}>
+                              Domicilio
+                            </Typography>
+                          </Grid>
                           <Grid item xs={12} md={6}>
                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                              <Assignment sx={{ color: '#2184be', mr: 1, fontSize: 20 }} />
+                              <Home sx={{ color: '#4caf50', mr: 1, fontSize: 20 }} />
                               <Typography variant="body2" color="text.secondary">
-                                Documento: {pacienteSeleccionado.documento}
+                                <strong>Calle:</strong> {pacienteSeleccionado.calle}
                               </Typography>
                             </Box>
                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                              <Phone sx={{ color: '#4caf50', mr: 1, fontSize: 20 }} />
+                              <LocationOn sx={{ color: '#ff9800', mr: 1, fontSize: 20 }} />
                               <Typography variant="body2" color="text.secondary">
-                                Teléfono: {pacienteSeleccionado.telefono}
-                              </Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                              <Email sx={{ color: '#ff9800', mr: 1, fontSize: 20 }} />
-                              <Typography variant="body2" color="text.secondary">
-                                Email: {pacienteSeleccionado.email}
+                                <strong>Código Postal:</strong> {pacienteSeleccionado.codigoPostal}
                               </Typography>
                             </Box>
                           </Grid>
                           <Grid item xs={12} md={6}>
                             <Typography variant="body2" color="text.secondary">
-                              <strong>Edad:</strong> {pacienteSeleccionado.edad} años
+                              <strong>País:</strong> {pacienteSeleccionado.pais}
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
-                              <strong>Género:</strong> {pacienteSeleccionado.genero}
+                              <strong>Departamento:</strong> {pacienteSeleccionado.departamento}
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
-                              <strong>Dirección:</strong> {pacienteSeleccionado.direccion}
+                              <strong>Provincia:</strong> {pacienteSeleccionado.provincia}
                             </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              <strong>Distrito:</strong> {pacienteSeleccionado.distrito}
+                            </Typography>
+                          </Grid>
+                        </Grid>
+
+                        <Divider sx={{ my: 2 }} />
+
+                        {/* Información de Contacto */}
+                        <Grid container spacing={3}>
+                          <Grid item xs={12}>
+                            <Typography variant="h6" fontWeight="bold" sx={{ color: '#2184be', mb: 2 }}>
+                              Información de Contacto
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={12} md={4}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                              <Phone sx={{ color: '#4caf50', mr: 1, fontSize: 20 }} />
+                              <Typography variant="body2" color="text.secondary">
+                                <strong>Teléfono:</strong> {pacienteSeleccionado.telefono}
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={12} md={4}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                              <Phone sx={{ color: '#2196f3', mr: 1, fontSize: 20 }} />
+                              <Typography variant="body2" color="text.secondary">
+                                <strong>Celular:</strong> {pacienteSeleccionado.celular}
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={12} md={4}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                              <Email sx={{ color: '#ff9800', mr: 1, fontSize: 20 }} />
+                              <Typography variant="body2" color="text.secondary">
+                                <strong>Correo:</strong> {pacienteSeleccionado.correo}
+                              </Typography>
+                            </Box>
                           </Grid>
                         </Grid>
                       </CardContent>
@@ -382,7 +477,7 @@ const ProcedimientoAdmision = () => {
                   <Button
                     variant="text"
                     startIcon={<PersonAdd />}
-                    onClick={() => navigate('/pacientes/nuevo-paciente')}
+                    onClick={() => navigate('/pacientes/pacientes')}
                     sx={{ mt: 2 }}
                   >
                     ¿Paciente nuevo? Registrar aquí
@@ -392,7 +487,6 @@ const ProcedimientoAdmision = () => {
             </Box>
           </Paper>
         );
-
       case 1:
         return (
           <Paper sx={{ p: 4, boxShadow: 3 }}>

@@ -78,8 +78,6 @@ const Sidebar = () => {
       title: 'Pacientes',
       icon: <People />,
       children: [
-        { title: 'Antiguo Paciente', path: '/pacientes/nuevo-paciente' },
-        {title: 'Buscar Paciente', path: '/pacientes/buscar-paciente' },
         { title: 'Nuevo Paciente', path: '/pacientes/pacientes' }
       ],
 
