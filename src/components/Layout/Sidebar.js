@@ -67,8 +67,8 @@ const Sidebar = () => {
       title: 'Procedimientos',
       icon: <MedicalServices />,
       children: [
-        { title: 'Agenda de Hoy', path: '/procedimientos/agenda-hoy' },
-        { title: 'Ordenes', path: '/procedimientos/ordenes' },
+        /*{ title: 'Agenda de Hoy', path: '/procedimientos/agenda-hoy' },*/
+        /*{ title: 'Ordenes', path: '/procedimientos/ordenes' },*/
         { title: 'Agendados', path: '/procedimientos/agendados' },
         { title: 'Completados', path: '/procedimientos/completados' },
         { title: 'Altas', path: '/procedimientos/altas' }
@@ -97,9 +97,9 @@ const Sidebar = () => {
       children:[
         { title: 'Detallado', path: '/estadisticas/detallado' },
         { title: 'Dashboard', path: '/estadisticas/dashboard' },
-        { title: 'Pacientes', path: '/estadisticas/pacientes' },
-        { title: 'Procedimientos', path: '/estadisticas/procedimientos' },
-        { title: 'Personal', path: '/estadisticas/personal' }
+        /*{ title: 'Pacientes', path: '/estadisticas/pacientes' },*/
+        /*{ title: 'Procedimientos', path: '/estadisticas/procedimientos' },*/
+        /*{ title: 'Personal', path: '/estadisticas/personal' }*/
       ]
     },
     {
