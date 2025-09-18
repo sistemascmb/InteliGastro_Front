@@ -746,9 +746,9 @@ const Agendados = () => {
                 startIcon={<Search />}
                 onClick={handleBuscarProcedimientos}
                 sx={{
-                  backgroundColor: '#4caf50',
+                  backgroundColor: '#2184be',
                   '&:hover': {
-                    backgroundColor: '#45a049'
+                    backgroundColor: '#2184be'
                   },
                   minHeight: '40px'
                 }}
