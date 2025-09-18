@@ -234,7 +234,7 @@ const ProcedimientoAdmision = () => {
 
     setOpenConfirmDialog(false);
     // Redirigir o mostrar mensaje de éxito
-    navigate('/procedimientos/agenda-hoy');
+    navigate('/procedimientos/agendados');
   };
 
   // Validaciones para cada paso
