@@ -81,13 +81,13 @@ FieldRow.displayName = 'FieldRow';
 // Componente simple de gráfico de barras
 const SimpleBarChart = ({ data, title }) => {
   const maxValue = Math.max(...data.map(d => Math.max(d.completados, d.cancelados)));
-  const chartHeight = 300;
-  const barWidth = 40;
-  const spacing = 20;
+  const chartHeight = 280;
+  const barWidth = 32;
+  const spacing = 15;
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, textAlign: 'center', color: '#2184be' }}>
+    <Box sx={{ p: 2 }}>
+      <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, textAlign: 'center', color: '#2184be' }}>
         {title}
       </Typography>
 
@@ -99,23 +99,25 @@ const SimpleBarChart = ({ data, title }) => {
         gap: `${spacing}px`,
         borderBottom: '2px solid #ddd',
         borderLeft: '2px solid #ddd',
-        pl: 2,
-        pb: 2
+        pl: 1,
+        pb: 1,
+        overflowX: 'auto',
+        maxWidth: '100%'
       }}>
         {data.map((item, index) => {
-          const completadosHeight = (item.completados / maxValue) * (chartHeight - 60);
-          const canceladosHeight = (item.cancelados / maxValue) * (chartHeight - 60);
+          const completadosHeight = (item.completados / maxValue) * (chartHeight - 50);
+          const canceladosHeight = (item.cancelados / maxValue) * (chartHeight - 50);
 
           return (
-            <Box key={index} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-              <Box sx={{ display: 'flex', alignItems: 'end', gap: 1 }}>
+            <Box key={index} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, minWidth: '70px' }}>
+              <Box sx={{ display: 'flex', alignItems: 'end', gap: 0.5 }}>
                 {/* Barra Completados (Azul) */}
                 <Box
                   sx={{
                     width: barWidth,
                     height: completadosHeight,
                     backgroundColor: '#2184be',
-                    borderRadius: '4px 4px 0 0',
+                    borderRadius: '3px 3px 0 0',
                     position: 'relative',
                     '&:hover': {
                       backgroundColor: '#1e75a6',
@@ -128,11 +130,12 @@ const SimpleBarChart = ({ data, title }) => {
                     variant="caption"
                     sx={{
                       position: 'absolute',
-                      top: -20,
+                      top: -18,
                       left: '50%',
                       transform: 'translateX(-50%)',
                       fontWeight: 'bold',
-                      color: '#2184be'
+                      color: '#2184be',
+                      fontSize: '10px'
                     }}
                   >
                     {item.completados}
@@ -145,7 +148,7 @@ const SimpleBarChart = ({ data, title }) => {
                     width: barWidth,
                     height: canceladosHeight,
                     backgroundColor: '#f44336',
-                    borderRadius: '4px 4px 0 0',
+                    borderRadius: '3px 3px 0 0',
                     position: 'relative',
                     '&:hover': {
                       backgroundColor: '#d32f2f',
@@ -158,11 +161,12 @@ const SimpleBarChart = ({ data, title }) => {
                     variant="caption"
                     sx={{
                       position: 'absolute',
-                      top: -20,
+                      top: -18,
                       left: '50%',
                       transform: 'translateX(-50%)',
                       fontWeight: 'bold',
-                      color: '#f44336'
+                      color: '#f44336',
+                      fontSize: '10px'
                     }}
                   >
                     {item.cancelados}
@@ -171,7 +175,7 @@ const SimpleBarChart = ({ data, title }) => {
               </Box>
 
               {/* Etiqueta del mes */}
-              <Typography variant="body2" fontWeight="bold" sx={{ mt: 1 }}>
+              <Typography variant="caption" fontWeight="bold" sx={{ mt: 0.5 }}>
                 {item.mes}
               </Typography>
             </Box>
@@ -180,14 +184,14 @@ const SimpleBarChart = ({ data, title }) => {
       </Box>
 
       {/* Leyenda */}
-      <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, mt: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, mt: 1.5 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box sx={{ width: 16, height: 16, backgroundColor: '#2184be', borderRadius: 1 }} />
-          <Typography variant="body2">Completados</Typography>
+          <Box sx={{ width: 14, height: 14, backgroundColor: '#2184be', borderRadius: 1 }} />
+          <Typography variant="caption">Completados</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box sx={{ width: 16, height: 16, backgroundColor: '#f44336', borderRadius: 1 }} />
-          <Typography variant="body2">Cancelados</Typography>
+          <Box sx={{ width: 14, height: 14, backgroundColor: '#f44336', borderRadius: 1 }} />
+          <Typography variant="caption">Cancelados</Typography>
         </Box>
       </Box>
     </Box>
@@ -198,20 +202,20 @@ const SimpleBarChart = ({ data, title }) => {
 const SimplePieChart = ({ data, title }) => {
   const total = data.reduce((sum, item) => sum + item.cantidad, 0);
   let currentAngle = 0;
-  const radius = 80;
-  const centerX = 100;
-  const centerY = 100;
+  const radius = 70;
+  const centerX = 90;
+  const centerY = 90;
 
   const colors = ['#2184be', '#4caf50', '#ff9800', '#f44336', '#9c27b0'];
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, textAlign: 'center', color: '#2184be' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 2 }}>
+      <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, textAlign: 'center', color: '#2184be' }}>
         {title}
       </Typography>
 
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 3 }}>
-        <svg width="200" height="200" viewBox="0 0 200 200">
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 2 }}>
+        <svg viewBox="0 0 180 180" style={{ width: "100%", height: "auto", maxWidth: "400px" }}>
           {data.map((item, index) => {
             const percentage = (item.cantidad / total) * 100;
             const angle = (item.cantidad / total) * 360;
@@ -247,29 +251,30 @@ const SimplePieChart = ({ data, title }) => {
           })}
 
           {/* Centro del gráfico */}
-          <circle cx={centerX} cy={centerY} r="25" fill="white" stroke="#ddd" strokeWidth="2" />
-          <text x={centerX} y={centerY - 5} textAnchor="middle" className="text-sm font-bold" fill="#666">
+          <circle cx={centerX} cy={centerY} r="22" fill="white" stroke="#ddd" strokeWidth="2" />
+          <text x={centerX} y={centerY - 4} textAnchor="middle" className="text-sm font-bold" fill="#666" fontSize="12">
             Total
           </text>
-          <text x={centerX} y={centerY + 10} textAnchor="middle" className="text-sm" fill="#666">
+          <text x={centerX} y={centerY + 8} textAnchor="middle" className="text-sm" fill="#666" fontSize="14">
             {total}
           </text>
         </svg>
       </Box>
 
       {/* Leyenda */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'center' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8, alignItems: 'flex-start', width: '100%' }}>
         {data.map((item, index) => {
           const percentage = ((item.cantidad / total) * 100).toFixed(1);
           return (
-            <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
               <Box sx={{
-                width: 16,
-                height: 16,
+                width: 12,
+                height: 12,
                 backgroundColor: colors[index % colors.length],
-                borderRadius: 1
+                borderRadius: 1,
+                flexShrink: 0
               }} />
-              <Typography variant="body2">
+              <Typography variant="caption" sx={{ fontSize: '11px' }}>
                 {item.tipo}: {item.cantidad} ({percentage}%)
               </Typography>
             </Box>
@@ -326,7 +331,7 @@ const Dashboard = () => {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ py: 1, px: 2, maxWidth: '100% !important' }}>
+    <Container maxWidth={false} sx={{ py: 1, px: 2, width: '100%', maxWidth: 'none' }}>
       {/* Breadcrumb Navigation */}
       <Breadcrumbs
         separator={<NavigateNext fontSize="small" />}
@@ -433,17 +438,16 @@ const Dashboard = () => {
       </Paper>
 
       {/* Gráficos */}
-      <Grid container spacing={3}>
         {/* Gráfico de Barras - Completados vs Cancelados */}
-        <Grid item xs={12} lg={6}>
-          <Paper sx={{ boxShadow: 3 }}>
+        <Grid item xs={12}>
+          <Paper sx={{ boxShadow: 3, mb: 2 }}>
             <SimpleBarChart
               data={barChartData}
               title="Exámenes Completados vs Cancelados por Mes"
             />
 
             {/* Tabla debajo del gráfico de barras */}
-            <Box sx={{ p: 3, pt: 0 }}>
+            <Box sx={{ p: 2, pt: 0 }}>
               <SectionHeader title="Resumen Mensual" />
               <TableContainer>
                 <Table size="small">
@@ -459,22 +463,22 @@ const Dashboard = () => {
                     {barChartData.map((item, index) => (
                       <TableRow key={index} hover>
                         <TableCell>
-                          <Typography variant="body2" fontWeight="bold">
+                          <Typography variant="caption" fontWeight="bold">
                             {item.mes}
                           </Typography>
                         </TableCell>
                         <TableCell align="center">
-                          <Typography variant="body2" sx={{ color: '#2184be', fontWeight: 'bold' }}>
+                          <Typography variant="caption" sx={{ color: '#2184be', fontWeight: 'bold' }}>
                             {item.completados}
                           </Typography>
                         </TableCell>
                         <TableCell align="center">
-                          <Typography variant="body2" sx={{ color: '#f44336', fontWeight: 'bold' }}>
+                          <Typography variant="caption" sx={{ color: '#f44336', fontWeight: 'bold' }}>
                             {item.cancelados}
                           </Typography>
                         </TableCell>
                         <TableCell align="center">
-                          <Typography variant="body2" fontWeight="bold">
+                          <Typography variant="caption" fontWeight="bold">
                             {item.completados + item.cancelados}
                           </Typography>
                         </TableCell>
@@ -483,22 +487,22 @@ const Dashboard = () => {
                     {/* Fila de totales */}
                     <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                       <TableCell>
-                        <Typography variant="body2" fontWeight="bold">
+                        <Typography variant="caption" fontWeight="bold">
                           TOTAL
                         </Typography>
                       </TableCell>
                       <TableCell align="center">
-                        <Typography variant="body2" sx={{ color: '#2184be', fontWeight: 'bold' }}>
+                        <Typography variant="caption" sx={{ color: '#2184be', fontWeight: 'bold' }}>
                           {barChartData.reduce((sum, item) => sum + item.completados, 0)}
                         </Typography>
                       </TableCell>
                       <TableCell align="center">
-                        <Typography variant="body2" sx={{ color: '#f44336', fontWeight: 'bold' }}>
+                        <Typography variant="caption" sx={{ color: '#f44336', fontWeight: 'bold' }}>
                           {barChartData.reduce((sum, item) => sum + item.cancelados, 0)}
                         </Typography>
                       </TableCell>
                       <TableCell align="center">
-                        <Typography variant="body2" fontWeight="bold">
+                        <Typography variant="caption" fontWeight="bold">
                           {barChartData.reduce((sum, item) => sum + item.completados + item.cancelados, 0)}
                         </Typography>
                       </TableCell>
@@ -510,8 +514,8 @@ const Dashboard = () => {
           </Paper>
         </Grid>
 
-        {/* Gráfico Circular - Exámenes por Tipo de Procedimiento */}
-        <Grid item xs={12} lg={6}>
+      {/* Sección de Gráfico Circular y Tabla */}
+        <Grid item xs={12}>
           <Paper sx={{ boxShadow: 3 }}>
             <SimplePieChart
               data={pieChartData}
@@ -519,7 +523,7 @@ const Dashboard = () => {
             />
 
             {/* Tabla debajo del gráfico circular */}
-            <Box sx={{ p: 3, pt: 0 }}>
+            <Box sx={{ p: 2, pt: 0 }}>
               <SectionHeader title="Distribución por Procedimiento" />
               <TableContainer>
                 <Table size="small">
@@ -586,7 +590,6 @@ const Dashboard = () => {
             </Box>
           </Paper>
         </Grid>
-      </Grid>
     </Container>
   );
 };
