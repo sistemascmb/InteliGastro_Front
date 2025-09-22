@@ -1,4 +1,4 @@
-# Estructura de APIs - Sistema Clínico InteligAstro
+# Estructura de APIs - Sistema Clínico InteliGastro
 
 ## 📋 Índice
 - [Introducción](#introducción)

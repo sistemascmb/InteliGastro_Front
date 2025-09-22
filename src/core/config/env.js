@@ -11,7 +11,7 @@ export const getEnvVar = (name, defaultValue = null) => {
 export const config = {
   // API Configuration
   api: {
-    baseUrl: getEnvVar('REACT_APP_API_URL', 'http://localhost:3001/api/v1'),
+    baseUrl: getEnvVar('REACT_APP_API_URL', 'http://localhost:8000/api/v1'),
     timeout: parseInt(getEnvVar('REACT_APP_API_TIMEOUT', '10000')),
   },
 
