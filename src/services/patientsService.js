@@ -1,25 +1,30 @@
-import { api } from '../utils/apiClient';
-import { API_ENDPOINTS } from '../constants/api';
+import { apiClient } from '../core/config/api';
+import { API_ENDPOINTS } from '../core/constants/api-endpoints';
 
 // Servicio para el manejo de pacientes
 export const patientsService = {
-  // Obtener todos los pacientes con paginación y filtros
+  // Obtener todos los pacientes
   getAll: async (params = {}) => {
-    const queryParams = {
-      page: params.page || 1,
-      limit: params.limit || 10,
-      search: params.search || '',
-      status: params.status || '',
-      sortBy: params.sortBy || 'createdAt',
-      sortOrder: params.sortOrder || 'desc'
-    };
+    try {
+      console.log('🌐 Base URL:', process.env.REACT_APP_API_URL);
+      console.log('📋 Endpoint:', API_ENDPOINTS.PATIENTS.BASE);
+      console.log('🔗 URL completa que se va a usar:', `${process.env.REACT_APP_API_URL}${API_ENDPOINTS.PATIENTS.BASE}`);
 
-    // Filtrar parámetros vacíos
-    const cleanParams = Object.fromEntries(
-      Object.entries(queryParams).filter(([_, value]) => value !== '')
-    );
+      const response = await apiClient.get(API_ENDPOINTS.PATIENTS.BASE);
 
-    return await api.get(API_ENDPOINTS.PATIENTS.BASE, { params: cleanParams });
+      console.log('✅ Respuesta exitosa:', response);
+
+      // La API devuelve directamente el array de pacientes
+      return {
+        data: response.data || [],
+        status: 'success'
+      };
+    } catch (error) {
+      console.error('❌ Error completo:', error);
+      console.error('❌ Status:', error.response?.status);
+      console.error('❌ URL que falló:', error.config?.url);
+      throw error;
+    }
   },
 
   // Obtener paciente por ID
@@ -27,7 +32,7 @@ export const patientsService = {
     if (!id) {
       throw new Error('ID del paciente es requerido');
     }
-    return await api.get(API_ENDPOINTS.PATIENTS.BY_ID(id));
+    return await apiClient.get(API_ENDPOINTS.PATIENTS.BY_ID(id));
   },
 
   // Crear nuevo paciente
@@ -74,7 +79,7 @@ export const patientsService = {
       status: patientData.estado || patientData.status || 'active'
     };
 
-    return await api.post(API_ENDPOINTS.PATIENTS.BASE, formattedData);
+    return await apiClient.post(API_ENDPOINTS.PATIENTS.BASE, formattedData);
   },
 
   // Actualizar paciente
@@ -111,7 +116,7 @@ export const patientsService = {
       status: patientData.estado || patientData.status || 'active'
     };
 
-    return await api.put(API_ENDPOINTS.PATIENTS.BY_ID(id), formattedData);
+    return await apiClient.put(API_ENDPOINTS.PATIENTS.BY_ID(id), formattedData);
   },
 
   // Eliminación lógica del paciente
@@ -119,7 +124,7 @@ export const patientsService = {
     if (!id) {
       throw new Error('ID del paciente es requerido');
     }
-    return await api.delete(API_ENDPOINTS.PATIENTS.BY_ID(id));
+    return await apiClient.delete(API_ENDPOINTS.PATIENTS.BY_ID(id));
   },
 
   // Cambiar estado del paciente (activar/desactivar)
@@ -133,7 +138,7 @@ export const patientsService = {
       throw new Error(`Estado inválido. Debe ser uno de: ${validStatuses.join(', ')}`);
     }
 
-    return await api.patch(API_ENDPOINTS.PATIENTS.BY_ID(id), { status });
+    return await apiClient.patch(API_ENDPOINTS.PATIENTS.BY_ID(id), { status });
   },
 
   // Buscar pacientes por término
@@ -149,7 +154,7 @@ export const patientsService = {
       ...params
     };
 
-    return await api.get(API_ENDPOINTS.PATIENTS.SEARCH, { params: queryParams });
+    return await apiClient.get(API_ENDPOINTS.PATIENTS.SEARCH, { params: queryParams });
   },
 
   // Exportar lista de pacientes
@@ -159,7 +164,7 @@ export const patientsService = {
       throw new Error(`Formato inválido. Debe ser uno de: ${validFormats.join(', ')}`);
     }
 
-    return await api.get(API_ENDPOINTS.PATIENTS.EXPORT, {
+    return await apiClient.get(API_ENDPOINTS.PATIENTS.EXPORT, {
       params: { format, ...filters },
       responseType: 'blob' // Para descargas de archivos
     });
@@ -177,7 +182,7 @@ export const patientsService = {
     }
 
     try {
-      await api.get(`${API_ENDPOINTS.PATIENTS.BASE}/validate-document`, { params });
+      await apiClient.get(`${API_ENDPOINTS.PATIENTS.BASE}/validate-document`, { params });
       return { isValid: true };
     } catch (error) {
       return {
@@ -189,7 +194,7 @@ export const patientsService = {
 
   // Obtener estadísticas básicas de pacientes
   getStats: async () => {
-    return await api.get(`${API_ENDPOINTS.PATIENTS.BASE}/stats`);
+    return await apiClient.get(`${API_ENDPOINTS.PATIENTS.BASE}/stats`);
   }
 };
 

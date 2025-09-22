@@ -9,9 +9,9 @@ export const API_ENDPOINTS = {
 
   // Patients
   PATIENTS: {
-    BASE: '/patients',
-    SEARCH: '/patients/search',
-    BY_ID: (id) => `/patients/${id}`,
+    BASE: '/Paciente',
+    SEARCH: '/Paciente/search',
+    BY_ID: (id) => `/Paciente/${id}`,
   },
 
   // Staff

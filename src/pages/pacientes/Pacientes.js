@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo } from 'react';
+import { useState, useCallback, memo, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -25,7 +25,9 @@ import {
   Grid,
   Tabs,
   Tab,
-  Chip
+  Chip,
+  CircularProgress,
+  Alert
 } from '@mui/material';
 import {
   NavigateNext,
@@ -38,6 +40,7 @@ import {
   Search
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { patientsService } from '../../services/patientsService';
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
@@ -100,37 +103,9 @@ const Pacientes = () => {
   const navigate = useNavigate();
 
   // Estado para la lista de pacientes
-  const [pacientes, setPacientes] = useState([
-    {
-      id: 1,
-      // Información del Paciente
-      estado: 'activo',
-      tipoDocumento: 'DNI',
-      documento: '71717171',
-      nombres : 'Juan Carlos',
-      apellidos: 'Pérez Gómez',
-      fechaNacimiento: '1985-06-15',
-      genero: 'masculino',
-      estadoMarital: 'soltero',
-      nacionalidad: 'Peruana',
-
-      // Centro
-      nombreCentro: 'Centro Médico Central',
-
-      // Informacion de Residencia
-      calle: 'Av. Siempre Viva 123',
-      codPostal: '14001',
-      pais: 'peru',
-      departamento: 'cajamarca',
-      provincia: 'cajabamba',
-      distrito: 'cajabamba_distrito',
-
-      // Informacion de contacto
-      telefono: '00 51 123456789',
-      celular: '+51 912345678',
-      correo: ''
-    }
-  ]);
+  const [pacientes, setPacientes] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   // Estados para modales (solo editar, detallar y eliminar)
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -175,6 +150,61 @@ const Pacientes = () => {
   
   // Estado para tabs
   const [activeTab, setActiveTab] = useState(0);
+
+  // Función para cargar pacientes del backend
+  const loadPacientes = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      console.log('🔄 Cargando pacientes desde el backend...');
+      const response = await patientsService.getAll();
+
+      console.log('✅ Pacientes cargados:', response.data);
+      setPacientes(response.data || []);
+
+    } catch (error) {
+      console.error('❌ Error al cargar pacientes:', error);
+      setError(`Error al cargar pacientes: ${error.message}`);
+
+      // Datos de prueba en caso de error (para desarrollo)
+      const datosPrueba = [
+        {
+          pacientid: 999,
+          typeDoc: 1,
+          documentNumber: '12345678',
+          names: 'DEMO',
+          lastNames: 'USUARIO',
+          birthdate: '1990-01-01T00:00:00.000Z',
+          gender: 1,
+          statusMarital: 1,
+          nationality: 'PERUANO',
+          centroId: 1,
+          address: 'DIRECCIÓN DEMO',
+          pais: 1,
+          department: 1,
+          province: 1,
+          district: 1,
+          phoneNumber: '999999999',
+          email: 'demo@email.com',
+          status: true,
+          medicalHistory: 'DEMO001',
+          createdAt: '2025-01-01T00:00:00.000Z',
+          createdBy: 'DEMO',
+          isDeleted: false
+        }
+      ];
+      setPacientes(datosPrueba);
+
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cargar pacientes al montar el componente
+  useEffect(() => {
+    loadPacientes();
+  }, []);
 
   // Datos para cascading dropdowns
   const provincias = {
@@ -387,36 +417,30 @@ const Pacientes = () => {
   };
 
   // Función para crear paciente
-  const handleCreatePaciente = (e) => {
+  const handleCreatePaciente = async (e) => {
     e.preventDefault();
-    
+
     if (validateForm()) {
-      const newPaciente = {
-        id: Math.max(...pacientes.map(c => c.id)) + 1,
-        estado: formData.estado,
-        tipoDocumento: formData.tipoDocumento,
-        nombres: formData.nombres.trim(),
-        apellidos: formData.apellidos.trim(),
-        fechaNacimiento: formData.fechaNacimiento,
-        genero: formData.genero,
-        estadoMarital: formData.estadoMarital,
-        nacionalidad: formData.nacionalidad,
-        nombreCentro: formData.nombreCentro.trim(),
-        calle: formData.calle.trim(),
-        codPostal: formData.codPostal.trim(),
-        pais: formData.pais,
-        departamento: formData.departamento,
-        provincia: formData.provincia,
-        distrito: formData.distrito,
-        telefono: formData.telefono.trim(),
-        celular: formData.celular.trim(),
-        correo: formData.correo.trim()
-      };
-      
-      setPacientes(prev => [...prev, newPaciente]);
-      clearForm();
-      // Cambiar automáticamente al tab de lista
-      setActiveTab(1);
+      try {
+        setLoading(true);
+        console.log('📤 Creando paciente...');
+
+        const nuevoPaciente = await patientsService.create(formData);
+        console.log('✅ Paciente creado:', nuevoPaciente);
+
+        // Recargar la lista de pacientes
+        await loadPacientes();
+
+        clearForm();
+        // Cambiar automáticamente al tab de lista
+        setActiveTab(0);
+
+      } catch (error) {
+        console.error('❌ Error al crear paciente:', error);
+        setError(`Error al crear paciente: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -462,12 +486,15 @@ const Pacientes = () => {
   };
 
   // Filtrar pacientes basado en la búsqueda
-  const filteredPacientes = pacientes.filter(paciente => 
-    paciente.nombres.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    paciente.apellidos.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    paciente.documento.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredPacientes = pacientes.filter(paciente => {
+    const nombres = paciente.names || '';
+    const apellidos = paciente.lastNames || '';
+    const documento = paciente.documentNumber || '';
 
-  );
+    return nombres.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           apellidos.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           documento.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   // Función para obtener el nombre legible de ubicación
   const getUbicacionTexto = (paciente) => {
@@ -877,6 +904,20 @@ const Pacientes = () => {
         {/* Contenido del Tab 2: Lista de Pacientes */}
         {activeTab === 0 && (
           <Box sx={{ p: 3 }}>
+            {/* Mostrar errores */}
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {error}
+              </Alert>
+            )}
+
+            {/* Mostrar loading */}
+            {loading && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                <CircularProgress />
+              </Box>
+            )}
+
             {/* Barra de Búsqueda */}
             <Box sx={{ mb: 3 }}>
               <TextField
@@ -937,16 +978,16 @@ const Pacientes = () => {
                       </TableRow>
                     ) : (
                       filteredPacientes.map((paciente) => (
-                      <TableRow key={paciente.id} hover>
-                        <TableCell>{paciente.nombres}</TableCell>
-                        <TableCell>{paciente.apellidos}</TableCell>
-                        <TableCell>{paciente.tipoDocumento}</TableCell>
-                        <TableCell>{paciente.documento}</TableCell>
-                        <TableCell>{paciente.celular}</TableCell>
+                      <TableRow key={paciente.pacientid} hover>
+                        <TableCell>{paciente.names || 'N/A'}</TableCell>
+                        <TableCell>{paciente.lastNames || 'N/A'}</TableCell>
+                        <TableCell>{paciente.typeDoc === 1 ? 'DNI' : 'Otro'}</TableCell>
+                        <TableCell>{paciente.documentNumber || 'N/A'}</TableCell>
+                        <TableCell>{paciente.phoneNumber || 'N/A'}</TableCell>
                         <TableCell>
                           <Chip
-                            label={paciente.estado === 'activo' ? 'Activo' : 'Inactivo'}
-                            color={paciente.estado === 'activo' ? 'success' : 'default'}
+                            label={paciente.status ? 'Activo' : 'Inactivo'}
+                            color={paciente.status ? 'success' : 'default'}
                             size="small"
                             sx={{ fontWeight: 'bold' }}
                           />
