@@ -596,21 +596,21 @@ const Personal = () => {
           }}
         >
           <Tab 
-            label="Crear Personal" 
-            icon={<Add />} 
+            label="Lista de Personal" 
+            icon={<Search />} 
             iconPosition="start"
             sx={{ minWidth: '200px' }}
           />
           <Tab 
-            label="Lista de Personal" 
-            icon={<Search />} 
+            label="Crear Personal" 
+            icon={<Add />} 
             iconPosition="start"
             sx={{ minWidth: '200px' }}
           />
         </Tabs>
 
         {/* Contenido del Tab 1: Crear Personal */}
-        {activeTab === 0 && (
+        {activeTab === 1 && (
           <Box sx={{ p: 4 }}>
             <form onSubmit={handleCreatePersonal}>
               {/* Sección 1: Información */}
@@ -1064,7 +1064,7 @@ const Personal = () => {
         )}
 
         {/* Contenido del Tab 2: Lista de Personal */}
-        {activeTab === 1 && (
+        {activeTab === 0 && (
           <Box sx={{ p: 3 }}>
             {/* Barra de Búsqueda */}
             <Box sx={{ mb: 3 }}>

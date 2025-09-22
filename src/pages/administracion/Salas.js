@@ -391,21 +391,22 @@ const Salas = () => {
           }}
         >
           <Tab
-            label="Crear Sala"
-            icon={<Add />}
+            label="Lista de Salas"
+            icon={<Search />}
             iconPosition="start"
             sx={{ minWidth: '200px' }}
           />
+
           <Tab
-            label="Lista de Salas"
-            icon={<Search />}
+            label="Crear Sala"
+            icon={<Add />}
             iconPosition="start"
             sx={{ minWidth: '200px' }}
           />
         </Tabs>
 
         {/* Contenido del Tab 1: Crear Sala */}
-        {activeTab === 0 && (
+        {activeTab === 1 && (
           <Box sx={{ p: 4 }}>
             <form onSubmit={handleCreateSala}>
               {/* Sección: Información de la Sala */}
@@ -538,7 +539,7 @@ const Salas = () => {
         )}
 
         {/* Contenido del Tab 2: Lista de Salas */}
-        {activeTab === 1 && (
+        {activeTab === 0 && (
           <Box sx={{ p: 3 }}>
             {/* Barra de Búsqueda */}
             <Box sx={{ mb: 3 }}>

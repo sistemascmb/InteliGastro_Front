@@ -493,22 +493,24 @@ const Centros = () => {
             }
           }}
         >
-          <Tab 
-            label="Crear Centro" 
-            icon={<Add />} 
-            iconPosition="start"
-            sx={{ minWidth: '200px' }}
-          />
+          
           <Tab 
             label="Lista de Centros" 
             icon={<Search />} 
             iconPosition="start"
             sx={{ minWidth: '200px' }}
           />
+
+          <Tab 
+            label="Crear Centro" 
+            icon={<Add />} 
+            iconPosition="start"
+            sx={{ minWidth: '200px' }}
+          />
         </Tabs>
 
         {/* Contenido del Tab 1: Crear Centro */}
-        {activeTab === 0 && (
+        {activeTab === 1 && (
           <Box sx={{ p: 4 }}>
             <form onSubmit={handleCreateCentro}>
               {/* Sección 1: Información del Centro */}
@@ -757,7 +759,7 @@ const Centros = () => {
         )}
 
         {/* Contenido del Tab 2: Lista de Centros */}
-        {activeTab === 1 && (
+        {activeTab === 0 && (
           <Box sx={{ p: 3 }}>
             {/* Barra de Búsqueda */}
             <Box sx={{ mb: 3 }}>

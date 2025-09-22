@@ -407,21 +407,22 @@ const Usuarios = () => {
           }}
         >
           <Tab
-            label="Crear Usuario"
-            icon={<Add />}
+            label="Lista de Usuarios"
+            icon={<Search />}
             iconPosition="start"
             sx={{ minWidth: '200px' }}
           />
+
           <Tab
-            label="Lista de Usuarios"
-            icon={<Search />}
+            label="Crear Usuario"
+            icon={<Add />}
             iconPosition="start"
             sx={{ minWidth: '200px' }}
           />
         </Tabs>
 
         {/* Contenido del Tab 1: Crear Usuario */}
-        {activeTab === 0 && (
+        {activeTab === 1 && (
           <Box sx={{ p: 4 }}>
             <form onSubmit={handleCreateUsuario}>
               {/* Sección: Información del Usuario*/}
@@ -605,7 +606,7 @@ const Usuarios = () => {
         )}
 
         {/* Contenido del Tab 2: Lista de Usuarios */}
-        {activeTab === 1 && (
+        {activeTab === 0 && (
           <Box sx={{ p: 3 }}>
             {/* Barra de Búsqueda */}
             <Box sx={{ mb: 3 }}>

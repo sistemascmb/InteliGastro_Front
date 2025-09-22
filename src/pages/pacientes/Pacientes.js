@@ -524,22 +524,24 @@ const Pacientes = () => {
             }
           }}
         >
-          <Tab 
-            label="Crear Paciente" 
-            icon={<Add />} 
-            iconPosition="start"
-            sx={{ minWidth: '200px' }}
-          />
+          
           <Tab 
             label="Lista de Pacientes" 
             icon={<Search />} 
             iconPosition="start"
             sx={{ minWidth: '200px' }}
           />
+
+          <Tab 
+            label="Crear Paciente" 
+            icon={<Add />} 
+            iconPosition="start"
+            sx={{ minWidth: '200px' }}
+          />
         </Tabs>
 
         {/* Contenido del Tab 1: Crear Paciente */}
-        {activeTab === 0 && (
+        {activeTab === 1 && (
           <Box sx={{ p: 4 }}>
             <form onSubmit={handleCreatePaciente}>
               {/* Sección 1: Información del Paciente */}
@@ -873,7 +875,7 @@ const Pacientes = () => {
         )}
 
         {/* Contenido del Tab 2: Lista de Pacientes */}
-        {activeTab === 1 && (
+        {activeTab === 0 && (
           <Box sx={{ p: 3 }}>
             {/* Barra de Búsqueda */}
             <Box sx={{ mb: 3 }}>

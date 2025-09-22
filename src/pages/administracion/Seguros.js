@@ -321,14 +321,15 @@ const Seguros = () => {
           }}
         >
           <Tab
-            label="Crear Seguro"
-            icon={<Add />}
+            label="Lista de Seguros"
+            icon={<Search />}
             iconPosition="start"
             sx={{ minWidth: '200px' }}
           />
+
           <Tab
-            label="Lista de Seguros"
-            icon={<Search />}
+            label="Crear Seguro"
+            icon={<Add />}
             iconPosition="start"
             sx={{ minWidth: '200px' }}
           />

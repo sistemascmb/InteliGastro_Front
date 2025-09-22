@@ -369,21 +369,22 @@ const Examenes = () => {
           }}
         >
           <Tab
-            label="Crear Examen"
-            icon={<Add />}
+            label="Lista de Exámenes"
+            icon={<Search />}
             iconPosition="start"
             sx={{ minWidth: '200px' }}
           />
+
           <Tab
-            label="Lista de Exámenes"
-            icon={<Search />}
+            label="Crear Examen"
+            icon={<Add />}
             iconPosition="start"
             sx={{ minWidth: '200px' }}
           />
         </Tabs>
 
         {/* Contenido del Tab 1: Crear Examen */}
-        {activeTab === 0 && (
+        {activeTab === 1 && (
           <Box sx={{ p: 4 }}>
             <form onSubmit={handleCreateExamen}>
               {/* Sección: Información del Examen */}
@@ -487,7 +488,7 @@ const Examenes = () => {
         )}
 
         {/* Contenido del Tab 2: Lista de Exámenes */}
-        {activeTab === 1 && (
+        {activeTab === 0 && (
           <Box sx={{ p: 3 }}>
             {/* Barra de Búsqueda */}
             <Box sx={{ mb: 3 }}>

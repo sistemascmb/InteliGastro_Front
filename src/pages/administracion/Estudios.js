@@ -408,21 +408,21 @@ const Estudios = () => {
           }}
         >
           <Tab
-            label="Crear Estudio"
-            icon={<Add />}
+            label="Lista de Estudios"
+            icon={<Search />}
             iconPosition="start"
             sx={{ minWidth: '200px' }}
           />
           <Tab
-            label="Lista de Estudios"
-            icon={<Search />}
+            label="Crear Estudio"
+            icon={<Add />}
             iconPosition="start"
             sx={{ minWidth: '200px' }}
           />
         </Tabs>
 
         {/* Contenido del Tab 1: Crear Estudio */}
-        {activeTab === 0 && (
+        {activeTab === 1 && (
           <Box sx={{ p: 4 }}>
             <form onSubmit={handleCreateEstudio}>
               {/* Sección 1: Información del Estudio */}
@@ -602,7 +602,7 @@ const Estudios = () => {
         )}
 
         {/* Contenido del Tab 2: Lista de Estudios */}
-        {activeTab === 1 && (
+        {activeTab === 0 && (
           <Box sx={{ p: 3 }}>
             {/* Barra de Búsqueda */}
             <Box sx={{ mb: 3 }}>

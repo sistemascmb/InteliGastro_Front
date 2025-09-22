@@ -650,21 +650,22 @@ const Plantillas = () => {
           }}
         >
           <Tab
-            label="Crear Plantilla"
-            icon={<Add />}
+            label="Lista de Plantillas"
+            icon={<Search />}
             iconPosition="start"
             sx={{ minWidth: '200px' }}
           />
+
           <Tab
-            label="Lista de Plantillas"
-            icon={<Search />}
+            label="Crear Plantilla"
+            icon={<Add />}
             iconPosition="start"
             sx={{ minWidth: '200px' }}
           />
         </Tabs>
 
         {/* Contenido del Tab 1: Crear Plantilla */}
-        {activeTab === 0 && (
+        {activeTab === 1 && (
           <Box sx={{ p: 4 }}>
             {/* Subtabs para tipos de plantilla */}
             <Paper sx={{ mb: 3, backgroundColor: '#f8f9fa' }}>
@@ -859,7 +860,7 @@ const Plantillas = () => {
         )}
 
         {/* Contenido del Tab 2: Lista de Plantillas */}
-        {activeTab === 1 && (
+        {activeTab === 0 && (
           <Box sx={{ p: 3 }}>
             {/* Barra de Búsqueda */}
             <Box sx={{ mb: 3 }}>

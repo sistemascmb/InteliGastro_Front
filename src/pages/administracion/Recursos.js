@@ -433,21 +433,21 @@ const Recursos = () => {
           }}
         >
           <Tab
-            label="Crear Recurso"
-            icon={<Add />}
+            label="Lista de Recursos"
+            icon={<Search />}
             iconPosition="start"
             sx={{ minWidth: '200px' }}
           />
           <Tab
-            label="Lista de Recursos"
-            icon={<Search />}
+            label="Crear Recurso"
+            icon={<Add />}
             iconPosition="start"
             sx={{ minWidth: '200px' }}
           />
         </Tabs>
 
         {/* Contenido del Tab 1: Crear Recurso */}
-        {activeTab === 0 && (
+        {activeTab === 1 && (
           <Box sx={{ p: 4 }}>
             <form onSubmit={handleCreateRecurso}>
               {/* Sección 1: Información del Recurso */}
@@ -657,7 +657,7 @@ const Recursos = () => {
         )}
 
         {/* Contenido del Tab 2: Lista de Recursos */}
-        {activeTab === 1 && (
+        {activeTab === 0 && (
           <Box sx={{ p: 3 }}>
             {/* Barra de Búsqueda */}
             <Box sx={{ mb: 3 }}>

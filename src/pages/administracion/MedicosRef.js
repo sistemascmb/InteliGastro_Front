@@ -415,21 +415,21 @@ const MedicosRef = () => {
           }}
         >
           <Tab
-            label="Crear Médico Referente"
-            icon={<Add />}
+            label="Lista de Médicos Referentes"
+            icon={<Search />}
             iconPosition="start"
             sx={{ minWidth: '200px' }}
           />
           <Tab
-            label="Lista de Médicos Referentes"
-            icon={<Search />}
+            label="Crear Médico Referente"
+            icon={<Add />}
             iconPosition="start"
             sx={{ minWidth: '200px' }}
           />
         </Tabs>
 
         {/* Contenido del Tab 1: Crear Médico Referente */}
-        {activeTab === 0 && (
+        {activeTab === 1 && (
           <Box sx={{ p: 4 }}>
             <form onSubmit={handleCreateMedico}>
               {/* Sección: Información Personal*/}
@@ -601,7 +601,7 @@ const MedicosRef = () => {
         )}
 
         {/* Contenido del Tab 2: Lista de Médicos Referentes */}
-        {activeTab === 1 && (
+        {activeTab === 0 && (
           <Box sx={{ p: 3 }}>
             {/* Barra de Búsqueda */}
             <Box sx={{ mb: 3 }}>
