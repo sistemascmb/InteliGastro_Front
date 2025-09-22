@@ -1,3 +1,7 @@
+// Importaciones necesarias
+import React from 'react';
+import { api } from '../utils/apiClient';
+
 // Exportaciones centralizadas de todos los servicios
 export { default as patientsService } from './patientsService';
 export { default as staffService } from './staffService';
@@ -13,7 +17,6 @@ export {
 } from './index';
 
 // Servicio genérico para otros módulos (examenes, procedimientos, etc.)
-import { api } from '../utils/apiClient';
 
 // Factory para crear servicios CRUD básicos
 export const createCrudService = (baseEndpoint) => ({
