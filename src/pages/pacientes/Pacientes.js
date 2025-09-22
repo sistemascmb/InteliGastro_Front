@@ -110,7 +110,7 @@ const Pacientes = () => {
       nombres : 'Juan Carlos',
       apellidos: 'Pérez Gómez',
       fechaNacimiento: '1985-06-15',
-      genero: 'Masculino',
+      genero: 'masculino',
       estadoMarital: 'soltero',
       nacionalidad: 'Peruana',
 
@@ -120,10 +120,10 @@ const Pacientes = () => {
       // Informacion de Residencia
       calle: 'Av. Siempre Viva 123',
       codPostal: '14001',
-      pais: 'Peru',
-      departamento: 'Cajamarca',
-      provincia: 'Cajabamba',
-      distrito: 'Cajabamba',
+      pais: 'peru',
+      departamento: 'cajamarca',
+      provincia: 'cajabamba',
+      distrito: 'cajabamba_distrito',
 
       // Informacion de contacto
       telefono: '00 51 123456789',
@@ -339,6 +339,7 @@ const Pacientes = () => {
     setFormData({
       estado: paciente.estado,
       tipoDocumento: paciente.tipoDocumento,
+      documento: paciente.documento,
       nombres: paciente.nombres,
       apellidos: paciente.apellidos,
       fechaNacimiento: paciente.fechaNacimiento,
@@ -352,7 +353,7 @@ const Pacientes = () => {
       departamento: paciente.departamento,
       provincia: paciente.provincia,
       distrito: paciente.distrito,
-      telefono: paciente.telefono,  
+      telefono: paciente.telefono,
       celular: paciente.celular,
       correo: paciente.correo
     });

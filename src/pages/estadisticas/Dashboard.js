@@ -295,7 +295,7 @@ const Dashboard = () => {
   });
 
   // Datos simulados para el gráfico de barras (Completados vs Cancelados por mes)
-  const [barChartData, setBarChartData] = useState([
+  const [barChartData] = useState([
     { mes: 'Ene', completados: 45, cancelados: 8 },
     { mes: 'Feb', completados: 52, cancelados: 12 },
     { mes: 'Mar', completados: 38, cancelados: 6 },
@@ -311,7 +311,7 @@ const Dashboard = () => {
   ]);
 
   // Datos simulados para el gráfico circular (Exámenes por tipo de procedimiento)
-  const [pieChartData, setPieChartData] = useState([
+  const [pieChartData] = useState([
     { tipo: 'Endoscopia', cantidad: 245 },
     { tipo: 'Laparoscopia', cantidad: 89 },
     { tipo: 'Hepatología', cantidad: 156 },
