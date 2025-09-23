@@ -17,8 +17,16 @@ export const rolesService = {
       console.log('✅ Datos de roles recibidos:', rawData);
       console.log('✅ Número de roles:', rawData.length);
 
+      // Verificar si hay roles con isDeleted: true
+      const rolesEliminados = rawData.filter(rol => rol.isDeleted === true);
+      console.log('🗑️ Roles eliminados (isDeleted: true):', rolesEliminados.length, rolesEliminados);
+
+      // Filtrar solo roles NO eliminados (isDeleted: false) como medida de seguridad
+      const rolesActivos = rawData.filter(rol => rol.isDeleted === false);
+      console.log('✅ Roles activos (isDeleted: false):', rolesActivos.length);
+
       // Mapear los campos del backend a los campos del frontend
-      const mappedData = rawData.map(rol => ({
+      const mappedData = rolesActivos.map(rol => ({
         // IDs y referencias
         id: rol.profiletypeid,
         profiletypeid: rol.profiletypeid,

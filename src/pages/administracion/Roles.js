@@ -86,8 +86,14 @@ const Roles = () => {
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
   const [selectedRol, setSelectedRol] = useState(null);
 
-  // Estado para el formulario
+  // Estado para el formulario de crear
   const [formData, setFormData] = useState({
+    nombre: '',
+    descripcion: '',
+  });
+
+  // Estado para el formulario de editar (separado)
+  const [editFormData, setEditFormData] = useState({
     nombre: '',
     descripcion: '',
   });
@@ -153,6 +159,7 @@ const Roles = () => {
   };
 
   // Función genérica para manejar cambios en campos de texto
+  // Función para manejar cambios en formulario de crear
   const handleInputChange = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     // Limpiar error si existe
@@ -161,7 +168,16 @@ const Roles = () => {
     }
   }, [errors]);
 
-  // Validación del formulario
+  // Función para manejar cambios en formulario de editar
+  const handleEditInputChange = useCallback((field, value) => {
+    setEditFormData(prev => ({ ...prev, [field]: value }));
+    // Limpiar error si existe
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  }, [errors]);
+
+  // Validación del formulario de crear
   const validateForm = () => {
     const newErrors = {};
 
@@ -177,10 +193,26 @@ const Roles = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Validación del formulario de editar
+  const validateEditForm = () => {
+    const newErrors = {};
+
+    if (!editFormData.nombre.trim()) {
+      newErrors.nombre = 'Nombre es obligatorio';
+    }
+
+    if (!editFormData.descripcion.trim()) {
+      newErrors.descripcion = 'Descripción es obligatoria';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   // Funciones para manejar modales
   const handleOpenEditModal = (rol) => {
     setSelectedRol(rol);
-    setFormData({
+    setEditFormData({
       nombre: rol.nombre || rol.profile_name || '',
       descripcion: rol.descripcion || rol.description || '',
     });
@@ -190,7 +222,11 @@ const Roles = () => {
   const handleCloseEditModal = () => {
     setOpenEditModal(false);
     setSelectedRol(null);
-    clearForm();
+    setEditFormData({
+      nombre: '',
+      descripcion: '',
+    });
+    setErrors({});
   };
 
   const handleOpenDeleteConfirm = (rol) => {
@@ -233,12 +269,12 @@ const Roles = () => {
   const handleEditRol = async (e) => {
     e.preventDefault();
 
-    if (validateForm()) {
+    if (validateEditForm()) {
       try {
         setLoading(true);
         console.log('📝 Editando rol...');
 
-        const rolActualizado = await rolesService.update(selectedRol.id, formData);
+        const rolActualizado = await rolesService.update(selectedRol.id, editFormData);
         console.log('✅ Rol actualizado:', rolActualizado);
 
         // Recargar la lista de roles
@@ -277,14 +313,20 @@ const Roles = () => {
     }
   };
 
-  // Filtrar roles basado en la búsqueda
-  const filteredRoles = roles.filter(rol => {
-    const nombre = rol.nombre || rol.profile_name || '';
-    const descripcion = rol.descripcion || rol.description || '';
+  // Filtrar roles basado en la búsqueda y ordenar alfabéticamente
+  const filteredRoles = roles
+    .filter(rol => {
+      const nombre = rol.nombre || rol.profile_name || '';
+      const descripcion = rol.descripcion || rol.description || '';
 
-    return nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           descripcion.toLowerCase().includes(searchTerm.toLowerCase());
-  });
+      return nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+             descripcion.toLowerCase().includes(searchTerm.toLowerCase());
+    })
+    .sort((a, b) => {
+      const nombreA = (a.nombre || a.profile_name || '').toLowerCase();
+      const nombreB = (b.nombre || b.profile_name || '').toLowerCase();
+      return nombreA.localeCompare(nombreB);
+    });
 
   return (
     <Container maxWidth="lg" sx={{ py: 1, px: 2, maxWidth: '100% !important' }}>
@@ -515,8 +557,8 @@ const Roles = () => {
                 fullWidth
                 required
                 placeholder="Ingrese el nombre del rol"
-                value={formData.nombre}
-                onChange={(e) => handleInputChange('nombre', e.target.value)}
+                value={editFormData.nombre}
+                onChange={(e) => handleEditInputChange('nombre', e.target.value)}
                 error={!!errors.nombre}
                 helperText={errors.nombre}
                 size="small"
@@ -528,8 +570,8 @@ const Roles = () => {
                 fullWidth
                 required
                 placeholder="Ingrese la descripción del rol"
-                value={formData.descripcion}
-                onChange={(e) => handleInputChange('descripcion', e.target.value)}
+                value={editFormData.descripcion}
+                onChange={(e) => handleEditInputChange('descripcion', e.target.value)}
                 error={!!errors.descripcion}
                 helperText={errors.descripcion}
                 size="small"
