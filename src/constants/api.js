@@ -1,7 +1,6 @@
 // Configuración de constantes para APIs
 export const API_CONFIG = {
   BASE_URL: process.env.REACT_APP_API_URL || 'http://localhost:8000',
-  VERSION: 'v1',
   TIMEOUT: 10000, // 10 segundos
   RETRY_ATTEMPTS: 3,
   RETRY_DELAY: 1000 // 1 segundo
@@ -19,10 +18,10 @@ export const API_ENDPOINTS = {
 
   // Pacientes
   PATIENTS: {
-    BASE: '/patients',
-    BY_ID: (id) => `/patients/${id}`,
-    SEARCH: '/patients/search',
-    EXPORT: '/patients/export'
+    BASE: '/Paciente',
+    BY_ID: (id) => `/Paciente/${id}`,
+    SEARCH: '/Paciente/search',
+    EXPORT: '/Paciente/export'
   },
 
   // Personal

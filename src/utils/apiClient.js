@@ -3,7 +3,7 @@ import { API_CONFIG, HTTP_STATUS, ERROR_MESSAGES } from '../constants/api';
 
 // Crear instancia de axios con configuración base
 const apiClient = axios.create({
-  baseURL: `${API_CONFIG.BASE_URL}/api/${API_CONFIG.VERSION}`,
+  baseURL: API_CONFIG.BASE_URL, // La URL ya incluye /api en el .env
   timeout: API_CONFIG.TIMEOUT,
   headers: {
     'Content-Type': 'application/json',

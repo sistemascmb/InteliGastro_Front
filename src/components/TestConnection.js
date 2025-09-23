@@ -11,12 +11,12 @@ const TestConnection = () => {
     setResult(null);
 
     try {
-      // Probar conexión básica
-      const response = await api.get('/health');
+      // Probar conexión básica con endpoint de pacientes
+      const response = await api.get('/Paciente');
       setResult({
         success: true,
-        message: 'Conexión exitosa',
-        data: response
+        message: 'Conexión exitosa con el backend',
+        data: response.data
       });
     } catch (error) {
       setResult({
@@ -34,11 +34,11 @@ const TestConnection = () => {
     setResult(null);
 
     try {
-      const response = await api.get('/patients?limit=1');
+      const response = await api.get('/Paciente');
       setResult({
         success: true,
-        message: 'API de pacientes funcional',
-        data: response
+        message: `API de pacientes funcional - ${response.data?.length || 0} pacientes encontrados`,
+        data: response.data
       });
     } catch (error) {
       setResult({

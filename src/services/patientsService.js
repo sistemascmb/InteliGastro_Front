@@ -1,5 +1,5 @@
-import { apiClient } from '../core/config/api';
-import { API_ENDPOINTS } from '../core/constants/api-endpoints';
+import { api } from '../utils/apiClient';
+import { API_ENDPOINTS } from '../constants/api';
 
 // Servicio para el manejo de pacientes
 export const patientsService = {
@@ -10,7 +10,7 @@ export const patientsService = {
       console.log('📋 Endpoint:', API_ENDPOINTS.PATIENTS.BASE);
       console.log('🔗 URL completa que se va a usar:', `${process.env.REACT_APP_API_URL}${API_ENDPOINTS.PATIENTS.BASE}`);
 
-      const response = await apiClient.get(API_ENDPOINTS.PATIENTS.BASE);
+      const response = await api.get(API_ENDPOINTS.PATIENTS.BASE);
 
       console.log('✅ Respuesta exitosa:', response);
 
