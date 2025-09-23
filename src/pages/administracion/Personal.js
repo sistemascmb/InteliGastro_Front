@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, useCallback, memo, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -24,7 +24,10 @@ import {
   MenuItem,
   Grid,
   Tabs,
-  Tab
+  Tab,
+  Chip,
+  CircularProgress,
+  Alert
 } from '@mui/material';
 import {
   NavigateNext,
@@ -38,6 +41,7 @@ import {
   Person
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { staffService } from '../../services/staffService';
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
@@ -100,63 +104,9 @@ const Personal = () => {
   const navigate = useNavigate();
 
   // Estado para la lista de personal
-  const [personal, setPersonal] = useState([
-    {
-      id: 1,
-      // Información
-      documento: '12345678',
-      nombre: 'María Elena',
-      apellido: 'González Pérez',
-      fechaNacimiento: '1985-03-15',
-      genero: 'femenino',
-      // Centro
-      centro: 'centro-1',
-      // Información del Personal
-      estatus: 'activo',
-      titulo: 'Doctora',
-      grado: 'especialista',
-      numeroLicencia: 'LIC-001-2020',
-      tipo: 'medico',
-      fechaContratacion: '2020-01-15',
-      fechaCese: '',
-      // Dirección
-      direccion: 'Av. Los Médicos 456',
-      codPostal: '06001',
-      pais: 'peru',
-      departamento: 'cajamarca',
-      provincia: 'cajabamba',
-      distrito: 'cajabamba_distrito',
-      // Información Personal
-      telefono: '076-123456',
-      celular: '987654321',
-      correo: 'maria.gonzalez@clinica.com'
-    },
-    {
-      id: 2,
-      documento: '87654321',
-      nombre: 'Carlos Antonio',
-      apellido: 'Rodríguez Silva',
-      fechaNacimiento: '1978-08-22',
-      genero: 'masculino',
-      centro: 'centro-2',
-      estatus: 'activo',
-      titulo: 'Doctor',
-      grado: 'especialista',
-      numeroLicencia: 'LIC-002-2018',
-      tipo: 'medico',
-      fechaContratacion: '2018-03-10',
-      fechaCese: '',
-      direccion: 'Jr. Salud 789',
-      codPostal: '06002',
-      pais: 'peru',
-      departamento: 'cajamarca',
-      provincia: 'bambamarca',
-      distrito: 'bambamarca_distrito',
-      telefono: '076-789012',
-      celular: '912345678',
-      correo: 'carlos.rodriguez@clinica.com'
-    }
-  ]);
+  const [personal, setPersonal] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   // Datos simulados de centros (normalmente vendrían del backend)
   const centros = [
@@ -208,6 +158,87 @@ const Personal = () => {
   
   // Estado para tabs
   const [activeTab, setActiveTab] = useState(0);
+
+  // Función para cargar personal del backend
+  const loadPersonal = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      console.log('🔄 Cargando personal desde el backend...');
+      const response = await staffService.getAll();
+
+      console.log('✅ Personal cargado:', response.data);
+      setPersonal(response.data || []);
+
+    } catch (error) {
+      console.error('❌ Error al cargar personal:', error);
+      setError(`Error al cargar personal: ${error.message}`);
+
+      // Datos de prueba en caso de error (para desarrollo)
+      const datosPrueba = [
+        {
+          id: 1,
+          documento: '12345678',
+          nombre: 'María Elena',
+          apellido: 'González Pérez',
+          fechaNacimiento: '1985-03-15',
+          genero: 'femenino',
+          centro: 'centro-1',
+          estatus: 'activo',
+          titulo: 'Doctora',
+          grado: 'especialista',
+          numeroLicencia: 'LIC-001-2020',
+          tipo: 'medico',
+          fechaContratacion: '2020-01-15',
+          fechaCese: '',
+          direccion: 'Av. Los Médicos 456',
+          codPostal: '06001',
+          pais: 'peru',
+          departamento: 'cajamarca',
+          provincia: 'cajabamba',
+          distrito: 'cajabamba_distrito',
+          telefono: '076-123456',
+          celular: '987654321',
+          correo: 'maria.gonzalez@clinica.com'
+        },
+        {
+          id: 2,
+          documento: '87654321',
+          nombre: 'Carlos Antonio',
+          apellido: 'Rodríguez Silva',
+          fechaNacimiento: '1978-08-22',
+          genero: 'masculino',
+          centro: 'centro-2',
+          estatus: 'activo',
+          titulo: 'Doctor',
+          grado: 'especialista',
+          numeroLicencia: 'LIC-002-2018',
+          tipo: 'medico',
+          fechaContratacion: '2018-03-10',
+          fechaCese: '',
+          direccion: 'Jr. Salud 789',
+          codPostal: '06002',
+          pais: 'peru',
+          departamento: 'cajamarca',
+          provincia: 'bambamarca',
+          distrito: 'bambamarca_distrito',
+          telefono: '076-789012',
+          celular: '912345678',
+          correo: 'carlos.rodriguez@clinica.com'
+        }
+      ];
+      setPersonal(datosPrueba);
+
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cargar personal al montar el componente
+  useEffect(() => {
+    loadPersonal();
+  }, []);
 
   // Datos para cascading dropdowns (igual que en Centros)
   const provincias = {
@@ -446,84 +477,79 @@ const Personal = () => {
   };
 
   // Función para crear personal
-  const handleCreatePersonal = (e) => {
+  const handleCreatePersonal = async (e) => {
     e.preventDefault();
-    
+
     if (validateForm()) {
-      const newPersonal = {
-        id: Math.max(...personal.map(p => p.id)) + 1,
-        documento: formData.documento.trim(),
-        nombre: formData.nombre.trim(),
-        apellido: formData.apellido.trim(),
-        fechaNacimiento: formData.fechaNacimiento,
-        genero: formData.genero,
-        centro: formData.centro,
-        estatus: formData.estatus,
-        titulo: formData.titulo.trim(),
-        grado: formData.grado,
-        numeroLicencia: formData.numeroLicencia.trim(),
-        tipo: formData.tipo,
-        fechaContratacion: formData.fechaContratacion,
-        fechaCese: formData.fechaCese,
-        direccion: formData.direccion.trim(),
-        codPostal: formData.codPostal.trim(),
-        pais: formData.pais,
-        departamento: formData.departamento,
-        provincia: formData.provincia,
-        distrito: formData.distrito,
-        telefono: formData.telefono.trim(),
-        celular: formData.celular.trim(),
-        correo: formData.correo.trim()
-      };
-      
-      setPersonal(prev => [...prev, newPersonal]);
-      clearForm();
-      setActiveTab(1);
+      try {
+        setLoading(true);
+        console.log('📤 Creando personal...');
+
+        const nuevoPersonal = await staffService.create(formData);
+        console.log('✅ Personal creado:', nuevoPersonal);
+
+        // Recargar la lista de personal
+        await loadPersonal();
+
+        clearForm();
+        // Cambiar automáticamente al tab de lista
+        setActiveTab(0);
+
+      } catch (error) {
+        console.error('❌ Error al crear personal:', error);
+        setError(`Error al crear personal: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   // Función para editar personal
-  const handleEditPersonal = (e) => {
+  const handleEditPersonal = async (e) => {
     e.preventDefault();
-    
+
     if (validateForm()) {
-      setPersonal(prev => prev.map(p => 
-        p.id === selectedPersonal.id 
-          ? {
-              ...p,
-              documento: formData.documento.trim(),
-              nombre: formData.nombre.trim(),
-              apellido: formData.apellido.trim(),
-              fechaNacimiento: formData.fechaNacimiento,
-              genero: formData.genero,
-              centro: formData.centro,
-              estatus: formData.estatus,
-              titulo: formData.titulo.trim(),
-              grado: formData.grado,
-              numeroLicencia: formData.numeroLicencia.trim(),
-              tipo: formData.tipo,
-              fechaContratacion: formData.fechaContratacion,
-              fechaCese: formData.fechaCese,
-              direccion: formData.direccion.trim(),
-              codPostal: formData.codPostal.trim(),
-              pais: formData.pais,
-              departamento: formData.departamento,
-              provincia: formData.provincia,
-              distrito: formData.distrito,
-              telefono: formData.telefono.trim(),
-              celular: formData.celular.trim(),
-              correo: formData.correo.trim()
-            }
-          : p
-      ));
-      handleCloseEditModal();
+      try {
+        setLoading(true);
+        console.log('📤 Editando personal...');
+
+        const personalActualizado = await staffService.update(selectedPersonal.id, formData);
+        console.log('✅ Personal actualizado:', personalActualizado);
+
+        // Recargar la lista de personal
+        await loadPersonal();
+
+        handleCloseEditModal();
+
+      } catch (error) {
+        console.error('❌ Error al editar personal:', error);
+        setError(`Error al editar personal: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   // Función para eliminar personal
-  const handleDeletePersonal = () => {
-    setPersonal(prev => prev.filter(p => p.id !== selectedPersonal.id));
-    handleCloseDeleteConfirm();
+  const handleDeletePersonal = async () => {
+    try {
+      setLoading(true);
+      console.log('📤 Eliminando personal...');
+
+      await staffService.delete(selectedPersonal.id);
+      console.log('✅ Personal eliminado');
+
+      // Recargar la lista de personal
+      await loadPersonal();
+
+      handleCloseDeleteConfirm();
+
+    } catch (error) {
+      console.error('❌ Error al eliminar personal:', error);
+      setError(`Error al eliminar personal: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Filtrar personal basado en la búsqueda
@@ -1066,6 +1092,20 @@ const Personal = () => {
         {/* Contenido del Tab 2: Lista de Personal */}
         {activeTab === 0 && (
           <Box sx={{ p: 3 }}>
+            {/* Mostrar errores */}
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {error}
+              </Alert>
+            )}
+
+            {/* Mostrar loading */}
+            {loading && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                <CircularProgress />
+              </Box>
+            )}
+
             {/* Barra de Búsqueda */}
             <Box sx={{ mb: 3 }}>
               <TextField
@@ -1110,6 +1150,7 @@ const Personal = () => {
                       <TableCell><strong>Nombre Completo</strong></TableCell>
                       <TableCell><strong>Centro</strong></TableCell>
                       <TableCell><strong>Tipo</strong></TableCell>
+                      <TableCell><strong>Estatus</strong></TableCell>
                       <TableCell><strong>Correo</strong></TableCell>
                       <TableCell align="center"><strong>Acciones</strong></TableCell>
                     </TableRow>
@@ -1117,7 +1158,7 @@ const Personal = () => {
                   <TableBody>
                     {filteredPersonal.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                        <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                           <Typography variant="body1" color="text.secondary">
                             {searchTerm ? 'No se encontró personal que coincida con la búsqueda' : 'No hay personal registrado'}
                           </Typography>
@@ -1130,6 +1171,14 @@ const Personal = () => {
                           <TableCell>{person.nombre} {person.apellido}</TableCell>
                           <TableCell>{getCentroTexto(person.centro)}</TableCell>
                           <TableCell sx={{ textTransform: 'capitalize' }}>{person.tipo}</TableCell>
+                          <TableCell>
+                            <Chip
+                              label={person.estatus === 'activo' ? 'Activo' : person.estatus === 'inactivo' ? 'Inactivo' : 'En Licencia'}
+                              color={person.estatus === 'activo' ? 'success' : person.estatus === 'inactivo' ? 'default' : 'warning'}
+                              size="small"
+                              sx={{ fontWeight: 'bold', textTransform: 'capitalize' }}
+                            />
+                          </TableCell>
                           <TableCell>{person.correo}</TableCell>
                           <TableCell align="center">
                             <IconButton

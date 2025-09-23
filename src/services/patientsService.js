@@ -6,23 +6,93 @@ export const patientsService = {
   // Obtener todos los pacientes
   getAll: async (params = {}) => {
     try {
-      console.log('🌐 Base URL:', process.env.REACT_APP_API_URL);
-      console.log('📋 Endpoint:', API_ENDPOINTS.PATIENTS.BASE);
-      console.log('🔗 URL completa que se va a usar:', `${process.env.REACT_APP_API_URL}${API_ENDPOINTS.PATIENTS.BASE}`);
+      // Usar fetch directo como backup
+      const url = `${process.env.REACT_APP_API_URL}/Paciente`;
+      const response = await fetch(url);
+      const rawData = await response.json();
 
-      const response = await api.get(API_ENDPOINTS.PATIENTS.BASE);
+      // Mapear los campos del backend a los campos del frontend
+      const mappedData = rawData.map(paciente => ({
+        // IDs y referencias
+        id: paciente.pacientid,
+        pacientid: paciente.pacientid,
+        centroId: paciente.centroId,
 
-      console.log('✅ Respuesta exitosa:', response);
+        // Información personal
+        tipoDocumento: paciente.typeDoc === 1 ? 'DNI' : 'Otro',
+        typeDoc: paciente.typeDoc,
+        documento: paciente.documentNumber,
+        documentNumber: paciente.documentNumber,
+        nombres: paciente.names,
+        names: paciente.names,
+        apellidos: paciente.lastNames,
+        lastNames: paciente.lastNames,
 
-      // La API devuelve directamente el array de pacientes
+        // Datos demográficos
+        fechaNacimiento: paciente.birthdate,
+        birthdate: paciente.birthdate,
+        genero: paciente.gender === 1 ? 'masculino' : 'femenino',
+        gender: paciente.gender,
+        estadoMarital: paciente.statusMarital === 1 ? 'soltero' : paciente.statusMarital === 2 ? 'casado' : 'otro',
+        statusMarital: paciente.statusMarital,
+        nacionalidad: paciente.nationality,
+        nationality: paciente.nationality,
+
+        // Ubicación
+        calle: paciente.address?.street || paciente.address || '',
+        address: paciente.address?.street || paciente.address || '',
+        pais: paciente.pais === 1 ? 'Perú' : 'Otro',
+        departamento: paciente.department === 1 ? 'Cajamarca' : 'Otro',
+        department: paciente.department,
+        provincia: paciente.province === 1 ? 'Cajabamba' : 'Otro',
+        province: paciente.province,
+        distrito: paciente.district === 1 ? 'Cachachi' : 'Otro',
+        district: paciente.district,
+
+        // Contacto
+        telefono: paciente.phoneNumber,
+        phoneNumber: paciente.phoneNumber,
+        correo: paciente.email,
+        email: paciente.email,
+
+        // Estado y metadatos
+        estado: paciente.status ? 'activo' : 'inactivo',
+        status: paciente.status,
+        historiaClinica: paciente.medicalHistory,
+        medicalHistory: paciente.medicalHistory,
+
+        // Auditoría
+        fechaCreacion: paciente.createdAt,
+        createdAt: paciente.createdAt,
+        creadoPor: paciente.createdBy,
+        createdBy: paciente.createdBy,
+        fechaActualizacion: paciente.updatedAt,
+        updatedAt: paciente.updatedAt,
+        actualizadoPor: paciente.updatedBy,
+        updatedBy: paciente.updatedBy,
+        eliminado: paciente.isDeleted,
+        isDeleted: paciente.isDeleted
+      }));
+
       return {
-        data: response.data || [],
+        data: mappedData,
         status: 'success'
       };
     } catch (error) {
       console.error('❌ Error completo:', error);
       console.error('❌ Status:', error.response?.status);
       console.error('❌ URL que falló:', error.config?.url);
+      console.error('❌ Error message:', error.message);
+      console.error('❌ Error code:', error.code);
+
+      // Detectar tipo de error
+      if (error.code === 'ERR_NETWORK') {
+        console.error('🚫 ERROR DE RED: Posible problema de CORS o servidor no disponible');
+      }
+      if (error.message.includes('CORS')) {
+        console.error('🚫 ERROR DE CORS: El servidor debe permitir origen del frontend');
+      }
+
       throw error;
     }
   },

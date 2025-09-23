@@ -79,6 +79,13 @@ export const API_ENDPOINTS = {
     SETTINGS: '/admin/settings'
   },
 
+  // Roles
+  ROLES: {
+    BASE: '/Roles',
+    BY_ID: (id) => `/Roles/${id}`,
+    SEARCH: '/Roles/search'
+  },
+
   // Estadísticas
   STATISTICS: {
     DASHBOARD: '/statistics/dashboard',

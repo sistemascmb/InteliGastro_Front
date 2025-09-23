@@ -161,7 +161,13 @@ const Pacientes = () => {
       const response = await patientsService.getAll();
 
       console.log('✅ Pacientes cargados:', response.data);
+      console.log('📊 Número de pacientes recibidos:', response.data?.length || 0);
+      console.log('🔍 Primer paciente:', response.data?.[0]);
+
       setPacientes(response.data || []);
+
+      // Log después de setear
+      console.log('🎯 Estado de pacientes actualizado. Longitud:', response.data?.length || 0);
 
     } catch (error) {
       console.error('❌ Error al cargar pacientes:', error);
@@ -486,15 +492,22 @@ const Pacientes = () => {
   };
 
   // Filtrar pacientes basado en la búsqueda
+  console.log('🔍 DEBUG - Estado pacientes antes del filtro:', pacientes.length, pacientes);
+  console.log('🔍 DEBUG - searchTerm:', searchTerm);
+
   const filteredPacientes = pacientes.filter(paciente => {
-    const nombres = paciente.names || '';
-    const apellidos = paciente.lastNames || '';
-    const documento = paciente.documentNumber || '';
+    const nombres = paciente.nombres || paciente.names || '';
+    const apellidos = paciente.apellidos || paciente.lastNames || '';
+    const documento = paciente.documento || paciente.documentNumber || '';
+    const correo = paciente.correo || paciente.email || '';
 
     return nombres.toLowerCase().includes(searchTerm.toLowerCase()) ||
            apellidos.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           documento.toLowerCase().includes(searchTerm.toLowerCase());
+           documento.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           correo.toLowerCase().includes(searchTerm.toLowerCase());
   });
+
+  console.log('🔍 DEBUG - Pacientes después del filtro:', filteredPacientes.length, filteredPacientes);
 
   // Función para obtener el nombre legible de ubicación
   const getUbicacionTexto = (paciente) => {
@@ -763,7 +776,7 @@ const Pacientes = () => {
                   3. Información de Residencia
                 </Typography>
 
-                {/*Calle, Codigo postal, Pais*/}
+                {/*Calle, Pais, Departamento*/}
                 <FieldRow>
                   <ResponsiveField label="Calle">
                     <TextField
@@ -771,15 +784,6 @@ const Pacientes = () => {
                       placeholder="Ingrese la calle o avenida"
                       value={formData.calle}
                       onChange={(e) => handleInputChange('calle', e.target.value)}
-                      size="small"
-                    />
-                  </ResponsiveField>
-                  <ResponsiveField label="Código Postal">
-                    <TextField
-                      fullWidth
-                      placeholder="Ingrese el código postal"
-                      value={formData.codPostal}
-                      onChange={(e) => handleInputChange('codPostal', e.target.value)}
                       size="small"
                     />
                   </ResponsiveField>
@@ -801,9 +805,7 @@ const Pacientes = () => {
                       </Select>
                     </FormControl>
                   </ResponsiveField>
-                </FieldRow>
-                {/* Departamento, Provincia, Distrito */}
-                <FieldRow>
+
                   <ResponsiveField label="Departamento" required>
                     <FormControl fullWidth required disabled={formData.pais !== 'peru'} error={!!errors.departamento} size="small">
                       <Select
@@ -824,7 +826,10 @@ const Pacientes = () => {
                       {errors.departamento && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.departamento}</Typography>}
                     </FormControl>
                   </ResponsiveField>
-
+                  
+                </FieldRow>
+                {/* Provincia, Distrito, Codigo postal*/}
+                <FieldRow>
                   <ResponsiveField label="Provincia" required>
                     <FormControl fullWidth required disabled={formData.departamento !== 'cajamarca'} error={!!errors.provincia} size="small">
                       <Select
@@ -873,6 +878,16 @@ const Pacientes = () => {
                       </Select>
                       {errors.distrito && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.distrito}</Typography>}
                     </FormControl>
+                  </ResponsiveField>
+
+                  <ResponsiveField label="Código Postal">
+                    <TextField
+                      fullWidth
+                      placeholder="Ingrese el código postal"
+                      value={formData.codPostal}
+                      onChange={(e) => handleInputChange('codPostal', e.target.value)}
+                      size="small"
+                    />
                   </ResponsiveField>
                 </FieldRow>
 
@@ -960,7 +975,7 @@ const Pacientes = () => {
                     <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                       <TableCell><strong>Nombres</strong></TableCell>
                       <TableCell><strong>Apellidos</strong></TableCell>
-                      <TableCell><strong>Número de documento</strong></TableCell>
+                      <TableCell><strong>Tipo de documento</strong></TableCell>
                       <TableCell><strong>Documento</strong></TableCell>
                       <TableCell><strong>Celular</strong></TableCell>
                       <TableCell><strong>Estado</strong></TableCell>
@@ -979,15 +994,15 @@ const Pacientes = () => {
                     ) : (
                       filteredPacientes.map((paciente) => (
                       <TableRow key={paciente.pacientid} hover>
-                        <TableCell>{paciente.names || 'N/A'}</TableCell>
-                        <TableCell>{paciente.lastNames || 'N/A'}</TableCell>
-                        <TableCell>{paciente.typeDoc === 1 ? 'DNI' : 'Otro'}</TableCell>
-                        <TableCell>{paciente.documentNumber || 'N/A'}</TableCell>
-                        <TableCell>{paciente.phoneNumber || 'N/A'}</TableCell>
+                        <TableCell>{paciente.nombres || paciente.names || 'N/A'}</TableCell>
+                        <TableCell>{paciente.apellidos || paciente.lastNames || 'N/A'}</TableCell>
+                        <TableCell>{paciente.tipoDocumento || (paciente.typeDoc === 1 ? 'DNI' : 'Otro')}</TableCell>
+                        <TableCell>{paciente.documento || paciente.documentNumber || 'N/A'}</TableCell>
+                        <TableCell>{paciente.telefono || paciente.phoneNumber || 'N/A'}</TableCell>
                         <TableCell>
                           <Chip
-                            label={paciente.status ? 'Activo' : 'Inactivo'}
-                            color={paciente.status ? 'success' : 'default'}
+                            label={paciente.estado === 'activo' || paciente.status ? 'Activo' : 'Inactivo'}
+                            color={paciente.estado === 'activo' || paciente.status ? 'success' : 'default'}
                             size="small"
                             sx={{ fontWeight: 'bold' }}
                           />
@@ -1246,7 +1261,7 @@ const Pacientes = () => {
                 3. Información de Residencia
               </Typography>
 
-              {/*Calle, Codigo postal, Pais*/}
+              {/*Calle, Pais, Departamento*/}
               <FieldRow>
                   <ResponsiveField label="Calle">
                     <TextField
@@ -1254,15 +1269,6 @@ const Pacientes = () => {
                       placeholder="Ingrese la calle o avenida"
                       value={formData.calle}
                       onChange={(e) => handleInputChange('calle', e.target.value)}
-                      size="small"
-                    />
-                  </ResponsiveField>
-                  <ResponsiveField label="Código Postal">
-                    <TextField
-                      fullWidth
-                      placeholder="Ingrese el código postal"
-                      value={formData.codPostal}
-                      onChange={(e) => handleInputChange('codPostal', e.target.value)}
                       size="small"
                     />
                   </ResponsiveField>
@@ -1284,9 +1290,7 @@ const Pacientes = () => {
                       </Select>
                     </FormControl>
                   </ResponsiveField>
-                </FieldRow>
-                {/* Departamento, Provincia, Distrito */}
-                <FieldRow>
+
                   <ResponsiveField label="Departamento" required>
                     <FormControl fullWidth required disabled={formData.pais !== 'peru'} error={!!errors.departamento} size="small">
                       <Select
@@ -1307,7 +1311,9 @@ const Pacientes = () => {
                       {errors.departamento && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.departamento}</Typography>}
                     </FormControl>
                   </ResponsiveField>
-
+                </FieldRow>
+                {/* Departamento, Provincia, Distrito */}
+                <FieldRow>
                   <ResponsiveField label="Provincia" required>
                     <FormControl fullWidth required disabled={formData.departamento !== 'cajamarca'} error={!!errors.provincia} size="small">
                       <Select
@@ -1357,6 +1363,17 @@ const Pacientes = () => {
                       {errors.distrito && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.distrito}</Typography>}
                     </FormControl>
                   </ResponsiveField>
+
+                  <ResponsiveField label="Código Postal">
+                    <TextField
+                      fullWidth
+                      placeholder="Ingrese el código postal"
+                      value={formData.codPostal}
+                      onChange={(e) => handleInputChange('codPostal', e.target.value)}
+                      size="small"
+                    />
+                  </ResponsiveField>
+
                 </FieldRow>
             </Paper>
           </DialogContent>
@@ -1497,7 +1514,7 @@ const Pacientes = () => {
                 <Grid container spacing={15} sx={{ mb: 2 }}>
                   <Grid item xs={12} sm={4}>
                     <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Calle</Typography>
-                    <Typography variant="subtitle1">{selectedPaciente.calle || 'N/A'}</Typography>
+                    <Typography variant='subtitle1'>{selectedPaciente.calle || 'N/A'}</Typography>
                   </Grid>
                   <Grid item xs={12} sm={4}>
                     <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Código Postal</Typography>
@@ -1505,7 +1522,7 @@ const Pacientes = () => {
                   </Grid>
                   <Grid item xs={12} sm={4}>
                     <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>País</Typography>
-                     <Typography variant="subtitle1">{selectedPaciente.pais ? selectedPaciente.pais.charAt(0).toUpperCase() + selectedPaciente.pais.slice(1) : 'N/A'}</Typography>
+                     <Typography variant="subtitle1">{typeof selectedPaciente.pais === 'string' ? selectedPaciente.pais.charAt(0).toUpperCase() + selectedPaciente.pais.slice(1) : selectedPaciente.pais || 'N/A'}</Typography>
                   </Grid>
                 </Grid>
                 {/* Departamento, Provincia, Distrito. Con grid espacions proporcionables*/}

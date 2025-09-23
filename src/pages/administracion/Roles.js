@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, useCallback, memo, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -19,6 +19,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  CircularProgress,
+  Alert
 } from '@mui/material';
 import {
   NavigateNext,
@@ -30,6 +32,7 @@ import {
   Add,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { rolesService } from '../../services/rolesService';
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
@@ -74,20 +77,9 @@ const Roles = () => {
   const navigate = useNavigate();
 
   // Estado para la lista de roles
-  const [roles, setRoles] = useState([
-    {
-      id: 1,
-      nombre: 'Administrador',
-    },
-    {
-      id: 2,
-      nombre: 'Médico',
-    },
-    {
-      id: 3,
-      nombre: 'Enfermero',
-    }
-  ]);
+  const [roles, setRoles] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   // Estados para modales
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -97,7 +89,54 @@ const Roles = () => {
   // Estado para el formulario
   const [formData, setFormData] = useState({
     nombre: '',
+    descripcion: '',
   });
+
+  // Función para cargar roles del backend
+  const loadRoles = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      console.log('🔄 Cargando roles desde el backend...');
+      const response = await rolesService.getAll();
+
+      console.log('✅ Roles cargados:', response.data);
+      setRoles(response.data || []);
+
+    } catch (error) {
+      console.error('❌ Error al cargar roles:', error);
+      setError(`Error al cargar roles: ${error.message}`);
+
+      // Datos de prueba en caso de error (para desarrollo)
+      const datosPrueba = [
+        {
+          id: 1,
+          nombre: 'Administrador',
+          descripcion: 'Administrador del sistema'
+        },
+        {
+          id: 2,
+          nombre: 'Médico',
+          descripcion: 'Personal médico'
+        },
+        {
+          id: 3,
+          nombre: 'Enfermero',
+          descripcion: 'Personal de enfermería'
+        }
+      ];
+      setRoles(datosPrueba);
+
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cargar roles al montar el componente
+  useEffect(() => {
+    loadRoles();
+  }, []);
 
   const [errors, setErrors] = useState({});
 
@@ -108,6 +147,7 @@ const Roles = () => {
   const clearForm = () => {
     setFormData({
       nombre: '',
+      descripcion: '',
     });
     setErrors({});
   };
@@ -129,6 +169,10 @@ const Roles = () => {
       newErrors.nombre = 'Nombre es obligatorio';
     }
 
+    if (!formData.descripcion.trim()) {
+      newErrors.descripcion = 'Descripción es obligatoria';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -137,7 +181,8 @@ const Roles = () => {
   const handleOpenEditModal = (rol) => {
     setSelectedRol(rol);
     setFormData({
-      nombre: rol.nombre,
+      nombre: rol.nombre || rol.profile_name || '',
+      descripcion: rol.descripcion || rol.description || '',
     });
     setOpenEditModal(true);
   };
@@ -159,47 +204,87 @@ const Roles = () => {
   };
 
   // Función para crear rol
-  const handleCreateRol = (e) => {
+  const handleCreateRol = async (e) => {
     e.preventDefault();
 
     if (validateForm()) {
-      const newRol = {
-        id: Math.max(...roles.map(r => r.id)) + 1,
-        nombre: formData.nombre.trim(),
-      };
+      try {
+        setLoading(true);
+        console.log('📤 Creando nuevo rol...');
 
-      setRoles(prev => [...prev, newRol]);
-      clearForm();
+        const nuevoRol = await rolesService.create(formData);
+        console.log('✅ Rol creado:', nuevoRol);
+
+        // Recargar la lista de roles
+        await loadRoles();
+
+        clearForm();
+
+      } catch (error) {
+        console.error('❌ Error al crear rol:', error);
+        setError(`Error al crear rol: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   // Función para editar rol
-  const handleEditRol = (e) => {
+  const handleEditRol = async (e) => {
     e.preventDefault();
 
     if (validateForm()) {
-      setRoles(prev => prev.map(r =>
-        r.id === selectedRol.id
-          ? {
-              ...r,
-              nombre: formData.nombre.trim(),
-            }
-          : r
-      ));
-      handleCloseEditModal();
+      try {
+        setLoading(true);
+        console.log('📝 Editando rol...');
+
+        const rolActualizado = await rolesService.update(selectedRol.id, formData);
+        console.log('✅ Rol actualizado:', rolActualizado);
+
+        // Recargar la lista de roles
+        await loadRoles();
+
+        handleCloseEditModal();
+
+      } catch (error) {
+        console.error('❌ Error al editar rol:', error);
+        setError(`Error al editar rol: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   // Función para eliminar rol
-  const handleDeleteRol = () => {
-    setRoles(prev => prev.filter(r => r.id !== selectedRol.id));
-    handleCloseDeleteConfirm();
+  const handleDeleteRol = async () => {
+    try {
+      setLoading(true);
+      console.log('🗑️ Eliminando rol...');
+
+      await rolesService.delete(selectedRol.id);
+      console.log('✅ Rol eliminado');
+
+      // Recargar la lista de roles
+      await loadRoles();
+
+      handleCloseDeleteConfirm();
+
+    } catch (error) {
+      console.error('❌ Error al eliminar rol:', error);
+      setError(`Error al eliminar rol: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Filtrar roles basado en la búsqueda
-  const filteredRoles = roles.filter(rol =>
-    rol.nombre.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredRoles = roles.filter(rol => {
+    const nombre = rol.nombre || rol.profile_name || '';
+    const descripcion = rol.descripcion || rol.description || '';
+
+    return nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           descripcion.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   return (
     <Container maxWidth="lg" sx={{ py: 1, px: 2, maxWidth: '100% !important' }}>
@@ -257,6 +342,21 @@ const Roles = () => {
                   />
                 </ResponsiveField>
 
+                <ResponsiveField label="Descripción del Rol" required sx={{ flex: 1 }}>
+                  <TextField
+                    fullWidth
+                    required
+                    placeholder="Ingrese la descripción del rol"
+                    value={formData.descripcion}
+                    onChange={(e) => handleInputChange('descripcion', e.target.value)}
+                    error={!!errors.descripcion}
+                    helperText={errors.descripcion}
+                    size="small"
+                    multiline
+                    rows={2}
+                  />
+                </ResponsiveField>
+
                 <Button
                   type="submit"
                   variant="contained"
@@ -309,6 +409,20 @@ const Roles = () => {
             )}
           </Box>
 
+          {/* Mostrar errores */}
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+
+          {/* Mostrar loading */}
+          {loading && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+              <CircularProgress />
+            </Box>
+          )}
+
           {/* Tabla de Roles */}
           <Paper sx={{ boxShadow: 1 }}>
             <SectionHeader title="Lista de Roles" />
@@ -317,13 +431,14 @@ const Roles = () => {
                 <TableHead>
                   <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                     <TableCell><strong>Nombre del Rol</strong></TableCell>
+                    <TableCell><strong>Descripción</strong></TableCell>
                     <TableCell align="center"><strong>Acciones</strong></TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {filteredRoles.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={2} align="center" sx={{ py: 4 }}>
+                      <TableCell colSpan={3} align="center" sx={{ py: 4 }}>
                         <Typography variant="body1" color="text.secondary">
                           {searchTerm ? 'No se encontraron roles que coincidan con la búsqueda' : 'No hay roles registrados'}
                         </Typography>
@@ -334,7 +449,12 @@ const Roles = () => {
                     <TableRow key={rol.id} hover>
                       <TableCell>
                         <Typography variant="body2">
-                          {rol.nombre}
+                          {rol.nombre || rol.profile_name || 'N/A'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {rol.descripcion || rol.description || 'Sin descripción'}
                         </Typography>
                       </TableCell>
                       <TableCell align="center">
@@ -400,6 +520,21 @@ const Roles = () => {
                 error={!!errors.nombre}
                 helperText={errors.nombre}
                 size="small"
+              />
+            </ResponsiveField>
+
+            <ResponsiveField label="Descripción del Rol" required sx={{ mt: 2 }}>
+              <TextField
+                fullWidth
+                required
+                placeholder="Ingrese la descripción del rol"
+                value={formData.descripcion}
+                onChange={(e) => handleInputChange('descripcion', e.target.value)}
+                error={!!errors.descripcion}
+                helperText={errors.descripcion}
+                size="small"
+                multiline
+                rows={2}
               />
             </ResponsiveField>
           </DialogContent>
