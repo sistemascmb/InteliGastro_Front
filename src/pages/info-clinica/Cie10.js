@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -18,7 +18,13 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  CircularProgress,
+  Alert,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
 import {
   NavigateNext,
@@ -31,6 +37,7 @@ import {
   Search
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { cie10Service } from '../../services/cie10Service';
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
@@ -53,33 +60,9 @@ const Cie10 = () => {
   const navigate = useNavigate();
 
   // Estado para la lista de códigos CIE-10
-  const [codigos, setCodigos] = useState([
-    {
-      id: 1,
-      codigo: 'A00',
-      descripcion: 'Cólera'
-    },
-    {
-      id: 2,
-      codigo: 'A01.0',
-      descripcion: 'Fiebre tifoidea'
-    },
-    {
-      id: 3,
-      codigo: 'A02.0',
-      descripcion: 'Enteritis debida a Salmonella'
-    },
-    {
-      id: 4,
-      codigo: 'B34.2',
-      descripcion: 'Infección por coronavirus, sitio no especificado'
-    },
-    {
-      id: 5,
-      codigo: 'J44.1',
-      descripcion: 'Enfermedad pulmonar obstructiva crónica con exacerbación aguda'
-    }
-  ]);
+  const [codigos, setCodigos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   // Estados para modales
   const [openAddModal, setOpenAddModal] = useState(false);
@@ -90,7 +73,8 @@ const Cie10 = () => {
   // Estado para el formulario
   const [formData, setFormData] = useState({
     codigo: '',
-    descripcion: ''
+    descripcion: '',
+    genero: 3 // Por defecto "Ambos"
   });
 
   const [errors, setErrors] = useState({});
@@ -102,10 +86,78 @@ const Cie10 = () => {
   const clearForm = () => {
     setFormData({
       codigo: '',
-      descripcion: ''
+      descripcion: '',
+      genero: 3 // Por defecto "Ambos"
     });
     setErrors({});
   };
+
+  // Función para cargar códigos CIE10 del backend
+  const loadCodigos = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      console.log('🔄 Cargando códigos CIE10 desde el backend...');
+      const response = await cie10Service.getAll();
+
+      console.log('✅ Códigos CIE10 cargados:', response.data);
+      setCodigos(response.data || []);
+
+    } catch (error) {
+      console.error('❌ Error al cargar códigos CIE10:', error);
+      setError(`Error al cargar códigos CIE10: ${error.message}`);
+
+      // Datos de prueba en caso de error (para desarrollo)
+      const datosPrueba = [
+        {
+          id: 1,
+          codigo: 'A00',
+          descripcion: 'Cólera'
+        },
+        {
+          id: 2,
+          codigo: 'A01.0',
+          descripcion: 'Fiebre tifoidea'
+        },
+        {
+          id: 3,
+          codigo: 'B17',
+          descripcion: 'Otras hepatitis virales agudas'
+        }
+      ];
+      setCodigos(datosPrueba);
+
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cargar códigos al montar el componente
+  useEffect(() => {
+    loadCodigos();
+  }, []);
+
+  // Función helper para obtener el texto del género
+  const getGeneroTexto = (generoId) => {
+    switch (generoId) {
+      case 1:
+        return 'Masculino';
+      case 2:
+        return 'Femenino';
+      case 3:
+        return 'Ambos';
+      default:
+        return 'Ambos';
+    }
+  };
+
+  // Opciones para el selector de género
+  const opcionesGenero = [
+    { value: 1, label: 'Masculino' },
+    { value: 2, label: 'Femenino' },
+    { value: 3, label: 'Ambos' }
+  ];
 
   // Manejo de cambios en el formulario
   const handleInputChange = useCallback((field, value) => {
@@ -145,8 +197,9 @@ const Cie10 = () => {
   const handleOpenEditModal = (codigo) => {
     setSelectedCodigo(codigo);
     setFormData({
-      codigo: codigo.codigo,
-      descripcion: codigo.descripcion
+      codigo: codigo.codigo || codigo.code || '',
+      descripcion: codigo.descripcion || codigo.description || '',
+      genero: codigo.generoId || codigo.genderId || 3
     });
     setOpenEditModal(true);
   };
@@ -168,50 +221,93 @@ const Cie10 = () => {
   };
 
   // Función para agregar Código
-  const handleAddCodigo = (e) => {
+  const handleAddCodigo = async (e) => {
     e.preventDefault();
-    
+
     if (validateForm()) {
-      const newCodigo = {
-        id: Math.max(...codigos.map(c => c.id)) + 1,
-        codigo: formData.codigo.trim(),
-        descripcion: formData.descripcion.trim()
-      };
-      
-      setCodigos(prev => [...prev, newCodigo]);
-      handleCloseAddModal();
+      try {
+        setLoading(true);
+        console.log('📤 Creando nuevo código CIE10...');
+
+        const nuevoCodigo = await cie10Service.create(formData);
+        console.log('✅ Código CIE10 creado:', nuevoCodigo);
+
+        // Recargar la lista de códigos
+        await loadCodigos();
+
+        handleCloseAddModal();
+
+      } catch (error) {
+        console.error('❌ Error al crear código CIE10:', error);
+        setError(`Error al crear código CIE10: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   // Función para editar Código
-  const handleEditCodigo = (e) => {
+  const handleEditCodigo = async (e) => {
     e.preventDefault();
-    
+
     if (validateForm()) {
-      setCodigos(prev => prev.map(c => 
-        c.id === selectedCodigo.id 
-          ? {
-              ...c,
-              codigo: formData.codigo.trim(),
-              descripcion: formData.descripcion.trim()
-            }
-          : c
-      ));
-      handleCloseEditModal();
+      try {
+        setLoading(true);
+        console.log('📝 Editando código CIE10...');
+
+        const codigoActualizado = await cie10Service.update(selectedCodigo.id, formData);
+        console.log('✅ Código CIE10 actualizado:', codigoActualizado);
+
+        // Recargar la lista de códigos
+        await loadCodigos();
+
+        handleCloseEditModal();
+
+      } catch (error) {
+        console.error('❌ Error al editar código CIE10:', error);
+        setError(`Error al editar código CIE10: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   // Función para eliminar Código
-  const handleDeleteCodigo = () => {
-    setCodigos(prev => prev.filter(c => c.id !== selectedCodigo.id));
-    handleCloseDeleteConfirm();
+  const handleDeleteCodigo = async () => {
+    try {
+      setLoading(true);
+      console.log('🗑️ Eliminando código CIE10...');
+
+      await cie10Service.delete(selectedCodigo.id);
+      console.log('✅ Código CIE10 eliminado');
+
+      // Recargar la lista de códigos
+      await loadCodigos();
+
+      handleCloseDeleteConfirm();
+
+    } catch (error) {
+      console.error('❌ Error al eliminar código CIE10:', error);
+      setError(`Error al eliminar código CIE10: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Filtrar códigos basado en la búsqueda
-  const filteredCodigos = codigos.filter(codigo => 
-    codigo.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    codigo.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filtrar códigos basado en la búsqueda y ordenar alfabéticamente
+  const filteredCodigos = codigos
+    .filter(codigo => {
+      const codigoText = codigo.codigo || codigo.code || '';
+      const descripcionText = codigo.descripcion || codigo.description || '';
+
+      return codigoText.toLowerCase().includes(searchTerm.toLowerCase()) ||
+             descripcionText.toLowerCase().includes(searchTerm.toLowerCase());
+    })
+    .sort((a, b) => {
+      const codigoA = (a.codigo || a.code || '').toLowerCase();
+      const codigoB = (b.codigo || b.code || '').toLowerCase();
+      return codigoA.localeCompare(codigoB);
+    });
 
   return (
     <Container maxWidth="lg" sx={{ py: 1, px: 2, maxWidth: '100% !important' }}>
@@ -287,6 +383,20 @@ const Cie10 = () => {
         )}
       </Box>
 
+      {/* Mostrar errores */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      {/* Mostrar loading */}
+      {loading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+          <CircularProgress />
+        </Box>
+      )}
+
       {/* Tabla de códigos CIE-10 */}
       <Paper sx={{ boxShadow: 2 }}>
         <SectionHeader title="Lista de códigos CIE-10" />
@@ -296,13 +406,14 @@ const Cie10 = () => {
               <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                 <TableCell><strong>Código</strong></TableCell>
                 <TableCell><strong>Descripción</strong></TableCell>
+                <TableCell><strong>Género</strong></TableCell>
                 <TableCell align="center"><strong>Acciones</strong></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {filteredCodigos.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
                     <Typography variant="body1" color="text.secondary">
                       {searchTerm ? 'No se encontraron códigos CIE-10 que coincidan con la búsqueda' : 'No hay códigos CIE-10 registrados'}
                     </Typography>
@@ -311,8 +422,9 @@ const Cie10 = () => {
               ) : (
                 filteredCodigos.map((codigo) => (
                 <TableRow key={codigo.id} hover>
-                  <TableCell>{codigo.codigo}</TableCell>
-                  <TableCell>{codigo.descripcion}</TableCell>
+                  <TableCell>{codigo.codigo || codigo.code || 'N/A'}</TableCell>
+                  <TableCell>{codigo.descripcion || codigo.description || 'N/A'}</TableCell>
+                  <TableCell>{getGeneroTexto(codigo.generoId || codigo.genderId)}</TableCell>
                   <TableCell align="center">
                     <IconButton
                       color="primary"
@@ -390,6 +502,22 @@ const Cie10 = () => {
                 error={!!errors.descripcion}
                 helperText={errors.descripcion}
               />
+
+              {/* Género */}
+              <FormControl fullWidth>
+                <InputLabel>Género</InputLabel>
+                <Select
+                  value={formData.genero}
+                  label="Género"
+                  onChange={(e) => handleInputChange('genero', e.target.value)}
+                >
+                  {opcionesGenero.map(opcion => (
+                    <MenuItem key={opcion.value} value={opcion.value}>
+                      {opcion.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Box>
           </DialogContent>
           <DialogActions sx={{ p: 3, gap: 2 }}>
@@ -467,6 +595,22 @@ const Cie10 = () => {
                 error={!!errors.descripcion}
                 helperText={errors.descripcion}
               />
+
+              {/* Género */}
+              <FormControl fullWidth>
+                <InputLabel>Género</InputLabel>
+                <Select
+                  value={formData.genero}
+                  label="Género"
+                  onChange={(e) => handleInputChange('genero', e.target.value)}
+                >
+                  {opcionesGenero.map(opcion => (
+                    <MenuItem key={opcion.value} value={opcion.value}>
+                      {opcion.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Box>
           </DialogContent>
           <DialogActions sx={{ p: 3, gap: 2 }}>

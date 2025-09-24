@@ -86,6 +86,13 @@ export const API_ENDPOINTS = {
     SEARCH: '/Roles/search'
   },
 
+  // CIE10
+  CIE10: {
+    BASE: '/Cie10',
+    BY_ID: (id) => `/Cie10/${id}`,
+    SEARCH: '/Cie10/search'
+  },
+
   // Estadísticas
   STATISTICS: {
     DASHBOARD: '/statistics/dashboard',
