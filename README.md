@@ -305,14 +305,34 @@ npm run lint           # Sin errores de linting
 - ❌ No ignorar warnings de ESLint
 - ❌ No hacer commits sin tests
 
+## 🎯 Estado Actual del Proyecto
+
+### ✅ **Módulos COMPLETADOS (5/5 CRUD completo)**
+- **✅ Roles** - `src/pages/administracion/Roles.js` + `src/services/rolesService.js`
+- **✅ CIE10** - `src/pages/administracion/CIE10.js` + `src/services/cie10Service.js`
+- **✅ Seguros** - `src/pages/administracion/Seguros.js` + `src/services/segurosService.js`
+- **✅ Recursos** - `src/pages/administracion/Recursos.js` + `src/services/recursosService.js`
+- **✅ Preparación** - `src/pages/administracion/Preparacion.js` + `src/services/preparacionService.js`
+
+### 🟡 **Módulos PARCIALES (1)**
+- **🟡 Centros** - `src/pages/administracion/Centros.js` + `src/services/centrosService.js` (pausado - depende de UBIGEO)
+
+### 🔴 **Módulos PENDIENTES**
+- **🔴 Procedimientos** - `src/pages/administracion/Procedimientos.js` (sin servicio API)
+- **🔴 Pacientes** - `src/pages/administracion/Pacientes.js` (sin servicio API)
+- **🔴 Usuarios** - `src/pages/administracion/Usuarios.js` (sin servicio API)
+
+**📋 Para documentación detallada del estado:** Ver **`ESTADO_PROYECTO.md`**
+
 ## 📞 Soporte
 
 Para dudas o problemas:
 
 1. Revisar la [documentación](./docs/)
-2. Buscar en issues existentes
-3. Crear nuevo issue con detalles específicos
-4. Contactar al equipo de desarrollo
+2. Consultar **`ESTADO_PROYECTO.md`** para guía de implementación
+3. Buscar en issues existentes
+4. Crear nuevo issue con detalles específicos
+5. Contactar al equipo de desarrollo
 
 ## 📄 Licencia
 
@@ -321,3 +341,4 @@ Este proyecto es propiedad de Clínica María Belén y está protegido por derec
 ---
 
 **Desarrollado con ❤️ para Clínica María Belén**
+*Última actualización: Septiembre 2025 - 5 módulos completados* ✨

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, useCallback, memo, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -28,7 +28,9 @@ import {
   Chip,
   Checkbox,
   FormControlLabel,
-  FormGroup
+  FormGroup,
+  CircularProgress,
+  Alert
 } from '@mui/material';
 import {
   NavigateNext,
@@ -42,6 +44,7 @@ import {
   Build
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { recursosService } from '../../services/recursosService';
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
@@ -104,43 +107,13 @@ const Recursos = () => {
   const navigate = useNavigate();
 
   // Estado para la lista de recursos
-  const [recursos, setRecursos] = useState([
-    {
-      id: 1,
-      nombre: 'Endoscopio Olympus CV-290',
-      descripcion: 'Endoscopio de alta definición para procedimientos diagnósticos y terapéuticos',
-      numeroSerie: 'OLY-CV290-001',
-      locacionId: 'SALA-ENDO-01',
-      centro: 'centro-1',
-      estado: 'activo',
-      procedimientos: ['colonoscopia', 'endoscopia-alta']
-    },
-    {
-      id: 2,
-      nombre: 'Ecógrafo Mindray DC-70',
-      descripcion: 'Ecógrafo portátil con tecnología Doppler color para diagnóstico abdominal',
-      numeroSerie: 'MDR-DC70-002',
-      locacionId: 'SALA-ECO-02',
-      centro: 'centro-1',
-      estado: 'activo',
-      procedimientos: ['ecografia-abdominal']
-    },
-    {
-      id: 3,
-      nombre: 'Monitor de Signos Vitales Philips',
-      descripcion: 'Monitor multiparámetro para monitoreo continuo de pacientes',
-      numeroSerie: 'PHI-MX450-003',
-      locacionId: 'SALA-PROC-03',
-      centro: 'centro-2',
-      estado: 'inactivo',
-      procedimientos: ['monitoreo-sedacion']
-    }
-  ]);
+  const [recursos, setRecursos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  // Datos simulados de centros
+  // Datos de centros (simplificado para usar con la API)
   const centros = [
-    { value: 'centro-1', label: 'Clínica María Belén - Sede Central' },
-    { value: 'centro-2', label: 'Clínica María Belén - Sede Norte' }
+    { value: 1, label: 'Clínica María Belén - Sede Central' }
   ];
 
   // Datos simulados de procedimientos
@@ -153,20 +126,30 @@ const Recursos = () => {
     { value: 'biopsia-endoscopica', label: 'Biopsia Endoscópica' }
   ];
 
-  // Estados para modales (solo editar, detallar y eliminar)
+  // Estados para modales
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDetailModal, setOpenDetailModal] = useState(false);
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
   const [selectedRecurso, setSelectedRecurso] = useState(null);
 
-  // Estado para el formulario
+  // Estados para formularios separados
   const [formData, setFormData] = useState({
     nombre: '',
     descripcion: '',
     numeroSerie: '',
     locacionId: '',
     centro: '',
-    estado: '',
+    estado: 'activo',
+    procedimientos: []
+  });
+
+  const [editFormData, setEditFormData] = useState({
+    nombre: '',
+    descripcion: '',
+    numeroSerie: '',
+    locacionId: '',
+    centro: '',
+    estado: 'activo',
     procedimientos: []
   });
 
@@ -178,6 +161,31 @@ const Recursos = () => {
   // Estado para tabs
   const [activeTab, setActiveTab] = useState(0);
 
+  // Función para cargar recursos del backend
+  const loadRecursos = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      console.log('🔄 Cargando recursos desde el backend...');
+      const response = await recursosService.getAll();
+
+      console.log('✅ Recursos cargados:', response.data);
+      setRecursos(response.data || []);
+
+    } catch (error) {
+      console.error('❌ Error al cargar recursos:', error);
+      setError(`Error al cargar recursos: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cargar recursos al montar el componente
+  useEffect(() => {
+    loadRecursos();
+  }, []);
+
   // Función para limpiar el formulario
   const clearForm = () => {
     setFormData({
@@ -186,13 +194,27 @@ const Recursos = () => {
       numeroSerie: '',
       locacionId: '',
       centro: '',
-      estado: '',
+      estado: 'activo',
       procedimientos: []
     });
     setErrors({});
   };
 
-  // Función genérica para manejar cambios en campos de texto (mismo patrón que NuevoPaciente)
+  // Función para limpiar el formulario de edición
+  const clearEditForm = () => {
+    setEditFormData({
+      nombre: '',
+      descripcion: '',
+      numeroSerie: '',
+      locacionId: '',
+      centro: '',
+      estado: 'activo',
+      procedimientos: []
+    });
+    setErrors({});
+  };
+
+  // Función genérica para manejar cambios en campos de texto (formulario crear)
   const handleInputChange = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     // Limpiar error si existe
@@ -201,9 +223,33 @@ const Recursos = () => {
     }
   }, [errors]);
 
-  // Función para manejar cambios en procedimientos (checkboxes)
+  // Función genérica para manejar cambios en campos de texto (formulario editar)
+  const handleEditInputChange = useCallback((field, value) => {
+    setEditFormData(prev => ({ ...prev, [field]: value }));
+    // Limpiar error si existe
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  }, [errors]);
+
+  // Función para manejar cambios en procedimientos (checkboxes) - crear
   const handleProcedimientoChange = useCallback((procedimientoValue, checked) => {
     setFormData(prev => ({
+      ...prev,
+      procedimientos: checked
+        ? [...prev.procedimientos, procedimientoValue]
+        : prev.procedimientos.filter(p => p !== procedimientoValue)
+    }));
+
+    // Limpiar error si existe
+    if (errors.procedimientos) {
+      setErrors(prev => ({ ...prev, procedimientos: '' }));
+    }
+  }, [errors]);
+
+  // Función para manejar cambios en procedimientos (checkboxes) - editar
+  const handleEditProcedimientoChange = useCallback((procedimientoValue, checked) => {
+    setEditFormData(prev => ({
       ...prev,
       procedimientos: checked
         ? [...prev.procedimientos, procedimientoValue]
@@ -236,7 +282,7 @@ const Recursos = () => {
 
   MemoizedTextField.displayName = 'MemoizedTextField';
 
-  // Validación del formulario (TODOS los campos obligatorios)
+  // Validación del formulario de crear
   const validateForm = () => {
     const newErrors = {};
 
@@ -249,17 +295,31 @@ const Recursos = () => {
     if (!formData.numeroSerie.trim()) {
       newErrors.numeroSerie = 'Número de Serie es obligatorio';
     }
-    if (!formData.locacionId.trim()) {
-      newErrors.locacionId = 'Locación ID es obligatoria';
-    }
-    if (!formData.centro) {
-      newErrors.centro = 'Centro es obligatorio';
-    }
     if (!formData.estado) {
       newErrors.estado = 'Estado es obligatorio';
     }
-    if (formData.procedimientos.length === 0) {
-      newErrors.procedimientos = 'Debe seleccionar al menos un procedimiento';
+    // Nota: locacionId y centro son opcionales por ahora ya que el backend maneja defaults
+    // Nota: procedimientos son opcionales ya que el backend aún no los maneja
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Validación del formulario de editar
+  const validateEditForm = () => {
+    const newErrors = {};
+
+    if (!editFormData.nombre.trim()) {
+      newErrors.nombre = 'Nombre es obligatorio';
+    }
+    if (!editFormData.descripcion.trim()) {
+      newErrors.descripcion = 'Descripción es obligatoria';
+    }
+    if (!editFormData.numeroSerie.trim()) {
+      newErrors.numeroSerie = 'Número de Serie es obligatorio';
+    }
+    if (!editFormData.estado) {
+      newErrors.estado = 'Estado es obligatorio';
     }
 
     setErrors(newErrors);
@@ -269,7 +329,7 @@ const Recursos = () => {
   // Funciones para manejar modales
   const handleOpenEditModal = (recurso) => {
     setSelectedRecurso(recurso);
-    setFormData({
+    setEditFormData({
       nombre: recurso.nombre,
       descripcion: recurso.descripcion,
       numeroSerie: recurso.numeroSerie,
@@ -284,7 +344,7 @@ const Recursos = () => {
   const handleCloseEditModal = () => {
     setOpenEditModal(false);
     setSelectedRecurso(null);
-    clearForm();
+    clearEditForm();
   };
 
   const handleOpenDetailModal = (recurso) => {
@@ -308,55 +368,79 @@ const Recursos = () => {
   };
 
   // Función para crear recurso
-  const handleCreateRecurso = (e) => {
+  const handleCreateRecurso = async (e) => {
     e.preventDefault();
 
     if (validateForm()) {
-      const newRecurso = {
-        id: Math.max(...recursos.map(r => r.id)) + 1,
-        nombre: formData.nombre.trim(),
-        descripcion: formData.descripcion.trim(),
-        numeroSerie: formData.numeroSerie.trim(),
-        locacionId: formData.locacionId.trim(),
-        centro: formData.centro,
-        estado: formData.estado,
-        procedimientos: formData.procedimientos
-      };
+      try {
+        setLoading(true);
+        console.log('📤 Creando recurso...');
 
-      setRecursos(prev => [...prev, newRecurso]);
-      clearForm();
-      // Cambiar automáticamente al tab de lista
-      setActiveTab(1);
+        const nuevoRecurso = await recursosService.create(formData);
+        console.log('✅ Recurso creado:', nuevoRecurso);
+
+        // Recargar la lista de recursos
+        await loadRecursos();
+
+        clearForm();
+        // Cambiar automáticamente al tab de lista
+        setActiveTab(0);
+
+      } catch (error) {
+        console.error('❌ Error al crear recurso:', error);
+        setError(`Error al crear recurso: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   // Función para editar recurso
-  const handleEditRecurso = (e) => {
+  const handleEditRecurso = async (e) => {
     e.preventDefault();
 
-    if (validateForm()) {
-      setRecursos(prev => prev.map(r =>
-        r.id === selectedRecurso.id
-          ? {
-              ...r,
-              nombre: formData.nombre.trim(),
-              descripcion: formData.descripcion.trim(),
-              numeroSerie: formData.numeroSerie.trim(),
-              locacionId: formData.locacionId.trim(),
-              centro: formData.centro,
-              estado: formData.estado,
-              procedimientos: formData.procedimientos
-            }
-          : r
-      ));
-      handleCloseEditModal();
+    if (validateEditForm()) {
+      try {
+        setLoading(true);
+        console.log('📤 Editando recurso...');
+
+        const recursoActualizado = await recursosService.update(selectedRecurso.id, editFormData);
+        console.log('✅ Recurso actualizado:', recursoActualizado);
+
+        // Recargar la lista de recursos
+        await loadRecursos();
+
+        handleCloseEditModal();
+
+      } catch (error) {
+        console.error('❌ Error al editar recurso:', error);
+        setError(`Error al editar recurso: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   // Función para eliminar recurso
-  const handleDeleteRecurso = () => {
-    setRecursos(prev => prev.filter(r => r.id !== selectedRecurso.id));
-    handleCloseDeleteConfirm();
+  const handleDeleteRecurso = async () => {
+    try {
+      setLoading(true);
+      console.log('📤 Eliminando recurso...');
+
+      await recursosService.delete(selectedRecurso.id);
+      console.log('✅ Recurso eliminado');
+
+      // Recargar la lista de recursos
+      await loadRecursos();
+
+      handleCloseDeleteConfirm();
+
+    } catch (error) {
+      console.error('❌ Error al eliminar recurso:', error);
+      setError(`Error al eliminar recurso: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Filtrar recursos basado en la búsqueda
@@ -449,6 +533,12 @@ const Recursos = () => {
         {/* Contenido del Tab 1: Crear Recurso */}
         {activeTab === 1 && (
           <Box sx={{ p: 4 }}>
+            {/* Error Alert */}
+            {error && (
+              <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
+                {error}
+              </Alert>
+            )}
             <form onSubmit={handleCreateRecurso}>
               {/* Sección 1: Información del Recurso */}
               <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f8f9fa' }}>
@@ -638,8 +728,9 @@ const Recursos = () => {
                 <Button
                   type="submit"
                   variant="contained"
-                  startIcon={<Save />}
+                  startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <Save />}
                   size="large"
+                  disabled={loading}
                   sx={{
                     backgroundColor: '#4caf50',
                     '&:hover': {
@@ -649,7 +740,7 @@ const Recursos = () => {
                     py: 1.5
                   }}
                 >
-                  Crear Recurso
+                  {loading ? 'Creando...' : 'Crear Recurso'}
                 </Button>
               </Box>
             </form>
@@ -659,6 +750,19 @@ const Recursos = () => {
         {/* Contenido del Tab 2: Lista de Recursos */}
         {activeTab === 0 && (
           <Box sx={{ p: 3 }}>
+            {/* Error Alert */}
+            {error && (
+              <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
+                {error}
+              </Alert>
+            )}
+
+            {/* Loading Indicator */}
+            {loading && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+                <CircularProgress />
+              </Box>
+            )}
             {/* Barra de Búsqueda */}
             <Box sx={{ mb: 3 }}>
               <TextField
@@ -708,7 +812,13 @@ const Recursos = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {filteredRecursos.length === 0 ? (
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                          <CircularProgress />
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredRecursos.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
                           <Typography variant="body1" color="text.secondary">
@@ -793,6 +903,13 @@ const Recursos = () => {
         </DialogTitle>
         <form onSubmit={handleEditRecurso}>
           <DialogContent dividers sx={{ p: 4 }}>
+            {/* Error Alert */}
+            {error && (
+              <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
+                {error}
+              </Alert>
+            )}
+
             {/* Sección 1: Información del Recurso */}
             <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f8f9fa' }}>
               <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
@@ -805,8 +922,8 @@ const Recursos = () => {
                     fullWidth
                     required
                     placeholder="Ingrese el nombre del recurso"
-                    value={formData.nombre}
-                    onChange={(e) => handleInputChange('nombre', e.target.value)}
+                    value={editFormData.nombre}
+                    onChange={(e) => handleEditInputChange('nombre', e.target.value)}
                     error={!!errors.nombre}
                     helperText={errors.nombre}
                     size="small"
@@ -817,8 +934,8 @@ const Recursos = () => {
                   <TextField
                     fullWidth
                     required
-                    value={formData.numeroSerie}
-                    onChange={(e) => handleInputChange('numeroSerie', e.target.value)}
+                    value={editFormData.numeroSerie}
+                    onChange={(e) => handleEditInputChange('numeroSerie', e.target.value)}
                     error={!!errors.numeroSerie}
                     helperText={errors.numeroSerie}
                     size="small"
@@ -829,8 +946,8 @@ const Recursos = () => {
                   <TextField
                     fullWidth
                     required
-                    value={formData.locacionId}
-                    onChange={(e) => handleInputChange('locacionId', e.target.value)}
+                    value={editFormData.locacionId}
+                    onChange={(e) => handleEditInputChange('locacionId', e.target.value)}
                     error={!!errors.locacionId}
                     helperText={errors.locacionId}
                     size="small"
@@ -846,8 +963,8 @@ const Recursos = () => {
                     multiline
                     rows={3}
                     placeholder="Ingrese la descripción del recurso"
-                    value={formData.descripcion}
-                    onChange={(e) => handleInputChange('descripcion', e.target.value)}
+                    value={editFormData.descripcion}
+                    onChange={(e) => handleEditInputChange('descripcion', e.target.value)}
                     error={!!errors.descripcion}
                     helperText={errors.descripcion}
                     size="small"
@@ -859,12 +976,12 @@ const Recursos = () => {
                 <ResponsiveField label="Centro" required>
                   <FormControl fullWidth required error={!!errors.centro} size="small">
                     <Select
-                      value={formData.centro}
-                      onChange={(e) => handleInputChange('centro', e.target.value)}
+                      value={editFormData.centro}
+                      onChange={(e) => handleEditInputChange('centro', e.target.value)}
                       displayEmpty
                       sx={{
                         '& .MuiSelect-select': {
-                          color: formData.centro ? '#000' : '#999'
+                          color: editFormData.centro ? '#000' : '#999'
                         }
                       }}
                     >
@@ -881,12 +998,12 @@ const Recursos = () => {
                 <ResponsiveField label="Estado" required>
                   <FormControl fullWidth required error={!!errors.estado} size="small">
                     <Select
-                      value={formData.estado}
-                      onChange={(e) => handleInputChange('estado', e.target.value)}
+                      value={editFormData.estado}
+                      onChange={(e) => handleEditInputChange('estado', e.target.value)}
                       displayEmpty
                       sx={{
                         '& .MuiSelect-select': {
-                          color: formData.estado ? '#000' : '#999'
+                          color: editFormData.estado ? '#000' : '#999'
                         }
                       }}
                     >
@@ -917,25 +1034,25 @@ const Recursos = () => {
                         <Paper
                           sx={{
                             p: 2,
-                            backgroundColor: formData.procedimientos.includes(procedimiento.value) ? '#e3f2fd' : '#fff',
-                            border: formData.procedimientos.includes(procedimiento.value) ? '2px solid #2196f3' : '1px solid #e0e0e0',
+                            backgroundColor: editFormData.procedimientos.includes(procedimiento.value) ? '#e3f2fd' : '#fff',
+                            border: editFormData.procedimientos.includes(procedimiento.value) ? '2px solid #2196f3' : '1px solid #e0e0e0',
                             borderRadius: 2,
                             cursor: 'pointer',
                             transition: 'all 0.2s ease-in-out',
                             '&:hover': {
-                              backgroundColor: formData.procedimientos.includes(procedimiento.value) ? '#e3f2fd' : '#f5f5f5',
+                              backgroundColor: editFormData.procedimientos.includes(procedimiento.value) ? '#e3f2fd' : '#f5f5f5',
                               transform: 'translateY(-1px)',
                               boxShadow: 2
                             }
                           }}
-                          onClick={() => handleProcedimientoChange(procedimiento.value, !formData.procedimientos.includes(procedimiento.value))}
+                          onClick={() => handleEditProcedimientoChange(procedimiento.value, !editFormData.procedimientos.includes(procedimiento.value))}
                         >
                           <Box sx={{ display: 'flex', alignItems: 'center' }}>
                             <Checkbox
-                              checked={formData.procedimientos.includes(procedimiento.value)}
+                              checked={editFormData.procedimientos.includes(procedimiento.value)}
                               onChange={(e) => {
                                 e.stopPropagation();
-                                handleProcedimientoChange(procedimiento.value, e.target.checked);
+                                handleEditProcedimientoChange(procedimiento.value, e.target.checked);
                               }}
                               size="small"
                               sx={{
@@ -949,8 +1066,8 @@ const Recursos = () => {
                             <Typography
                               variant="body2"
                               sx={{
-                                fontWeight: formData.procedimientos.includes(procedimiento.value) ? 'bold' : 'normal',
-                                color: formData.procedimientos.includes(procedimiento.value) ? '#1976d2' : '#333',
+                                fontWeight: editFormData.procedimientos.includes(procedimiento.value) ? 'bold' : 'normal',
+                                color: editFormData.procedimientos.includes(procedimiento.value) ? '#1976d2' : '#333',
                                 fontSize: '0.85rem',
                                 lineHeight: 1.3
                               }}
@@ -975,13 +1092,15 @@ const Recursos = () => {
             <Button
               variant="outlined"
               onClick={handleCloseEditModal}
+              disabled={loading}
             >
               Cancelar
             </Button>
             <Button
               type="submit"
               variant="contained"
-              startIcon={<Save />}
+              startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <Save />}
+              disabled={loading}
               sx={{
                 backgroundColor: '#4caf50',
                 '&:hover': {
@@ -989,7 +1108,7 @@ const Recursos = () => {
                 }
               }}
             >
-              Guardar
+              {loading ? 'Guardando...' : 'Guardar'}
             </Button>
           </DialogActions>
         </form>
@@ -1144,9 +1263,10 @@ const Recursos = () => {
             variant="contained"
             color="error"
             onClick={handleDeleteRecurso}
-            startIcon={<Delete />}
+            startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <Delete />}
+            disabled={loading}
           >
-            Eliminar
+            {loading ? 'Eliminando...' : 'Eliminar'}
           </Button>
         </DialogActions>
       </Dialog>

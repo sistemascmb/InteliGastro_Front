@@ -355,5 +355,3 @@ useEffect(() => {
 5. ✅ Agregar más validaciones específicas del negocio
 
 ---
-
-**Nota**: Esta estructura está lista para conectar con un backend real. Los servicios manejan tanto el formato actual del frontend como el formato esperado del backend, facilitando la transición.

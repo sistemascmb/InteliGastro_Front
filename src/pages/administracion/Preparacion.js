@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, useCallback, memo, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -24,7 +24,9 @@ import {
   MenuItem,
   Tabs,
   Tab,
-  Chip
+  Chip,
+  CircularProgress,
+  Alert
 } from '@mui/material';
 import {
   NavigateNext,
@@ -36,6 +38,7 @@ import {
   Search,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { preparacionService } from '../../services/preparacionService';
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
@@ -98,28 +101,24 @@ const Preparacion = () => {
   const navigate = useNavigate();
 
   // Estado para la lista de preparaciones
-  const [preparaciones, setPreparaciones] = useState([
-    {
-      id: 1,
-      descripcion: 'Anestesia local con Xilocaina al 10%. Midazolam 5mg/5ml 5cc EV	',
-      estado: 'activo',
-    },
-    {
-      id: 2,
-      descripcion: 'Prep 2	',
-      estado: 'activo',
-    }
-  ]);
+  const [preparaciones, setPreparaciones] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   // Estados para modales (solo editar y eliminar)
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
   const [selectedPreparacion, setSelectedPreparacion] = useState(null);
 
-  // Estado para el formulario
+  // Estados para formularios separados
   const [formData, setFormData] = useState({
     descripcion: '',
-    estado: '',
+    estado: 'activo',
+  });
+
+  const [editFormData, setEditFormData] = useState({
+    descripcion: '',
+    estado: 'activo',
   });
 
   const [errors, setErrors] = useState({});
@@ -130,18 +129,61 @@ const Preparacion = () => {
   // Estado para tabs
   const [activeTab, setActiveTab] = useState(0);
 
+  // Función para cargar preparaciones del backend
+  const loadPreparaciones = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      console.log('🔄 Cargando preparaciones desde el backend...');
+      const response = await preparacionService.getAll();
+
+      console.log('✅ Preparaciones cargadas:', response.data);
+      setPreparaciones(response.data || []);
+
+    } catch (error) {
+      console.error('❌ Error al cargar preparaciones:', error);
+      setError(`Error al cargar preparaciones: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cargar preparaciones al montar el componente
+  useEffect(() => {
+    loadPreparaciones();
+  }, []);
+
   // Función para limpiar el formulario
   const clearForm = () => {
     setFormData({
       descripcion: '',
-      estado: '',
+      estado: 'activo',
     });
     setErrors({});
   };
 
-  // Función genérica para manejar cambios en campos de texto (mismo patrón que NuevoPaciente)
+  // Función para limpiar el formulario de edición
+  const clearEditForm = () => {
+    setEditFormData({
+      descripcion: '',
+      estado: 'activo',
+    });
+    setErrors({});
+  };
+
+  // Función genérica para manejar cambios en campos de texto (formulario crear)
   const handleInputChange = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    // Limpiar error si existe
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  }, [errors]);
+
+  // Función genérica para manejar cambios en campos de texto (formulario editar)
+  const handleEditInputChange = useCallback((field, value) => {
+    setEditFormData(prev => ({ ...prev, [field]: value }));
     // Limpiar error si existe
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -168,7 +210,7 @@ const Preparacion = () => {
 
   MemoizedTextField.displayName = 'MemoizedTextField';
 
-  // Validación del formulario (TODOS los campos obligatorios)
+  // Validación del formulario de crear
   const validateForm = () => {
     const newErrors = {};
 
@@ -183,20 +225,36 @@ const Preparacion = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Validación del formulario de editar
+  const validateEditForm = () => {
+    const newErrors = {};
+
+    if (!editFormData.descripcion.trim()) {
+      newErrors.descripcion = 'Descripción es obligatoria';
+    }
+    if (!editFormData.estado) {
+      newErrors.estado = 'Estado es obligatorio';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   // Funciones para manejar modales
   const handleOpenEditModal = (preparacion) => {
     setSelectedPreparacion(preparacion);
-    setFormData({
+    setEditFormData({
       descripcion: preparacion.descripcion,
       estado: preparacion.estado,
     });
+    setErrors({}); // Limpiar errores al abrir modal
     setOpenEditModal(true);
   };
 
   const handleCloseEditModal = () => {
     setOpenEditModal(false);
     setSelectedPreparacion(null);
-    clearForm();
+    clearEditForm();
   };
 
   const handleOpenDeleteConfirm = (preparacion) => {
@@ -210,45 +268,79 @@ const Preparacion = () => {
   };
 
   // Función para crear preparacion
-  const handleCreatePreparacion = (p) => {
-    p.preventDefault();
+  const handleCreatePreparacion = async (e) => {
+    e.preventDefault();
 
     if (validateForm()) {
-      const newPreparacion = {
-        id: Math.max(...preparaciones.map(p => p.id)) + 1,
-        descripcion: formData.descripcion.trim(),
-        estado: formData.estado,
-      };
+      try {
+        setLoading(true);
+        console.log('📤 Creando preparación...');
 
-      setPreparaciones(prev => [...prev, newPreparacion]);
-      clearForm();
-      // Cambiar automáticamente al tab de lista
-      setActiveTab(1);
+        const nuevaPreparacion = await preparacionService.create(formData);
+        console.log('✅ Preparación creada:', nuevaPreparacion);
+
+        // Recargar la lista de preparaciones
+        await loadPreparaciones();
+
+        clearForm();
+        // Cambiar automáticamente al tab de lista
+        setActiveTab(0);
+
+      } catch (error) {
+        console.error('❌ Error al crear preparación:', error);
+        setError(`Error al crear preparación: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   // Función para editar preparacion
-  const handleEditPreparacion = (p) => {
-    p.preventDefault();
+  const handleEditPreparacion = async (e) => {
+    e.preventDefault();
 
-    if (validateForm()) {
-      setPreparaciones(prev => prev.map(e =>
-        p.id === selectedPreparacion.id
-          ? {
-              ...e,
-              descripcion: formData.descripcion.trim(),
-              estado: formData.estado,
-            }
-          : e
-      ));
-      handleCloseEditModal();
+    if (validateEditForm()) {
+      try {
+        setLoading(true);
+        console.log('📤 Editando preparación...');
+
+        const preparacionActualizada = await preparacionService.update(selectedPreparacion.id, editFormData);
+        console.log('✅ Preparación actualizada:', preparacionActualizada);
+
+        // Recargar la lista de preparaciones
+        await loadPreparaciones();
+
+        handleCloseEditModal();
+
+      } catch (error) {
+        console.error('❌ Error al editar preparación:', error);
+        setError(`Error al editar preparación: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   // Función para eliminar preparacion
-  const handleDeletePreparacion = () => {
-    setPreparaciones(prev => prev.filter(e => e.id !== selectedPreparacion.id));
-    handleCloseDeleteConfirm();
+  const handleDeletePreparacion = async () => {
+    try {
+      setLoading(true);
+      console.log('📤 Eliminando preparación...');
+
+      await preparacionService.delete(selectedPreparacion.id);
+      console.log('✅ Preparación eliminada');
+
+      // Recargar la lista de preparaciones
+      await loadPreparaciones();
+
+      handleCloseDeleteConfirm();
+
+    } catch (error) {
+      console.error('❌ Error al eliminar preparación:', error);
+      setError(`Error al eliminar preparación: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Filtrar preparaciones basado en la búsqueda
@@ -519,6 +611,12 @@ const Preparacion = () => {
         </DialogTitle>
         <form onSubmit={handleEditPreparacion}>
           <DialogContent dividers sx={{ p: 4 }}>
+            {/* Error Alert */}
+            {error && (
+              <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
+                {error}
+              </Alert>
+            )}
             <Paper sx={{ p: 3, backgroundColor: '#f8f9fa' }}>
               <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
                 Información de la Preparación
@@ -530,8 +628,8 @@ const Preparacion = () => {
                     fullWidth
                     required
                     placeholder="Ingrese la descripción de la preparación"
-                    value={formData.descripcion}
-                    onChange={(e) => handleInputChange('descripcion', e.target.value)}
+                    value={editFormData.descripcion}
+                    onChange={(e) => handleEditInputChange('descripcion', e.target.value)}
                     error={!!errors.descripcion}
                     helperText={errors.descripcion}
                     size="small"
@@ -541,12 +639,12 @@ const Preparacion = () => {
                 <ResponsiveField label="Estado" required>
                   <FormControl fullWidth required error={!!errors.estado} size="small">
                     <Select
-                      value={formData.estado}
-                      onChange={(e) => handleInputChange('estado', e.target.value)}
+                      value={editFormData.estado}
+                      onChange={(e) => handleEditInputChange('estado', e.target.value)}
                       displayEmpty
                       sx={{
                         '& .MuiSelect-select': {
-                          color: formData.estado ? '#000' : '#999'
+                          color: editFormData.estado ? '#000' : '#999'
                         }
                       }}
                     >
@@ -563,13 +661,15 @@ const Preparacion = () => {
             <Button
               variant="outlined"
               onClick={handleCloseEditModal}
+              disabled={loading}
             >
               Cancelar
             </Button>
             <Button
               type="submit"
               variant="contained"
-              startIcon={<Save />}
+              startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <Save />}
+              disabled={loading}
               sx={{
                 backgroundColor: '#4caf50',
                 '&:hover': {
@@ -577,7 +677,7 @@ const Preparacion = () => {
                 }
               }}
             >
-              Guardar
+              {loading ? 'Guardando...' : 'Guardar'}
             </Button>
           </DialogActions>
         </form>
@@ -620,9 +720,10 @@ const Preparacion = () => {
             variant="contained"
             color="error"
             onClick={handleDeletePreparacion}
-            startIcon={<Delete />}
+            startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <Delete />}
+            disabled={loading}
           >
-            Eliminar
+            {loading ? 'Eliminando...' : 'Eliminar'}
           </Button>
         </DialogActions>
       </Dialog>
