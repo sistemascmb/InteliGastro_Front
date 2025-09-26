@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, useCallback, memo, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -24,7 +24,9 @@ import {
   MenuItem,
   Tabs,
   Tab,
-  Chip
+  Chip,
+  CircularProgress,
+  Alert
 } from '@mui/material';
 import {
   NavigateNext,
@@ -34,8 +36,10 @@ import {
   Save,
   Close,
   Search,
+  Visibility
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { segurosService } from '../../services/segurosService';
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
@@ -98,30 +102,30 @@ const Seguros = () => {
   const navigate = useNavigate();
 
   // Estado para la lista de seguros
-  const [seguros, setSeguros] = useState([
-    {
-      id: 1,
-      nombre: 'EPS Sura',
-      descripcion: 'Entidad Promotora de Salud con cobertura nacional',
-      estado: 'activo',
-    },
-    {
-      id: 2,
-      nombre: 'Coomeva EPS',
-      descripcion: 'Cooperativa médica del Valle del Cauca',
-      estado: 'activo',
-    }
-  ]);
+  const [seguros, setSeguros] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  // Estados para modales (solo editar y eliminar)
+  // Estados para modales
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
+  const [openDetailsModal, setOpenDetailsModal] = useState(false);
   const [selectedSeguro, setSelectedSeguro] = useState(null);
 
-  // Estado para el formulario
+  // Estados para formularios separados
   const [formData, setFormData] = useState({
     nombre: '',
+    identificacion: '',
     descripcion: '',
+    direccion: '',
+    estado: '',
+  });
+
+  const [editFormData, setEditFormData] = useState({
+    nombre: '',
+    identificacion: '',
+    descripcion: '',
+    direccion: '',
     estado: '',
   });
 
@@ -133,19 +137,67 @@ const Seguros = () => {
   // Estado para tabs
   const [activeTab, setActiveTab] = useState(0);
 
+  // Función para cargar seguros del backend
+  const loadSeguros = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      console.log('🔄 Cargando seguros desde el backend...');
+      const response = await segurosService.getAll();
+
+      console.log('✅ Seguros cargados:', response.data);
+      setSeguros(response.data || []);
+
+    } catch (error) {
+      console.error('❌ Error al cargar seguros:', error);
+      setError(`Error al cargar seguros: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cargar seguros al montar el componente
+  useEffect(() => {
+    loadSeguros();
+  }, []);
+
   // Función para limpiar el formulario
   const clearForm = () => {
     setFormData({
       nombre: '',
+      identificacion: '',
       descripcion: '',
+      direccion: '',
       estado: '',
     });
     setErrors({});
   };
 
-  // Función genérica para manejar cambios en campos de texto (mismo patrón que NuevoPaciente)
+  // Función para limpiar el formulario de edición
+  const clearEditForm = () => {
+    setEditFormData({
+      nombre: '',
+      identificacion: '',
+      descripcion: '',
+      direccion: '',
+      estado: '',
+    });
+    setErrors({});
+  };
+
+  // Función genérica para manejar cambios en campos de texto (formulario crear)
   const handleInputChange = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    // Limpiar error si existe
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  }, [errors]);
+
+  // Función genérica para manejar cambios en campos de texto (formulario editar)
+  const handleEditInputChange = useCallback((field, value) => {
+    setEditFormData(prev => ({ ...prev, [field]: value }));
     // Limpiar error si existe
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -172,17 +224,47 @@ const Seguros = () => {
 
   MemoizedTextField.displayName = 'MemoizedTextField';
 
-  // Validación del formulario (TODOS los campos obligatorios)
+  // Validación del formulario de crear
   const validateForm = () => {
     const newErrors = {};
 
     if (!formData.nombre.trim()) {
       newErrors.nombre = 'Nombre es obligatorio';
     }
+    if (!formData.identificacion.trim()) {
+      newErrors.identificacion = 'Identificación es obligatoria';
+    }
     if (!formData.descripcion.trim()) {
       newErrors.descripcion = 'Descripción es obligatoria';
     }
+    if (!formData.direccion.trim()) {
+      newErrors.direccion = 'Dirección es obligatoria';
+    }
     if (!formData.estado) {
+      newErrors.estado = 'Estado es obligatorio';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Validación del formulario de editar
+  const validateEditForm = () => {
+    const newErrors = {};
+
+    if (!editFormData.nombre.trim()) {
+      newErrors.nombre = 'Nombre es obligatorio';
+    }
+    if (!editFormData.identificacion.trim()) {
+      newErrors.identificacion = 'Identificación es obligatoria';
+    }
+    if (!editFormData.descripcion.trim()) {
+      newErrors.descripcion = 'Descripción es obligatoria';
+    }
+    if (!editFormData.direccion.trim()) {
+      newErrors.direccion = 'Dirección es obligatoria';
+    }
+    if (!editFormData.estado) {
       newErrors.estado = 'Estado es obligatorio';
     }
 
@@ -193,9 +275,11 @@ const Seguros = () => {
   // Funciones para manejar modales
   const handleOpenEditModal = (seguro) => {
     setSelectedSeguro(seguro);
-    setFormData({
+    setEditFormData({
       nombre: seguro.nombre,
+      identificacion: seguro.identificacion,
       descripcion: seguro.descripcion,
+      direccion: seguro.direccion,
       estado: seguro.estado,
     });
     setOpenEditModal(true);
@@ -204,7 +288,17 @@ const Seguros = () => {
   const handleCloseEditModal = () => {
     setOpenEditModal(false);
     setSelectedSeguro(null);
-    clearForm();
+    clearEditForm();
+  };
+
+  const handleOpenDetailsModal = (seguro) => {
+    setSelectedSeguro(seguro);
+    setOpenDetailsModal(true);
+  };
+
+  const handleCloseDetailsModal = () => {
+    setOpenDetailsModal(false);
+    setSelectedSeguro(null);
   };
 
   const handleOpenDeleteConfirm = (seguro) => {
@@ -218,53 +312,87 @@ const Seguros = () => {
   };
 
   // Función para crear seguro
-  const handleCreateSeguro = (e) => {
+  const handleCreateSeguro = async (e) => {
     e.preventDefault();
 
     if (validateForm()) {
-      const newSeguro = {
-        id: Math.max(...seguros.map(s => s.id)) + 1,
-        nombre: formData.nombre.trim(),
-        descripcion: formData.descripcion.trim(),
-        estado: formData.estado,
-      };
+      try {
+        setLoading(true);
+        console.log('📤 Creando seguro...');
 
-      setSeguros(prev => [...prev, newSeguro]);
-      clearForm();
-      // Cambiar automáticamente al tab de lista
-      setActiveTab(1);
+        const nuevoSeguro = await segurosService.create(formData);
+        console.log('✅ Seguro creado:', nuevoSeguro);
+
+        // Recargar la lista de seguros
+        await loadSeguros();
+
+        clearForm();
+        // Cambiar automáticamente al tab de lista
+        setActiveTab(1);
+
+      } catch (error) {
+        console.error('❌ Error al crear seguro:', error);
+        setError(`Error al crear seguro: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   // Función para editar seguro
-  const handleEditSeguro = (e) => {
+  const handleEditSeguro = async (e) => {
     e.preventDefault();
 
-    if (validateForm()) {
-      setSeguros(prev => prev.map(s =>
-        s.id === selectedSeguro.id
-          ? {
-              ...s,
-              nombre: formData.nombre.trim(),
-              descripcion: formData.descripcion.trim(),
-              estado: formData.estado,
-            }
-          : s
-      ));
-      handleCloseEditModal();
+    if (validateEditForm()) {
+      try {
+        setLoading(true);
+        console.log('📤 Editando seguro...');
+
+        const seguroActualizado = await segurosService.update(selectedSeguro.id, editFormData);
+        console.log('✅ Seguro actualizado:', seguroActualizado);
+
+        // Recargar la lista de seguros
+        await loadSeguros();
+
+        handleCloseEditModal();
+
+      } catch (error) {
+        console.error('❌ Error al editar seguro:', error);
+        setError(`Error al editar seguro: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   // Función para eliminar seguro
-  const handleDeleteSeguro = () => {
-    setSeguros(prev => prev.filter(s => s.id !== selectedSeguro.id));
-    handleCloseDeleteConfirm();
+  const handleDeleteSeguro = async () => {
+    try {
+      setLoading(true);
+      console.log('📤 Eliminando seguro...');
+
+      await segurosService.delete(selectedSeguro.id);
+      console.log('✅ Seguro eliminado');
+
+      // Recargar la lista de seguros
+      await loadSeguros();
+
+      handleCloseDeleteConfirm();
+
+    } catch (error) {
+      console.error('❌ Error al eliminar seguro:', error);
+      setError(`Error al eliminar seguro: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Filtrar seguros basado en la búsqueda
   const filteredSeguros = seguros.filter(seguro =>
     seguro.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    seguro.identificacion.toLowerCase().includes(searchTerm.toLowerCase()) ||
     seguro.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    seguro.direccion.toLowerCase().includes(searchTerm.toLowerCase()) ||
     seguro.estado.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -336,8 +464,22 @@ const Seguros = () => {
         </Tabs>
 
         {/* Contenido del Tab 1: Crear Seguro */}
-        {activeTab === 0 && (
+        {activeTab === 1 && (
           <Box sx={{ p: 4 }}>
+            {/* Mostrar errores */}
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {error}
+              </Alert>
+            )}
+
+            {/* Mostrar loading */}
+            {loading && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                <CircularProgress />
+              </Box>
+            )}
+
             <form onSubmit={handleCreateSeguro}>
               {/* Sección: Información del Seguro*/}
               <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f8f9fa' }}>
@@ -345,7 +487,7 @@ const Seguros = () => {
                   Información del Seguro
                 </Typography>
 
-                {/* Fila 1: Nombre, Estado */}
+                {/* Fila 1: Nombre, Identificación */}
                 <FieldRow>
                   <ResponsiveField label="Nombre" required>
                     <TextField
@@ -356,6 +498,35 @@ const Seguros = () => {
                       onChange={(e) => handleInputChange('nombre', e.target.value)}
                       error={!!errors.nombre}
                       helperText={errors.nombre}
+                      size="small"
+                    />
+                  </ResponsiveField>
+
+                  <ResponsiveField label="Identificación" required>
+                    <TextField
+                      fullWidth
+                      required
+                      placeholder="Ej: EPS, SCTR, etc."
+                      value={formData.identificacion}
+                      onChange={(e) => handleInputChange('identificacion', e.target.value)}
+                      error={!!errors.identificacion}
+                      helperText={errors.identificacion}
+                      size="small"
+                    />
+                  </ResponsiveField>
+                </FieldRow>
+
+                {/* Fila 2: Dirección, Estado */}
+                <FieldRow>
+                  <ResponsiveField label="Dirección" required>
+                    <TextField
+                      fullWidth
+                      required
+                      placeholder="Ingrese la dirección del seguro"
+                      value={formData.direccion}
+                      onChange={(e) => handleInputChange('direccion', e.target.value)}
+                      error={!!errors.direccion}
+                      helperText={errors.direccion}
                       size="small"
                     />
                   </ResponsiveField>
@@ -377,10 +548,15 @@ const Seguros = () => {
                         <MenuItem value="inactivo">Inactivo</MenuItem>
                       </Select>
                     </FormControl>
+                    {errors.estado && (
+                      <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
+                        {errors.estado}
+                      </Typography>
+                    )}
                   </ResponsiveField>
                 </FieldRow>
 
-                {/* Fila 2: Descripción */}
+                {/* Fila 3: Descripción */}
                 <FieldRow>
                   <ResponsiveField label="Descripción" required sx={{ flex: 1 }}>
                     <TextField
@@ -423,14 +599,28 @@ const Seguros = () => {
         )}
 
         {/* Contenido del Tab 2: Lista de Seguros */}
-        {activeTab === 1 && (
+        {activeTab === 0 && (
           <Box sx={{ p: 3 }}>
+            {/* Mostrar errores */}
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {error}
+              </Alert>
+            )}
+
+            {/* Mostrar loading */}
+            {loading && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                <CircularProgress />
+              </Box>
+            )}
+
             {/* Barra de Búsqueda */}
             <Box sx={{ mb: 3 }}>
               <TextField
                 fullWidth
                 size="small"
-                placeholder="Buscar seguro por nombre o descripción..."
+                placeholder="Buscar seguro por nombre, identificación, descripción o dirección..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 InputProps={{
@@ -466,7 +656,8 @@ const Seguros = () => {
                   <TableHead>
                     <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                       <TableCell><strong>Nombre</strong></TableCell>
-                      <TableCell><strong>Descripción</strong></TableCell>
+                      <TableCell><strong>Identificación</strong></TableCell>
+                      <TableCell><strong>Dirección</strong></TableCell>
                       <TableCell><strong>Estado</strong></TableCell>
                       <TableCell align="center"><strong>Acciones</strong></TableCell>
                     </TableRow>
@@ -474,7 +665,7 @@ const Seguros = () => {
                   <TableBody>
                     {filteredSeguros.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
+                        <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
                           <Typography variant="body1" color="text.secondary">
                             {searchTerm ? 'No se encontraron seguros que coincidan con la búsqueda' : 'No hay seguros registrados'}
                           </Typography>
@@ -490,7 +681,12 @@ const Seguros = () => {
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2">
-                            {seguro.descripcion}
+                            {seguro.identificacion}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">
+                            {seguro.direccion}
                           </Typography>
                         </TableCell>
                         <TableCell>
@@ -501,6 +697,15 @@ const Seguros = () => {
                           />
                         </TableCell>
                         <TableCell align="center">
+                          <IconButton
+                            color="info"
+                            size="small"
+                            onClick={() => handleOpenDetailsModal(seguro)}
+                            sx={{ mr: 1 }}
+                            title="Ver Detalles"
+                          >
+                            <Visibility />
+                          </IconButton>
                           <IconButton
                             color="primary"
                             size="small"
@@ -559,16 +764,46 @@ const Seguros = () => {
                 Información del Seguro
               </Typography>
 
+              {/* Fila 1: Nombre, Identificación */}
               <FieldRow>
                 <ResponsiveField label="Nombre" required>
                   <TextField
                     fullWidth
                     required
                     placeholder="Ingrese el nombre del seguro"
-                    value={formData.nombre}
-                    onChange={(e) => handleInputChange('nombre', e.target.value)}
+                    value={editFormData.nombre}
+                    onChange={(e) => handleEditInputChange('nombre', e.target.value)}
                     error={!!errors.nombre}
                     helperText={errors.nombre}
+                    size="small"
+                  />
+                </ResponsiveField>
+
+                <ResponsiveField label="Identificación" required>
+                  <TextField
+                    fullWidth
+                    required
+                    placeholder="Ej: EPS, SCTR, etc."
+                    value={editFormData.identificacion}
+                    onChange={(e) => handleEditInputChange('identificacion', e.target.value)}
+                    error={!!errors.identificacion}
+                    helperText={errors.identificacion}
+                    size="small"
+                  />
+                </ResponsiveField>
+              </FieldRow>
+
+              {/* Fila 2: Dirección, Estado */}
+              <FieldRow>
+                <ResponsiveField label="Dirección" required>
+                  <TextField
+                    fullWidth
+                    required
+                    placeholder="Ingrese la dirección del seguro"
+                    value={editFormData.direccion}
+                    onChange={(e) => handleEditInputChange('direccion', e.target.value)}
+                    error={!!errors.direccion}
+                    helperText={errors.direccion}
                     size="small"
                   />
                 </ResponsiveField>
@@ -576,12 +811,12 @@ const Seguros = () => {
                 <ResponsiveField label="Estado" required>
                   <FormControl fullWidth required error={!!errors.estado} size="small">
                     <Select
-                      value={formData.estado}
-                      onChange={(e) => handleInputChange('estado', e.target.value)}
+                      value={editFormData.estado}
+                      onChange={(e) => handleEditInputChange('estado', e.target.value)}
                       displayEmpty
                       sx={{
                         '& .MuiSelect-select': {
-                          color: formData.estado ? '#000' : '#999'
+                          color: editFormData.estado ? '#000' : '#999'
                         }
                       }}
                     >
@@ -590,9 +825,15 @@ const Seguros = () => {
                       <MenuItem value="inactivo">Inactivo</MenuItem>
                     </Select>
                   </FormControl>
+                  {errors.estado && (
+                    <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
+                      {errors.estado}
+                    </Typography>
+                  )}
                 </ResponsiveField>
               </FieldRow>
 
+              {/* Fila 3: Descripción */}
               <FieldRow>
                 <ResponsiveField label="Descripción" required sx={{ flex: 1 }}>
                   <TextField
@@ -601,8 +842,8 @@ const Seguros = () => {
                     multiline
                     rows={3}
                     placeholder="Ingrese la descripción del seguro"
-                    value={formData.descripcion}
-                    onChange={(e) => handleInputChange('descripcion', e.target.value)}
+                    value={editFormData.descripcion}
+                    onChange={(e) => handleEditInputChange('descripcion', e.target.value)}
                     error={!!errors.descripcion}
                     helperText={errors.descripcion}
                     size="small"
@@ -675,6 +916,131 @@ const Seguros = () => {
             startIcon={<Delete />}
           >
             Eliminar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal para Ver Detalles */}
+      <Dialog
+        open={openDetailsModal}
+        onClose={handleCloseDetailsModal}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: 2 }
+        }}
+      >
+        <DialogTitle sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          backgroundColor: '#2196f3',
+          color: 'white'
+        }}>
+          <Typography variant="h6" fontWeight="bold">Detalles del Seguro</Typography>
+          <IconButton onClick={handleCloseDetailsModal} sx={{ color: 'white' }}>
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 4 }}>
+          {selectedSeguro && (
+            <Paper sx={{ p: 3, backgroundColor: '#f8f9fa' }}>
+              <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2196f3' }}>
+                Información del Seguro
+              </Typography>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box>
+                  <Typography variant="body2" color="text.secondary" fontWeight="bold">
+                    Nombre:
+                  </Typography>
+                  <Typography variant="body1" sx={{ mb: 2 }}>
+                    {selectedSeguro.nombre}
+                  </Typography>
+                </Box>
+
+                <Box>
+                  <Typography variant="body2" color="text.secondary" fontWeight="bold">
+                    Identificación:
+                  </Typography>
+                  <Typography variant="body1" sx={{ mb: 2 }}>
+                    {selectedSeguro.identificacion}
+                  </Typography>
+                </Box>
+
+                <Box>
+                  <Typography variant="body2" color="text.secondary" fontWeight="bold">
+                    Dirección:
+                  </Typography>
+                  <Typography variant="body1" sx={{ mb: 2 }}>
+                    {selectedSeguro.direccion}
+                  </Typography>
+                </Box>
+
+                <Box>
+                  <Typography variant="body2" color="text.secondary" fontWeight="bold">
+                    Estado:
+                  </Typography>
+                  <Chip
+                    label={selectedSeguro.estado === 'activo' ? 'Activo' : 'Inactivo'}
+                    color={getEstadoColor(selectedSeguro.estado)}
+                    size="small"
+                    sx={{ mt: 0.5, mb: 2 }}
+                  />
+                </Box>
+
+                <Box>
+                  <Typography variant="body2" color="text.secondary" fontWeight="bold">
+                    Descripción:
+                  </Typography>
+                  <Typography variant="body1" sx={{ mb: 2 }}>
+                    {selectedSeguro.descripcion}
+                  </Typography>
+                </Box>
+
+                {selectedSeguro.fechaCreacion && (
+                  <Box>
+                    <Typography variant="body2" color="text.secondary" fontWeight="bold">
+                      Fecha de Creación:
+                    </Typography>
+                    <Typography variant="body1" sx={{ mb: 2 }}>
+                      {new Date(selectedSeguro.fechaCreacion).toLocaleString('es-ES', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </Typography>
+                  </Box>
+                )}
+
+                {selectedSeguro.creadoPor && (
+                  <Box>
+                    <Typography variant="body2" color="text.secondary" fontWeight="bold">
+                      Creado Por:
+                    </Typography>
+                    <Typography variant="body1" sx={{ mb: 2 }}>
+                      {selectedSeguro.creadoPor}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            </Paper>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button
+            variant="contained"
+            onClick={handleCloseDetailsModal}
+            sx={{
+              backgroundColor: '#2196f3',
+              '&:hover': {
+                backgroundColor: '#1976d2'
+              }
+            }}
+          >
+            Cerrar
           </Button>
         </DialogActions>
       </Dialog>
