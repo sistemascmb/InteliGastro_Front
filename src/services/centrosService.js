@@ -1,3 +1,4 @@
+import Horario from 'pages/administracion/Horario';
 import { API_ENDPOINTS } from '../constants/api';
 import { ubigeoService } from './ubigeoService';
 
@@ -98,16 +99,82 @@ export const centrosService = {
     try {
       console.log('🌐 Obteniendo todos los centros...');
 
-      // Por ahora solo hay un centro con ID 1
-      const centro = await centrosService.getById(1);
+      const url = `${process.env.REACT_APP_API_URL}/Centro`;
+      console.log('🔗 URL:', url);
+
+      const response = await fetch(url);
+
+      if(!response.ok){
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const rawData = await response.json();
+      console.log('✅ Datos de recursos recibidos:', rawData);
+      console.log('✅ Número de Centro:', rawData.length);
+
+      //Filtrar solo recusros no eliminados (isDeletd : false)
+      const centrosActivos = rawData.filter(centro => centro.isDeleted === false);
+      console.log('✅ Centros activos (isDeleted: false):', centrosActivos.length);
+
+      //Mapeamos los campos del backend a los campos dell frontend
+      const mappedData = centrosActivos.map(centro => ({
+        //IDs y referencias
+        //id: centro.centroid,
+        centroid: centro.centroid,
+
+        //Información del centro
+        nombre: centro.nombre,
+        descripcion: centro.descripcion,
+        abreviatura: centro.abreviatura,
+        horario: centro.inicioAtencion + ' - ' + centro.finAtencion,
+        telefono: centro.telefono,
+        
+        // Estado
+        //estado: centro.status ? 'activo' : 'inactivo',
+        status: centro.status ? 'activo' : 'inactivo',
+        
+        // Auditoría
+        createdAt: centro.createdAt,
+        createdBy: centro.createdBy,
+        updatedAt: centro.updatedAt,
+        updatedBy: centro.updatedBy,
+        isDeleted: centro.isDeleted
+
+      }));
+
+      //ordenamos alfabeticamente por nombre
+      const sortedData = mappedData.sort((a,b) => 
+        a.nombre.toLowerCase().localeCompare(b.nombre.toLowerCase())
+      );
 
       return {
-        data: [centro.data], // Array con un elemento
+        data: sortedData,
         status: 'success'
       };
 
+
+
+
+
+      // Por ahora solo hay un centro con ID 1 
+      //const centro = await centrosService.getById(1);
+
+      //return {
+      //  data: [centro.data], // Array con un elemento
+      //  status: ' success'
+      //};
+
     } catch (error) {
-      console.error('❌ Error al obtener centros:', error);
+      console.error('❌ Error completo:', error);
+      console.error('❌ Error message:', error.message);
+
+      if (error.code === 'ERR_NETWORK') {
+        console.error('🚫 ERROR DE RED: Posible problema de CORS o servidor no disponible');
+      }
+      if (error.message.includes('CORS')) {
+        console.error('🚫 ERROR DE CORS: El servidor debe permitir origen del frontend');
+      }
+
       throw error;
     }
   },
