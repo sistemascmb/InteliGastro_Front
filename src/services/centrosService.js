@@ -1,6 +1,7 @@
 import Horario from 'pages/administracion/Horario';
 import { API_ENDPOINTS } from '../constants/api';
 import { ubigeoService } from './ubigeoService';
+import { format } from 'date-fns';
 
 // Servicio para el manejo de centros
 export const centrosService = {
@@ -109,7 +110,7 @@ export const centrosService = {
       }
 
       const rawData = await response.json();
-      console.log('✅ Datos de recursos recibidos:', rawData);
+      console.log('✅ Datos de Centro recibidos:', rawData);
       console.log('✅ Número de Centro:', rawData.length);
 
       //Filtrar solo recusros no eliminados (isDeletd : false)
@@ -119,22 +120,31 @@ export const centrosService = {
       //Mapeamos los campos del backend a los campos dell frontend
       const mappedData = centrosActivos.map(centro => ({
         //IDs y referencias
-        //id: centro.centroid,
+        id: centro.centroid,
         centroid: centro.centroid,
 
         //Información del centro
         nombre: centro.nombre,
         descripcion: centro.descripcion,
         abreviatura: centro.abreviatura,
-        horario: centro.inicioAtencion + ' - ' + centro.finAtencion,
+        pais: centro.pais,
+        departamento: centro.departamento,
+        provincia: centro.provincia,
+        distrito: centro.distrito,
+
+        //inicioAtencion:  format(centro.inicioAtencion, 'dd/MM/yyyy HH:mm:ss zzzz').split(' ')[1].substring(0,5), 
+        //finAtencion: format(centro.finAtencion, 'dd/MM/yyyy HH:mm:ss zzzz').split(' ')[1].substring(0,5),
+        inicioAtencion: centro.inicioAtencion,
+        finAtencion: centro.finAtencion,
         telefono: centro.telefono,
+        direccion: centro.direccion,
         
         // Estado
-        //estado: centro.status ? 'activo' : 'inactivo',
+        estado: centro.status ? 'activo' : 'inactivo',
         status: centro.status ? 'activo' : 'inactivo',
         
         // Auditoría
-        createdAt: centro.createdAt,
+        createdAt: format(centro.createdAt, 'dd/MM/yyyy HH:mm:ss zzzz'),
         createdBy: centro.createdBy,
         updatedAt: centro.updatedAt,
         updatedBy: centro.updatedBy,
@@ -194,24 +204,29 @@ export const centrosService = {
 
       // Convertir horarios de string (HH:MM) a DateTime
       const today = new Date().toISOString().split('T')[0]; // Fecha actual en formato YYYY-MM-DD
-      const inicioAtencionDateTime = `${today}T${centroData.inicioAtencion}:00.000Z`;
-      const finAtencionDateTime = `${today}T${centroData.finAtencion}:00.000Z`;
+      //const inicioAtencionDateTime = `${today}T${centroData.inicioAtencion}:00.000Z`;
+      //const finAtencionDateTime = `${today}T${centroData.finAtencion}:00.000Z`;
+
+      // Validar campos UBIGEO
+      if (!centroData.pais || !centroData.departamento || !centroData.provincia || !centroData.distrito) {
+        throw new Error('Todos los campos de ubicación (país, departamento, provincia y distrito) son obligatorios');
+      }
 
       // Formatear datos según el formato esperado por la API
       const formattedData = {
         nombre: centroData.nombre,
         descripcion: centroData.descripcion,
         abreviatura: centroData.abreviatura,
-        inicioAtencion: inicioAtencionDateTime,
-        finAtencion: finAtencionDateTime,
+        inicioAtencion: centroData.inicioAtencion,
+        finAtencion: centroData.finAtencion,
         direccion: centroData.direccion,
         telefono: centroData.telefono,
-        departamento: parseInt(centroData.departamento) || 1, // Cajamarca
-        provincia: parseInt(centroData.provincia) || 2, // Cajabamba
-        distrito: parseInt(centroData.distrito) || 15, // Condebamba (el distrito 3 en el array es ID 15)
-        pais: parseInt(centroData.pais) || 1, // Perú
+        departamento: centroData.departamento, // Cajamarca
+        provincia: centroData.provincia, // Cajabamba
+        distrito: centroData.distrito, // Condebamba
+        pais: centroData.pais, // Perú
         ruc: centroData.ruc || "20000000000", // RUC por defecto si no se proporciona
-        status: centroData.estado === 'activo' || true, // Por defecto activo
+        status: true, // Siempre activo al crear
         createdAt: new Date().toISOString(),
         createdBy: 'Jhon' // Usuario de prueba
       };
@@ -324,16 +339,17 @@ export const centrosService = {
         throw new Error('ID del centro es requerido');
       }
 
-      // Nota: La API parece tener un typo en la URL (/apiCentro en lugar de /api/Centro)
-      // Usaré la URL correcta esperada
       const url = `${process.env.REACT_APP_API_URL}/Centro/${id}`;
-
       console.log('🔗 URL de eliminación:', url);
 
-      const response = await fetch(url, {
+      // Enviar la solicitud DELETE con el campo eliminadoPor como un query parameter
+      const urlWithParams = `${url}?eliminadoPor=ADMIN`;
+      console.log('🔗 URL con parámetros:', urlWithParams);
+
+      const response = await fetch(urlWithParams, {
         method: 'DELETE',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         }
       });
 
@@ -376,6 +392,247 @@ export const centrosService = {
       status: 'success'
     };
   }
+  ,
+  getAllSystemParameterId: async (idGroup) => {
+    try {
+
+      const url = `${process.env.REACT_APP_API_URL}/SystemParameter/group/${idGroup}`;
+      const response = await fetch(url);
+
+      if(!response.ok){
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const rawData = await response.json();
+      console.log('✅ Datos de SystemParameter recibidos:', rawData);
+      console.log('✅ Número de SystemParameter:', rawData.length);
+      
+      // Asegurarnos que rawData sea un array
+      const dataArray = Array.isArray(rawData) ? rawData : rawData.data || [];
+      
+      // Filtrar solo los parámetros no eliminados
+      const systemparameterActivos = dataArray.filter(param => !param.isDeleted);
+      console.log('Parámetros activos:', systemparameterActivos);
+      
+      // Mapeamos los campos del backend a los campos del frontend
+      const mappedData = systemparameterActivos.map(systemparameter => ({
+        // IDs y referencias
+        parameterid: systemparameter.parameterid,
+        groupid: systemparameter.groupid,
+
+        // Información del SystemParameter
+        value1: systemparameter.value1 || '',
+        value2: systemparameter.value2 || '',
+        parentParameterId: systemparameter.parentParameterId,
+               
+        // Auditoría
+        createdAt: systemparameter.createdAt ? format(new Date(systemparameter.createdAt), 'dd/MM/yyyy HH:mm:ss zzzz') : null,
+        createdBy: systemparameter.createdBy,
+        updatedAt: systemparameter.updatedAt,
+        updatedBy: systemparameter.updatedBy,
+        isDeleted: systemparameter.isDeleted
+      }));
+
+      // Ordenamos alfabéticamente por value1 con manejo de nulos
+      const sortedData = mappedData.sort((a,b) => 
+        (a.value1 || '').toLowerCase().localeCompare((b.value1 || '').toLowerCase())
+      );
+
+      return {
+        data: sortedData,
+        status: 'success'
+      };
+
+
+    } catch (error) {
+      console.error('❌ Error al obtener recurso por ID:', error);
+      throw error;
+    }
+  },
+  getAllSystemParameterIdRest: async (idGroup) => {
+    try {
+
+      const url = `${process.env.REACT_APP_API_URL}/SystemParameter/group/${idGroup}/rest`;
+      const response = await fetch(url);
+
+      if(!response.ok){
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const rawData = await response.json();
+      console.log('✅ Datos de SystemParameter recibidos:', rawData);
+      console.log('✅ Número de SystemParameter:', rawData.length);
+      
+      // Asegurarnos que rawData sea un array
+      const dataArray = Array.isArray(rawData) ? rawData : rawData.data || [];
+      
+      // Filtrar solo los parámetros no eliminados
+      const systemparameterActivos = dataArray.filter(param => !param.isDeleted);
+      console.log('Parámetros activos:', systemparameterActivos);
+      
+      // Mapeamos los campos del backend a los campos del frontend
+      const mappedData = systemparameterActivos.map(systemparameter => ({
+        // IDs y referencias
+        parameterid: systemparameter.parameterid,
+        groupid: systemparameter.groupid,
+
+        // Información del SystemParameter
+        value1: systemparameter.value1 || '',
+        value2: systemparameter.value2 || '',
+        parentParameterId: systemparameter.parentParameterId,
+               
+        // Auditoría
+        createdAt: systemparameter.createdAt ? format(new Date(systemparameter.createdAt), 'dd/MM/yyyy HH:mm:ss zzzz') : null,
+        createdBy: systemparameter.createdBy,
+        updatedAt: systemparameter.updatedAt,
+        updatedBy: systemparameter.updatedBy,
+        isDeleted: systemparameter.isDeleted
+      }));
+
+      // Ordenamos alfabéticamente por value1 con manejo de nulos
+      const sortedData = mappedData.sort((a,b) => 
+        (a.value1 || '').toLowerCase().localeCompare((b.value1 || '').toLowerCase())
+      );
+
+      return {
+        data: sortedData,
+        status: 'success'
+      };
+
+
+    } catch (error) {
+      console.error('❌ Error al obtener recurso por ID:', error);
+      throw error;
+    }
+  },
+  getAllSystemParameterIdParent: async (idGroup, parentId) => {
+    if (!idGroup || !parentId) {
+      throw new Error('Se requieren idGroup y parentId');
+    }
+
+    try {
+      console.log(`🔄 Obteniendo SystemParameter para grupo ${idGroup} y padre ${parentId}...`);
+      const url = `${process.env.REACT_APP_API_URL}/SystemParameter/group/${idGroup}/parent/${parentId}`;
+      console.log('🔗 URL:', url);
+
+      const response = await fetch(url);
+
+      if(!response.ok){
+        console.error('❌ Error en la respuesta:', response.status, response.statusText);
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const rawData = await response.json();
+      console.log('✅ Datos de SystemParameter recibidos:', rawData);
+      
+      if (!rawData) {
+        console.error('❌ No se recibieron datos del servidor');
+        throw new Error('No se recibieron datos del servidor');
+      }
+      
+      // Asegurarnos que rawData sea un array
+      const dataArray = Array.isArray(rawData) ? rawData : rawData.data || [];
+      console.log('✅ Número de SystemParameter:', dataArray.length);
+      
+      // Filtrar solo los parámetros no eliminados
+      const systemparameterActivos = dataArray.filter(param => !param.isDeleted);
+      console.log('Parámetros activos:', systemparameterActivos.length);
+      
+      // Mapeamos los campos del backend a los campos del frontend
+      const mappedData = systemparameterActivos.map(systemparameter => ({
+        // IDs y referencias
+        parameterid: systemparameter.parameterid,
+        groupid: systemparameter.groupid,
+
+        // Información del SystemParameter
+        value1: systemparameter.value1 || '',
+        value2: systemparameter.value2 || '',
+        parentParameterId: systemparameter.parentParameterId,
+               
+        // Auditoría
+        createdAt: systemparameter.createdAt ? format(new Date(systemparameter.createdAt), 'dd/MM/yyyy HH:mm:ss zzzz') : null,
+        createdBy: systemparameter.createdBy,
+        updatedAt: systemparameter.updatedAt,
+        updatedBy: systemparameter.updatedBy,
+        isDeleted: systemparameter.isDeleted
+      }));
+
+      // Ordenamos alfabéticamente por value1 con manejo de nulos
+      const sortedData = mappedData.sort((a,b) => 
+        (a.value1 || '').toLowerCase().localeCompare((b.value1 || '').toLowerCase())
+      );
+
+      console.log('✅ Datos mapeados y ordenados:', sortedData.length, 'registros');
+      return {
+        data: sortedData,
+        status: 'success'
+      };
+
+
+    } catch (error) {
+      console.error('❌ Error al obtener recurso por ID:', error);
+      throw error;
+    }
+  },
+  getAllSystemParameterAll: async () => {
+    try {
+
+      const url = `${process.env.REACT_APP_API_URL}/SystemParameter`;
+      const response = await fetch(url);
+
+      if(!response.ok){
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const rawData = await response.json();
+      console.log('✅ Datos de SystemParameter recibidos:', rawData);
+      console.log('✅ Número de SystemParameter:', rawData.length);
+      
+      // Asegurarnos que rawData sea un array
+      const dataArray = Array.isArray(rawData) ? rawData : rawData.data || [];
+      
+      // Filtrar solo los parámetros no eliminados
+      const systemparameterActivos = dataArray.filter(param => !param.isDeleted);
+      console.log('Parámetros activos:', systemparameterActivos);
+      
+      // Mapeamos los campos del backend a los campos del frontend
+      const mappedData = systemparameterActivos.map(systemparameter => ({
+        // IDs y referencias
+        parameterid: systemparameter.parameterid,
+        groupid: systemparameter.groupid,
+
+        // Información del SystemParameter
+        value1: systemparameter.value1 || '',
+        value2: systemparameter.value2 || '',
+        parentParameterId: systemparameter.parentParameterId,
+               
+        // Auditoría
+        createdAt: systemparameter.createdAt ? format(new Date(systemparameter.createdAt), 'dd/MM/yyyy HH:mm:ss zzzz') : null,
+        createdBy: systemparameter.createdBy,
+        updatedAt: systemparameter.updatedAt,
+        updatedBy: systemparameter.updatedBy,
+        isDeleted: systemparameter.isDeleted
+      }));
+
+      // Ordenamos alfabéticamente por value1 con manejo de nulos
+      const sortedData = mappedData.sort((a,b) => 
+        (a.value1 || '').toLowerCase().localeCompare((b.value1 || '').toLowerCase())
+      );
+
+      return {
+        data: sortedData,
+        status: 'success'
+      };
+
+
+    } catch (error) {
+      console.error('❌ Error al obtener recurso por ID:', error);
+      throw error;
+    }
+  },
+
 };
+
+
 
 export default centrosService;

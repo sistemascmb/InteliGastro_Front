@@ -108,6 +108,107 @@ const Centros = () => {
   const [centros, setCentros] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [paisesD, setPaisesCargados] = useState([]);
+  const [departamentosD, setDepartamentosCargados] = useState([]);
+  const [provinciasD, setProvinciasCargados] = useState([]);
+  const [distritosD, setDistritosCargados] = useState([]);
+  // Función para cargar países
+  const cargarPaises = async () => {
+    try {
+      const responseSystemParameter = await centrosService.getAllSystemParameterId(1);
+      console.log('✅ Respuesta de países:', responseSystemParameter);
+      setPaisesCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                       responseSystemParameter?.data || []);
+    } catch (error) {
+      console.error('❌ Error al cargar países:', error);
+      setError(`Error al cargar países: ${error.message}`);
+    }
+  };
+
+  const cargarDepartamentos = async () => {
+    try {
+      const responseSystemParameter = await centrosService.getAllSystemParameterIdRest(2);
+      console.log('✅ Respuesta de Departamentos:', responseSystemParameter);
+      setDepartamentosCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                       responseSystemParameter?.data || []);
+    } catch (error) {
+      console.error('❌ Error al cargar Departamentos:', error);
+      setError(`Error al cargar Departamentos: ${error.message}`);
+    }
+  };
+
+  const cargarProvincias = async (departamentoId) => {
+    if (!departamentoId) {
+      console.log('No hay departamento seleccionado para cargar provincias');
+      setProvinciasCargados([]);
+      return;
+    }
+
+    try {
+      console.log('🔄 Cargando provincias para departamento:', departamentoId);
+      const responseSystemParameter = await centrosService.getAllSystemParameterIdParent(2, departamentoId);
+      
+      if (!responseSystemParameter) {
+        console.error('❌ No se recibió respuesta del servidor');
+        setError('Error al cargar provincias: No se recibió respuesta del servidor');
+        setProvinciasCargados([]);
+        return;
+      }
+
+      const provinciasData = Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                           responseSystemParameter?.data || [];
+      
+      console.log('✅ Provincias cargadas:', provinciasData);
+      setProvinciasCargados(provinciasData);
+      
+      // Limpiar error si existe
+      if (error && error.includes('Error al cargar provincias')) {
+        setError('');
+      }
+    } catch (error) {
+      console.error('❌ Error al cargar provincias:', error);
+      setError(`Error al cargar provincias: ${error.message}`);
+      setProvinciasCargados([]);
+    }
+  };
+
+  const cargarDistritos = async (provinciaId) => {
+    if (!provinciaId) {
+      console.log('No hay provincia seleccionado para cargar distrito');
+      setDistritosCargados([]);
+      return;
+    }
+
+    try {
+      console.log('🔄 Cargando distritos para provincia:', provinciaId);
+      const responseSystemParameter = await centrosService.getAllSystemParameterIdParent(2, provinciaId);
+      
+      if (!responseSystemParameter) {
+        console.error('❌ No se recibió respuesta del servidor');
+        setError('Error al cargar distritos: No se recibió respuesta del servidor');
+        setDistritosCargados([]);
+        return;
+      }
+
+      const distritosData = Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                           responseSystemParameter?.data || [];
+      
+      console.log('✅ Distritos cargadas:', distritosData);
+      setDistritosCargados(distritosData);
+      
+      // Limpiar error si existe
+      if (error && error.includes('Error al cargar distritos')) {
+        setError('');
+      }
+    } catch (error) {
+      console.error('❌ Error al cargar distritos:', error);
+      setError(`Error al cargar distritos: ${error.message}`);
+      setDistritosCargados([]);
+    }
+  };
+
+
+
 
   // Estados para modales
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -180,9 +281,25 @@ const Centros = () => {
     }
   };
 
-  // Cargar centros al montar el componente
+  // Cargar datos iniciales al montar el componente
   useEffect(() => {
-    loadCentros();
+    const cargarDatosIniciales = async () => {
+      setLoading(true);
+      try {
+        await Promise.all([
+          loadCentros(),
+          cargarPaises(),
+          cargarDepartamentos()
+        ]);
+      } catch (error) {
+        console.error('❌ Error al cargar datos iniciales:', error);
+        setError(`Error al cargar datos iniciales: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarDatosIniciales();
   }, []);
 
   // Datos UBIGEO para cascading dropdowns
@@ -190,6 +307,7 @@ const Centros = () => {
   const departamentos = ubigeoService.departamentos;
 
   // Estados para datos dinámicos
+
   const [provinciasDisponibles, setProvinciasDisponibles] = useState([]);
   const [distritosDisponibles, setDistritosDisponibles] = useState([]);
   const [provinciasEditDisponibles, setProvinciasEditDisponibles] = useState([]);
@@ -275,9 +393,12 @@ const Centros = () => {
         provincia: '',
         distrito: ''
       }));
-      // Cargar provincias del departamento seleccionado
-      const nuevasProvincias = ubigeoService.getProvinciasByDepartamento(parseInt(value));
-      setProvinciasDisponibles(nuevasProvincias);
+      
+      if (value) {
+        cargarProvincias(value);
+      } else {
+        setProvinciasCargados([]);
+      }
       setDistritosDisponibles([]);
     } else if (field === 'provincia') {
       setFormData(prev => ({
@@ -285,6 +406,12 @@ const Centros = () => {
         [field]: value,
         distrito: ''
       }));
+      if (value) {
+        cargarDistritos(value);
+      } else {
+        setDistritosCargados([]);
+      }
+      setDistritosDisponibles([]);
       // Cargar distritos de la provincia seleccionada
       const nuevosDistritos = ubigeoService.getDistritosByProvincia(parseInt(value));
       setDistritosDisponibles(nuevosDistritos);
@@ -592,6 +719,11 @@ const Centros = () => {
     );
   };
 
+  // Función para obtener el color del estado
+  const getEstadoColor = (estado) => {
+    return estado === 'activo' ? 'success' : 'error';
+  };
+
   // Función para cambiar tab
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -758,7 +890,7 @@ const Centros = () => {
               {/* Sección 2: Dirección del Centro */}
               <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f8f9fa' }}>
                 <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
-                  2. Dirección del Centro
+                  2. Dirección del Centrosss
                 </Typography>
 
                 <FieldRow>
@@ -802,6 +934,8 @@ const Centros = () => {
                 </FieldRow>
 
                 <FieldRow>
+                  
+
                   <ResponsiveField label="País" required>
                     <FormControl fullWidth required error={!!errors.pais} size="small">
                       <Select
@@ -815,13 +949,18 @@ const Centros = () => {
                         }}
                       >
                         <MenuItem value="">Seleccionar país</MenuItem>
-                        <MenuItem value="peru">Perú</MenuItem>
+                        {Array.isArray(paisesD) && paisesD.map(pais => (
+                           <MenuItem key={pais.parameterid} value={pais.parameterid}>
+                             {pais.value1 || ''}
+                           </MenuItem>
+                         ))}
                       </Select>
                     </FormControl>
                   </ResponsiveField>
 
+
                   <ResponsiveField label="Departamento" required>
-                    <FormControl fullWidth required disabled={formData.pais !== 'peru'} error={!!errors.departamento} size="small">
+                    <FormControl fullWidth required error={!!errors.departamento} size="small">
                       <Select
                         value={formData.departamento}
                         onChange={(e) => handleSelectChangeWithCascade('departamento', e.target.value)}
@@ -833,16 +972,18 @@ const Centros = () => {
                         }}
                       >
                         <MenuItem value="">Seleccionar departamento</MenuItem>
-                        {formData.pais === 'peru' && (
-                          <MenuItem value="cajamarca">Cajamarca</MenuItem>
-                        )}
+                        {Array.isArray(departamentosD) && departamentosD.map(departamento => (
+                           <MenuItem key={departamento.parameterid} value={departamento.parameterid}>
+                             {departamento.value1 || ''}
+                           </MenuItem>
+                         ))}
                       </Select>
                       {errors.departamento && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.departamento}</Typography>}
                     </FormControl>
                   </ResponsiveField>
 
                   <ResponsiveField label="Provincia" required>
-                    <FormControl fullWidth required disabled={formData.departamento !== 'cajamarca'} error={!!errors.provincia} size="small">
+                    <FormControl fullWidth required error={!!errors.provincia} size="small">
                       <Select
                         value={formData.provincia}
                         onChange={(e) => handleSelectChangeWithCascade('provincia', e.target.value)}
@@ -854,20 +995,18 @@ const Centros = () => {
                         }}
                       >
                         <MenuItem value="">Seleccionar provincia</MenuItem>
-                        {formData.departamento === 'cajamarca' &&
-                          provincias.cajamarca.map(provincia => (
-                            <MenuItem key={provincia.value} value={provincia.value}>
-                              {provincia.label}
-                            </MenuItem>
-                          ))
-                        }
+                        {Array.isArray(provinciasD) && provinciasD.map(provincia => (
+                           <MenuItem key={provincia.parameterid} value={provincia.parameterid}>
+                             {provincia.value1 || ''}
+                           </MenuItem>
+                         ))}
                       </Select>
                       {errors.provincia && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.provincia}</Typography>}
                     </FormControl>
                   </ResponsiveField>
 
                   <ResponsiveField label="Distrito" required>
-                    <FormControl fullWidth required disabled={!formData.provincia || !distritos[formData.provincia]} error={!!errors.distrito} size="small">
+                    <FormControl fullWidth required disabled={!formData.provincia} error={!!errors.distrito} size="small">
                       <Select
                         value={formData.distrito}
                         onChange={(e) => handleSelectChangeWithCascade('distrito', e.target.value)}
@@ -879,13 +1018,11 @@ const Centros = () => {
                         }}
                       >
                         <MenuItem value="">Seleccionar distrito</MenuItem>
-                        {formData.provincia && distritos[formData.provincia] &&
-                          distritos[formData.provincia].map(distrito => (
-                            <MenuItem key={distrito.value} value={distrito.value}>
-                              {distrito.label}
-                            </MenuItem>
-                          ))
-                        }
+                        {Array.isArray(distritosD) && distritosD.map(distrito => (
+                          <MenuItem key={distrito.parameterid} value={distrito.parameterid}>
+                            {distrito.value1}
+                          </MenuItem>
+                        ))}
                       </Select>
                       {errors.distrito && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.distrito}</Typography>}
                     </FormControl>
@@ -1001,7 +1138,7 @@ const Centros = () => {
                             {centro.estado && (
                               <Chip
                                 label={centro.estado === 'activo' ? 'Activo' : 'Inactivo'}
-                                color={centro.estado === 'activo' ? 'success' : 'error'}
+                                color={getEstadoColor(centro.estado)}
                                 size="small"
                                 sx={{ mt: 0.5 }}
                               />
@@ -1209,37 +1346,43 @@ const Centros = () => {
                   <ResponsiveField label="País" required>
                     <FormControl fullWidth required error={!!errors.pais} size="small">
                       <Select
-                        value={formData.pais}
-                        onChange={(e) => handleSelectChangeWithCascade('pais', e.target.value)}
+                        value={editFormData.pais}
+                        onChange={(e) => handleEditSelectChangeWithCascade('pais', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.pais ? '#000' : '#999'
+                            color: editFormData.pais ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar país</MenuItem>
-                        <MenuItem value="peru">Perú</MenuItem>
+                        {Array.isArray(paisesD) && paisesD.map(pais => (
+                          <MenuItem key={pais.parameterid} value={pais.parameterid}>
+                            {pais.value1}
+                          </MenuItem>
+                        ))}
                       </Select>
                     </FormControl>
                   </ResponsiveField>
 
                   <ResponsiveField label="Departamento" required>
-                    <FormControl fullWidth required disabled={formData.pais !== 'peru'} error={!!errors.departamento} size="small">
+                    <FormControl fullWidth required disabled={!editFormData.pais} error={!!errors.departamento} size="small">
                       <Select
-                        value={formData.departamento}
-                        onChange={(e) => handleSelectChangeWithCascade('departamento', e.target.value)}
+                        value={editFormData.departamento}
+                        onChange={(e) => handleEditSelectChangeWithCascade('departamento', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.departamento ? '#000' : '#999'
+                            color: editFormData.departamento ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar departamento</MenuItem>
-                        {formData.pais === 'peru' && (
-                          <MenuItem value="cajamarca">Cajamarca</MenuItem>
-                        )}
+                        {Array.isArray(departamentosD) && departamentosD.map(departamento => (
+                          <MenuItem key={departamento.parameterid} value={departamento.parameterid}>
+                            {departamento.value1}
+                          </MenuItem>
+                        ))}
                       </Select>
                       {errors.departamento && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.departamento}</Typography>}
                     </FormControl>
@@ -1250,50 +1393,46 @@ const Centros = () => {
 
                 <FieldRow>
                   <ResponsiveField label="Provincia" required>
-                    <FormControl fullWidth required disabled={formData.departamento !== 'cajamarca'} error={!!errors.provincia} size="small">
+                    <FormControl fullWidth required disabled={!editFormData.departamento} error={!!errors.provincia} size="small">
                       <Select
-                        value={formData.provincia}
-                        onChange={(e) => handleSelectChangeWithCascade('provincia', e.target.value)}
+                        value={editFormData.provincia}
+                        onChange={(e) => handleEditSelectChangeWithCascade('provincia', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.provincia ? '#000' : '#999'
+                            color: editFormData.provincia ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar provincia</MenuItem>
-                        {formData.departamento === 'cajamarca' &&
-                          provincias.cajamarca.map(provincia => (
-                            <MenuItem key={provincia.value} value={provincia.value}>
-                              {provincia.label}
-                            </MenuItem>
-                          ))
-                        }
+                        {Array.isArray(provinciasD) && provinciasD.map(provincia => (
+                          <MenuItem key={provincia.parameterid} value={provincia.parameterid}>
+                            {provincia.value1}
+                          </MenuItem>
+                        ))}
                       </Select>
                       {errors.provincia && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.provincia}</Typography>}
                     </FormControl>
                   </ResponsiveField>
 
                   <ResponsiveField label="Distrito" required>
-                    <FormControl fullWidth required disabled={!formData.provincia || !distritos[formData.provincia]} error={!!errors.distrito} size="small">
+                    <FormControl fullWidth required disabled={!editFormData.provincia} error={!!errors.distrito} size="small">
                       <Select
-                        value={formData.distrito}
-                        onChange={(e) => handleSelectChangeWithCascade('distrito', e.target.value)}
+                        value={editFormData.distrito}
+                        onChange={(e) => handleEditSelectChangeWithCascade('distrito', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.distrito ? '#000' : '#999'
+                            color: editFormData.distrito ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar distrito</MenuItem>
-                        {formData.provincia && distritos[formData.provincia] &&
-                          distritos[formData.provincia].map(distrito => (
-                            <MenuItem key={distrito.value} value={distrito.value}>
-                              {distrito.label}
-                            </MenuItem>
-                          ))
-                        }
+                        {Array.isArray(distritosD) && distritosD.map(distrito => (
+                          <MenuItem key={distrito.parameterid} value={distrito.parameterid}>
+                            {distrito.value1}
+                          </MenuItem>
+                        ))}
                       </Select>
                       {errors.distrito && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.distrito}</Typography>}
                     </FormControl>
@@ -1395,11 +1534,7 @@ const Centros = () => {
                       <strong>Direccion:</strong> {selectedCentro.direccion}
                     </Typography>
                   </Grid>
-                  <Grid item xs={12} md={3}>
-                    <Typography variant="body1">
-                      <strong>Código Postal:</strong> {selectedCentro.codPostal}
-                    </Typography>
-                  </Grid>
+                  
                   <Grid item xs={12} md={3}>
                     <Typography variant="body1">
                       <strong>Teléfono:</strong> {selectedCentro.telefono}

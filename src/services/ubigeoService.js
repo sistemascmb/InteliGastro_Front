@@ -1,6 +1,8 @@
 // Servicio UBIGEO - Códigos oficiales del Perú
 // Basado en el estándar INEI (Instituto Nacional de Estadística e Informática)
 
+import centrosService from "./centrosService";
+
 export const ubigeoService = {
   // Países
   paises: [
@@ -15,10 +17,10 @@ export const ubigeoService = {
     // Agregar más según necesidad
   ],
 
-  // Provincias de Cajamarca (mapeo según API: provincia 2 del centro actual)
+  // Provincias de Cajamarca
   provincias: [
     { id: 1, codigo: '0601', nombre: 'Cajamarca', departamentoId: 1 },
-    { id: 2, codigo: '0602', nombre: 'Cajabamba', departamentoId: 1 }, // ← API devuelve provincia: 2
+    { id: 2, codigo: '0602', nombre: 'Cajabamba', departamentoId: 1 },
     { id: 3, codigo: '0603', nombre: 'Celendín', departamentoId: 1 },
     { id: 4, codigo: '0604', nombre: 'Chota', departamentoId: 1 },
     { id: 5, codigo: '0605', nombre: 'Contumazá', departamentoId: 1 },
@@ -64,11 +66,17 @@ export const ubigeoService = {
     return ubigeoService.distritos.filter(d => d.provinciaId === provinciaId);
   },
 
+
+
+
+
+
+
   // Buscar por ID
-  getPaisById: (id) => ubigeoService.paises.find(p => p.id === id),
-  getDepartamentoById: (id) => ubigeoService.departamentos.find(d => d.id === id),
-  getProvinciaById: (id) => ubigeoService.provincias.find(p => p.id === id),
-  getDistritoById: (id) => ubigeoService.distritos.find(d => d.id === id),
+  getPaisById: (id) => centrosService.getAllSystemParameterAll.find(p => p.parameterid === id),
+  getDepartamentoById: (id) => centrosService.getAllSystemParameterAll.find(p => p.parameterid === id),
+  getProvinciaById: (id) => centrosService.getAllSystemParameterAll.find(p => p.parameterid === id),
+  getDistritoById: (id) => centrosService.getAllSystemParameterAll.find(p => p.parameterid === id),
 
   // Formatear ubicación completa
   formatUbicacionCompleta: (paisId, departamentoId, provinciaId, distritoId) => {
