@@ -33,19 +33,9 @@ export const centrosService = {
         descripcion: rawData.descripcion,
         abreviatura: rawData.abreviatura,
 
-        // Horarios - convertir de DateTime a solo tiempo
-        inicioAtencion: rawData.inicioAtencion ?
-          new Date(rawData.inicioAtencion).toLocaleTimeString('en-US', {
-            hour12: false,
-            hour: '2-digit',
-            minute: '2-digit'
-          }) : '',
-        finAtencion: rawData.finAtencion ?
-          new Date(rawData.finAtencion).toLocaleTimeString('en-US', {
-            hour12: false,
-            hour: '2-digit',
-            minute: '2-digit'
-          }) : '',
+        // Horarios
+        inicioAtencion: rawData.inicioAtencion || '',
+        finAtencion: rawData.finAtencion || '',
 
         // Dirección del Centro
         direccion: rawData.direccion,
@@ -131,11 +121,10 @@ export const centrosService = {
         departamento: centro.departamento,
         provincia: centro.provincia,
         distrito: centro.distrito,
+        ruc: centro.ruc,
 
-        //inicioAtencion:  format(centro.inicioAtencion, 'dd/MM/yyyy HH:mm:ss zzzz').split(' ')[1].substring(0,5), 
-        //finAtencion: format(centro.finAtencion, 'dd/MM/yyyy HH:mm:ss zzzz').split(' ')[1].substring(0,5),
-        inicioAtencion: centro.inicioAtencion,
-        finAtencion: centro.finAtencion,
+        inicioAtencion: centro.inicioAtencion || '',
+        finAtencion: centro.finAtencion || '',
         telefono: centro.telefono,
         direccion: centro.direccion,
         
@@ -202,11 +191,6 @@ export const centrosService = {
         throw new Error(`Campos requeridos faltantes: ${missingFields.join(', ')}`);
       }
 
-      // Convertir horarios de string (HH:MM) a DateTime
-      const today = new Date().toISOString().split('T')[0]; // Fecha actual en formato YYYY-MM-DD
-      //const inicioAtencionDateTime = `${today}T${centroData.inicioAtencion}:00.000Z`;
-      //const finAtencionDateTime = `${today}T${centroData.finAtencion}:00.000Z`;
-
       // Validar campos UBIGEO
       if (!centroData.pais || !centroData.departamento || !centroData.provincia || !centroData.distrito) {
         throw new Error('Todos los campos de ubicación (país, departamento, provincia y distrito) son obligatorios');
@@ -272,25 +256,20 @@ export const centrosService = {
         throw new Error('ID del centro es requerido');
       }
 
-      // Convertir horarios de string (HH:MM) a DateTime
-      const today = new Date().toISOString().split('T')[0];
-      const inicioAtencionDateTime = `${today}T${centroData.inicioAtencion}:00.000Z`;
-      const finAtencionDateTime = `${today}T${centroData.finAtencion}:00.000Z`;
-
       // Formatear datos según el formato esperado por la API
       const formattedData = {
         centroid: parseInt(id),
         nombre: centroData.nombre,
         descripcion: centroData.descripcion,
         abreviatura: centroData.abreviatura,
-        inicioAtencion: inicioAtencionDateTime,
-        finAtencion: finAtencionDateTime,
+        inicioAtencion: centroData.inicioAtencion,
+        finAtencion: centroData.finAtencion,
         direccion: centroData.direccion,
         telefono: centroData.telefono,
-        departamento: parseInt(centroData.departamento) || 1, // Cajamarca
-        provincia: parseInt(centroData.provincia) || 2, // Cajabamba
-        distrito: parseInt(centroData.distrito) || 15, // Condebamba (el distrito 3 en el array es ID 15)
-        pais: parseInt(centroData.pais) || 1, // Perú
+        departamento: centroData.departamento, // Cajamarca
+        provincia: centroData.provincia, // Cajabamba
+        distrito: centroData.distrito, // Condebamba (el distrito 3 en el array es ID 15)
+        pais: centroData.pais, // Perú
         ruc: centroData.ruc || "20000000000",
         status: centroData.estado === 'activo' || true,
         updatedAt: new Date().toISOString(),

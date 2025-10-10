@@ -267,7 +267,7 @@ const Centros = () => {
       setLoading(true);
       setError('');
 
-      console.log('🔄 Cargando centros desde el backend...');
+      console.log('📄 Cargando centros desde el backend...');
       const response = await centrosService.getAll();
 
       console.log('✅ Centros cargados:', response.data);
@@ -432,51 +432,68 @@ const Centros = () => {
   }, [errors]);
 
   // Función para manejar cambios en selects con lógica de cascada (editar)
-  const handleEditSelectChangeWithCascade = useCallback((field, value) => {
-    // Lógica especial para cascading dropdowns UBIGEO
-    if (field === 'pais') {
-      setEditFormData(prev => ({
-        ...prev,
-        [field]: value,
-        departamento: '',
-        provincia: '',
-        distrito: ''
-      }));
-      setProvinciasEditDisponibles([]);
-      setDistritosEditDisponibles([]);
-    } else if (field === 'departamento') {
-      setEditFormData(prev => ({
-        ...prev,
-        [field]: value,
-        provincia: '',
-        distrito: ''
-      }));
-      // Cargar provincias del departamento seleccionado
-      const nuevasProvincias = ubigeoService.getProvinciasByDepartamento(parseInt(value));
-      setProvinciasEditDisponibles(nuevasProvincias);
-      setDistritosEditDisponibles([]);
-    } else if (field === 'provincia') {
-      setEditFormData(prev => ({
-        ...prev,
-        [field]: value,
-        distrito: ''
-      }));
-      // Cargar distritos de la provincia seleccionada
-      const nuevosDistritos = ubigeoService.getDistritosByProvincia(parseInt(value));
-      setDistritosEditDisponibles(nuevosDistritos);
-    } else {
-      setEditFormData(prev => ({
-        ...prev,
-        [field]: value
-      }));
-    }
+  const handleEditSelectChangeWithCascade = useCallback(async (field, value) => {
+    try {
+      // Lógica especial para cascading dropdowns UBIGEO
+      if (field === 'pais') {
+        setEditFormData(prev => ({
+          ...prev,
+          [field]: value,
+          departamento: '',
+          provincia: '',
+          distrito: ''
+        }));
+        setProvinciasEditDisponibles([]);
+        setDistritosEditDisponibles([]);
+      } else if (field === 'departamento') {
+        setEditFormData(prev => ({
+          ...prev,
+          [field]: value?.toString() || '',
+          provincia: '',
+          distrito: ''
+        }));
 
-    // Limpiar error si existe
-    if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: ''
-      }));
+        // Cargar provincias del departamento seleccionado usando centrosService
+        if (value) {
+          const responseProvincias = await centrosService.getAllSystemParameterIdParent(2, value);
+          const provinciasData = Array.isArray(responseProvincias) ? responseProvincias : responseProvincias?.data || [];
+          setProvinciasEditDisponibles(provinciasData);
+        } else {
+          setProvinciasEditDisponibles([]);
+        }
+        setDistritosEditDisponibles([]);
+      } else if (field === 'provincia') {
+        setEditFormData(prev => ({
+          ...prev,
+          [field]: value,
+          distrito: ''
+        }));
+
+        // Cargar distritos de la provincia seleccionada usando centrosService
+        if (value) {
+          const responseDistritos = await centrosService.getAllSystemParameterIdParent(2, value);
+          const distritosData = Array.isArray(responseDistritos) ? responseDistritos : responseDistritos?.data || [];
+          setDistritosEditDisponibles(distritosData);
+        } else {
+          setDistritosEditDisponibles([]);
+        }
+      } else {
+        setEditFormData(prev => ({
+          ...prev,
+          [field]: value
+        }));
+      }
+
+      // Limpiar error si existe
+      if (errors[field]) {
+        setErrors(prev => ({
+          ...prev,
+          [field]: ''
+        }));
+      }
+    } catch (error) {
+      console.error('Error al cargar datos de ubicación:', error);
+      setError('Error al cargar datos de ubicación');
     }
   }, [errors]);
 
@@ -568,35 +585,111 @@ const Centros = () => {
   };
 
   // Funciones para manejar modales
-  const handleOpenEditModal = (centro) => {
+  const handleOpenEditModal = async (centro) => {
     setSelectedCentro(centro);
-    setEditFormData({
-      nombre: centro.nombre,
-      descripcion: centro.descripcion,
-      abreviatura: centro.abreviatura,
-      inicioAtencion: centro.inicioAtencion,
-      finAtencion: centro.finAtencion,
-      direccion: centro.direccion,
-      codPostal: centro.codPostal || '',
-      telefono: centro.telefono,
-      ruc: centro.ruc || '',
-      pais: centro.pais,
-      departamento: centro.departamento,
-      provincia: centro.provincia,
-      distrito: centro.distrito,
-      estado: centro.estado || 'activo'
-    });
+    
+    try {
+      // Inicializar editFormData con los valores del centro
+      const initialFormData = {
+        nombre: centro.nombre || '',
+        descripcion: centro.descripcion || '',
+        abreviatura: centro.abreviatura || '',
+        inicioAtencion: centro.inicioAtencion || '',
+        finAtencion: centro.finAtencion || '',
+        direccion: centro.direccion || '',
+        codPostal: centro.codPostal || '',
+        telefono: centro.telefono || '',
+        ruc: centro.ruc || '',
+        pais: centro.pais || '',
+        departamento: '',  // Se establecerá después de la validación
+        provincia: '',     // Se establecerá después de cargar las provincias
+        distrito: '',      // Se establecerá después de cargar los distritos
+        estado: centro.estado || 'activo'
+      };
+      setEditFormData(initialFormData);
 
-    // Cargar datos UBIGEO para edición
-    if (centro.departamento) {
-      const provincias = ubigeoService.getProvinciasByDepartamento(centro.departamento);
-      setProvinciasEditDisponibles(provincias);
-    }
-    if (centro.provincia) {
-      const distritos = ubigeoService.getDistritosByProvincia(centro.provincia);
-      setDistritosEditDisponibles(distritos);
-    }
+      // Verificar si el departamento existe en departamentosD y obtener el ID correcto
+      let departamentoId = '';
+      if (centro.departamento) {
+        const departamentoStr = centro.departamento.toString();
+        const departamentoEncontrado = departamentosD.find(dep => 
+          dep.parameterid?.toString() === departamentoStr
+        );
 
+        if (departamentoEncontrado) {
+          departamentoId = departamentoEncontrado.parameterid?.toString();
+          console.log('Departamento encontrado:', departamentoEncontrado);
+          initialFormData.departamento = departamentoId;
+
+          // Cargar provincias
+          const responseProvincias = await centrosService.getAllSystemParameterIdParent(2, departamentoId);
+          const provinciasData = Array.isArray(responseProvincias) ? responseProvincias : responseProvincias?.data || [];
+          setProvinciasEditDisponibles(provinciasData);
+
+          if (centro.provincia) {
+            const provinciaStr = centro.provincia.toString();
+            const provinciaEncontrada = provinciasData.find(prov => 
+              prov.parameterid?.toString() === provinciaStr
+            );
+
+            if (provinciaEncontrada) {
+              initialFormData.provincia = provinciaEncontrada.parameterid;
+
+              // Cargar distritos
+              const responseDistritos = await centrosService.getAllSystemParameterIdParent(2, provinciaEncontrada.parameterid);
+              const distritosData = Array.isArray(responseDistritos) ? responseDistritos : responseDistritos?.data || [];
+              setDistritosEditDisponibles(distritosData);
+
+              if (centro.distrito) {
+                const distritoStr = centro.distrito.toString();
+                const distritoEncontrado = distritosData.find(dist => 
+                  dist.parameterid?.toString() === distritoStr
+                );
+
+                if (distritoEncontrado) {
+                  initialFormData.distrito = distritoEncontrado.parameterid;
+                } else {
+                  console.warn('Distrito no encontrado:', {
+                    distrito: centro.distrito,
+                    distritoStr,
+                    opcionesDisponibles: distritosData.map(d => d.parameterid)
+                  });
+                }
+              }
+            } else {
+              console.warn('Provincia no encontrada:', {
+                provincia: centro.provincia,
+                provinciaStr,
+                opcionesDisponibles: provinciasData.map(p => p.parameterid)
+              });
+              setDistritosEditDisponibles([]);
+            }
+          } else {
+            setDistritosEditDisponibles([]);
+          }
+        } else {
+          console.warn('Departamento no encontrado:', {
+            departamento: centro.departamento,
+            departamentoStr,
+            opcionesDisponibles: departamentosD.map(d => d.parameterid)
+          });
+          setProvinciasEditDisponibles([]);
+          setDistritosEditDisponibles([]);
+        }
+      } else {
+        setProvinciasEditDisponibles([]);
+        setDistritosEditDisponibles([]);
+      }
+
+      // Actualizar el formulario con todos los valores validados
+      setEditFormData(initialFormData);
+    } catch (error) {
+      console.error('Error al cargar datos de ubicación:', error);
+      setError('Error al cargar datos de ubicación');
+      setProvinciasEditDisponibles([]);
+      setDistritosEditDisponibles([]);
+    }
+  
     setOpenEditModal(true);
   };
 
@@ -890,7 +983,7 @@ const Centros = () => {
               {/* Sección 2: Dirección del Centro */}
               <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f8f9fa' }}>
                 <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
-                  2. Dirección del Centrosss
+                  2. Dirección del Centro
                 </Typography>
 
                 <FieldRow>
@@ -973,7 +1066,7 @@ const Centros = () => {
                       >
                         <MenuItem value="">Seleccionar departamento</MenuItem>
                         {Array.isArray(departamentosD) && departamentosD.map(departamento => (
-                           <MenuItem key={departamento.parameterid} value={departamento.parameterid}>
+                           <MenuItem key={departamento.parameterid} value={departamento.parameterid?.toString()}>
                              {departamento.value1 || ''}
                            </MenuItem>
                          ))}
@@ -1018,7 +1111,7 @@ const Centros = () => {
                         }}
                       >
                         <MenuItem value="">Seleccionar distrito</MenuItem>
-                        {Array.isArray(distritosD) && distritosD.map(distrito => (
+                        {Array.isArray(distritosEditDisponibles) && distritosEditDisponibles.map(distrito => (
                           <MenuItem key={distrito.parameterid} value={distrito.parameterid}>
                             {distrito.value1}
                           </MenuItem>
@@ -1196,6 +1289,7 @@ const Centros = () => {
         PaperProps={{
           sx: { borderRadius: 2 }
         }}
+        inert={!openEditModal}
       >
         <DialogTitle sx={{ 
           display: 'flex', 
@@ -1218,13 +1312,14 @@ const Centros = () => {
               </Typography>
               {/* Fila 1: Nombre, Abreviatura, Horarios */}
                 <FieldRow>
-                  <ResponsiveField label="Nombre" required sx={{flex:2}}>
+                  <ResponsiveField label="Nombre" required>
                     <TextField
                       fullWidth
                       required
-                      placeholder="Ingrese el nombre del centro"
-                      value={formData.nombre}
-                      onChange={(e) => handleInputChange('nombre', e.target.value)}
+                      multiline
+                      placeholder="Ingrese la descripción del centro"
+                      value={editFormData.nombre}
+                      onChange={(e) => handleEditInputChange('nombre', e.target.value)}
                       error={!!errors.nombre}
                       helperText={errors.nombre}
                       size="small"
@@ -1236,8 +1331,8 @@ const Centros = () => {
                       fullWidth
                       required
                       type="time"
-                      value={formData.inicioAtencion}
-                      onChange={(e) => handleInputChange('inicioAtencion', e.target.value)}
+                      value={editFormData.inicioAtencion}
+                      onChange={(e) => handleEditInputChange('inicioAtencion', e.target.value)}
                       error={!!errors.inicioAtencion}
                       helperText={errors.inicioAtencion}
                       size="small"
@@ -1250,8 +1345,8 @@ const Centros = () => {
                       fullWidth
                       required
                       type="time"
-                      value={formData.finAtencion}
-                      onChange={(e) => handleInputChange('finAtencion', e.target.value)}
+                      value={editFormData.finAtencion}
+                      onChange={(e) => handleEditInputChange('finAtencion', e.target.value)}
                       error={!!errors.finAtencion}
                       helperText={errors.finAtencion}
                       size="small"
@@ -1366,7 +1461,7 @@ const Centros = () => {
                   </ResponsiveField>
 
                   <ResponsiveField label="Departamento" required>
-                    <FormControl fullWidth required disabled={!editFormData.pais} error={!!errors.departamento} size="small">
+                    <FormControl fullWidth required error={!!errors.departamento} size="small">
                       <Select
                         value={editFormData.departamento}
                         onChange={(e) => handleEditSelectChangeWithCascade('departamento', e.target.value)}
@@ -1379,7 +1474,7 @@ const Centros = () => {
                       >
                         <MenuItem value="">Seleccionar departamento</MenuItem>
                         {Array.isArray(departamentosD) && departamentosD.map(departamento => (
-                          <MenuItem key={departamento.parameterid} value={departamento.parameterid}>
+                          <MenuItem key={departamento.parameterid} value={departamento.parameterid?.toString()}>
                             {departamento.value1}
                           </MenuItem>
                         ))}
@@ -1387,13 +1482,12 @@ const Centros = () => {
                       {errors.departamento && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.departamento}</Typography>}
                     </FormControl>
                   </ResponsiveField>
-
-                  
+                              
                 </FieldRow>
 
                 <FieldRow>
                   <ResponsiveField label="Provincia" required>
-                    <FormControl fullWidth required disabled={!editFormData.departamento} error={!!errors.provincia} size="small">
+                    <FormControl fullWidth required error={!!errors.provincia} size="small">
                       <Select
                         value={editFormData.provincia}
                         onChange={(e) => handleEditSelectChangeWithCascade('provincia', e.target.value)}
@@ -1405,7 +1499,7 @@ const Centros = () => {
                         }}
                       >
                         <MenuItem value="">Seleccionar provincia</MenuItem>
-                        {Array.isArray(provinciasD) && provinciasD.map(provincia => (
+                        {Array.isArray(provinciasEditDisponibles) && provinciasEditDisponibles.map(provincia => (
                           <MenuItem key={provincia.parameterid} value={provincia.parameterid}>
                             {provincia.value1}
                           </MenuItem>
@@ -1416,7 +1510,7 @@ const Centros = () => {
                   </ResponsiveField>
 
                   <ResponsiveField label="Distrito" required>
-                    <FormControl fullWidth required disabled={!editFormData.provincia} error={!!errors.distrito} size="small">
+                    <FormControl fullWidth required error={!!errors.distrito} size="small">
                       <Select
                         value={editFormData.distrito}
                         onChange={(e) => handleEditSelectChangeWithCascade('distrito', e.target.value)}
@@ -1428,7 +1522,7 @@ const Centros = () => {
                         }}
                       >
                         <MenuItem value="">Seleccionar distrito</MenuItem>
-                        {Array.isArray(distritosD) && distritosD.map(distrito => (
+                        {Array.isArray(distritosEditDisponibles) && distritosEditDisponibles.map(distrito => (
                           <MenuItem key={distrito.parameterid} value={distrito.parameterid}>
                             {distrito.value1}
                           </MenuItem>
@@ -1473,6 +1567,7 @@ const Centros = () => {
         PaperProps={{
           sx: { borderRadius: 2 }
         }}
+        inert={!openDetailModal}
       >
         <DialogTitle sx={{ 
           display: 'flex', 
@@ -1498,6 +1593,11 @@ const Centros = () => {
                   <Grid item xs={12}>
                     <Typography variant="body1">
                       <strong>Nombre:</strong> {selectedCentro.nombre}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Typography variant="body1">
+                      <strong>RUC:</strong> {selectedCentro.ruc}
                     </Typography>
                   </Grid>
                   <Grid item xs={12}>
@@ -1535,11 +1635,12 @@ const Centros = () => {
                     </Typography>
                   </Grid>
                   
-                  <Grid item xs={12} md={3}>
+                  <Grid item xs={12} md={6}>
                     <Typography variant="body1">
                       <strong>Teléfono:</strong> {selectedCentro.telefono}
                     </Typography>
                   </Grid>
+                  
                   <Grid item xs={12}>
                     <Typography variant="body1">
                       <strong>Ubicación:</strong> {getUbicacionTexto(selectedCentro)}
@@ -1569,6 +1670,7 @@ const Centros = () => {
         PaperProps={{
           sx: { borderRadius: 2 }
         }}
+        inert={!openDeleteConfirm}
       >
         <DialogTitle sx={{ 
           backgroundColor: '#f44336', 

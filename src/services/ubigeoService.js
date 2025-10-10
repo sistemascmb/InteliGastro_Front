@@ -73,19 +73,50 @@ export const ubigeoService = {
 
 
   // Buscar por ID
-  getPaisById: (id) => centrosService.getAllSystemParameterAll.find(p => p.parameterid === id),
-  getDepartamentoById: (id) => centrosService.getAllSystemParameterAll.find(p => p.parameterid === id),
-  getProvinciaById: (id) => centrosService.getAllSystemParameterAll.find(p => p.parameterid === id),
-  getDistritoById: (id) => centrosService.getAllSystemParameterAll.find(p => p.parameterid === id),
+  //getUbigeoId: async (id) => {
+  //  const response = await centrosService.getAllSystemParameterAll();
+  //  return response.data.find(p => p.parameterid === id);
+  //},
+  //getPaisById: async (id) => {
+  //  const response = await centrosService.getAllSystemParameterAll();
+  //  return response.data.find(p => p.parameterid === id);
+  //},
+  //getDepartamentoById: async (id) => {
+  //  const response = await centrosService.getAllSystemParameterAll();
+  //  return response.data.find(p => p.parameterid === id);
+  //},
+  //getProvinciaById: async (id) => {
+  //  const response = await centrosService.getAllSystemParameterAll();
+  //  return response.data.find(p => p.parameterid === id);
+  //},
+  //getDistritoById: async (id) => {
+   // const response = await centrosService.getAllSystemParameterAll();
+  //  return response.data.find(p => p.parameterid === id);
+  //},
 
   // Formatear ubicación completa
-  formatUbicacionCompleta: (paisId, departamentoId, provinciaId, distritoId) => {
-    const pais = ubigeoService.getPaisById(paisId);
-    const departamento = ubigeoService.getDepartamentoById(departamentoId);
-    const provincia = ubigeoService.getProvinciaById(provinciaId);
-    const distrito = ubigeoService.getDistritoById(distritoId);
+  formatUbicacionCompleta: async (paisId, departamentoId, provinciaId, distritoId) => {
+    try {
 
-    return `${distrito?.nombre || ''}, ${provincia?.nombre || ''}, ${departamento?.nombre || ''}, ${pais?.nombre || ''}`;
+      const response = await centrosService.getAllSystemParameterAll();
+    //return response.data.find(p => p.parameterid === id);
+      
+      //const pais = await ubigeoService.getUbigeoId(paisId);
+      const pais = await response.data.find(p => p.parameterid === paisId);
+      const departamento = await response.data.find(p => p.parameterid === departamentoId);
+      const provincia = await response.data.find(p => p.parameterid === provinciaId);
+      const distrito = await response.data.find(p => p.parameterid === distritoId);
+
+      //const pais = await ubigeoService.getUbigeoId(paisId);
+      //const departamento = await ubigeoService.getUbigeoId(departamentoId);
+      //const provincia = await ubigeoService.getUbigeoId(provinciaId);
+      //const distrito = await ubigeoService.getUbigeoId(distritoId);
+
+      return `${distrito?.value1 || ''}, ${provincia?.value1 || ''}, ${departamento?.value1 || ''}, ${pais?.value1 || ''}`;
+    } catch (error) {
+      console.error('Error al formatear ubicación:', error);
+      return '';
+    }
   }
 };
 
