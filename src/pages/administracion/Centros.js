@@ -386,7 +386,9 @@ const Centros = () => {
       }));
       setProvinciasDisponibles([]);
       setDistritosDisponibles([]);
-    } else if (field === 'departamento') {
+    } 
+    
+    if (field === 'departamento') {
       setFormData(prev => ({
         ...prev,
         [field]: value,
@@ -1111,7 +1113,7 @@ const Centros = () => {
                         }}
                       >
                         <MenuItem value="">Seleccionar distrito</MenuItem>
-                        {Array.isArray(distritosEditDisponibles) && distritosEditDisponibles.map(distrito => (
+                        {Array.isArray(distritosD) && distritosD.map(distrito => (
                           <MenuItem key={distrito.parameterid} value={distrito.parameterid}>
                             {distrito.value1}
                           </MenuItem>
