@@ -42,6 +42,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { staffService } from '../../services/staffService';
+import { centrosService } from '../../services/centrosService';
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
@@ -107,18 +108,40 @@ const Personal = () => {
   const [personal, setPersonal] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [sexosD, setGenerosCargados] = useState([]);
+  const [centrosD, setCentrosCargados] = useState([]);
 
   // Datos simulados de centros (normalmente vendrían del backend)
-  const centros = [
-    { value: 'centro-1', label: 'Clínica María Belén - Sede Central' },
-    { value: 'centro-2', label: 'Clínica María Belén - Sede Norte' }
-  ];
 
   // Estados para modales
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDetailModal, setOpenDetailModal] = useState(false);
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
   const [selectedPersonal, setSelectedPersonal] = useState(null);
+
+const cargarGeneros = async () => {
+    try {
+      const responseSystemParameter = await centrosService.getAllSystemParameterId(10000);
+      console.log('✅ Respuesta de Géneros:', responseSystemParameter);
+      setGenerosCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                       responseSystemParameter?.data || []);
+    } catch (error) {
+      console.error('❌ Error al cargar géneros:', error);
+      setError(`Error al cargar géneros: ${error.message}`);
+    }
+  };
+
+  const cargarCentros = async () => {
+    try {
+      const responseSystemParameter = await centrosService.getAll();
+      console.log('✅ Respuesta de Centros:', responseSystemParameter);
+      setCentrosCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                       responseSystemParameter?.data || []);
+    } catch (error) {
+      console.error('❌ Error al cargar Centros:', error);
+      setError(`Error al cargar Centros: ${error.message}`);
+    }
+  };
 
   // Estado para el formulario
   const [formData, setFormData] = useState({
@@ -128,6 +151,7 @@ const Personal = () => {
     apellido: '',
     fechaNacimiento: '',
     genero: '',
+    sexo:'',
     // Centro
     centro: '',
     // Información del Personal
@@ -168,67 +192,41 @@ const Personal = () => {
       console.log('🔄 Cargando personal desde el backend...');
       const response = await staffService.getAll();
 
-      console.log('✅ Personal cargado:', response.data);
-      setPersonal(response.data || []);
+      // Obtener los nombres de los centros para cada personal
+      const personalConCentros = await Promise.all(
+        response.data.map(async (persona) => {
+          try {
+            const centroDatos = await centrosService.getById(persona.centroId);
+            const parTipoTrabj = await centrosService.getSystemParameterId(persona.tipoTrabajo);
+            const sexoTrabj = await centrosService.getSystemParameterId(persona.genero);
+
+            
+            
+            return {
+              ...persona,
+              nombreCentro: centroDatos.data.nombre,
+              tipo: parTipoTrabj.data.value1,
+              sexo: sexoTrabj.data.value1,
+
+            };
+          } catch (error) {
+            console.error(`Error al obtener centro ${persona.centroId}:`, error);
+            return {
+              ...persona,
+              nombreCentro: 'Centro no encontrado',
+              tipo: 'Tipo no especificado',
+              sexo: 'No especificado'
+            };
+          }
+        })
+      );
+
+      console.log('✅ Personal cargado:', personalConCentros);
+      setPersonal(personalConCentros || []);
 
     } catch (error) {
       console.error('❌ Error al cargar personal:', error);
       setError(`Error al cargar personal: ${error.message}`);
-
-      // Datos de prueba en caso de error (para desarrollo)
-      const datosPrueba = [
-        {
-          id: 1,
-          documento: '12345678',
-          nombre: 'María Elena',
-          apellido: 'González Pérez',
-          fechaNacimiento: '1985-03-15',
-          genero: 'femenino',
-          centro: 'centro-1',
-          estatus: 'activo',
-          titulo: 'Doctora',
-          grado: 'especialista',
-          numeroLicencia: 'LIC-001-2020',
-          tipo: 'medico',
-          fechaContratacion: '2020-01-15',
-          fechaCese: '',
-          direccion: 'Av. Los Médicos 456',
-          codPostal: '06001',
-          pais: 'peru',
-          departamento: 'cajamarca',
-          provincia: 'cajabamba',
-          distrito: 'cajabamba_distrito',
-          telefono: '076-123456',
-          celular: '987654321',
-          correo: 'maria.gonzalez@clinica.com'
-        },
-        {
-          id: 2,
-          documento: '87654321',
-          nombre: 'Carlos Antonio',
-          apellido: 'Rodríguez Silva',
-          fechaNacimiento: '1978-08-22',
-          genero: 'masculino',
-          centro: 'centro-2',
-          estatus: 'activo',
-          titulo: 'Doctor',
-          grado: 'especialista',
-          numeroLicencia: 'LIC-002-2018',
-          tipo: 'medico',
-          fechaContratacion: '2018-03-10',
-          fechaCese: '',
-          direccion: 'Jr. Salud 789',
-          codPostal: '06002',
-          pais: 'peru',
-          departamento: 'cajamarca',
-          provincia: 'bambamarca',
-          distrito: 'bambamarca_distrito',
-          telefono: '076-789012',
-          celular: '912345678',
-          correo: 'carlos.rodriguez@clinica.com'
-        }
-      ];
-      setPersonal(datosPrueba);
 
     } finally {
       setLoading(false);
@@ -238,6 +236,8 @@ const Personal = () => {
   // Cargar personal al montar el componente
   useEffect(() => {
     loadPersonal();
+    cargarGeneros();
+    cargarCentros();
   }, []);
 
   // Datos para cascading dropdowns (igual que en Centros)
@@ -425,8 +425,8 @@ const Personal = () => {
     setSelectedPersonal(person);
     setFormData({
       documento: person.documento,
-      nombre: person.nombre,
-      apellido: person.apellido,
+      nombre: person.nombres,
+      apellido: person.apellidos,
       fechaNacimiento: person.fechaNacimiento,
       genero: person.genero,
       centro: person.centro,
@@ -554,10 +554,10 @@ const Personal = () => {
 
   // Filtrar personal basado en la búsqueda
   const filteredPersonal = personal.filter(person => 
-    person.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    person.apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    person.documento.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    person.correo.toLowerCase().includes(searchTerm.toLowerCase())
+    (person?.nombres || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (person?.apellidos || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (person?.documento || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (person?.correo || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Función para obtener el nombre legible de ubicación
@@ -577,6 +577,14 @@ const Personal = () => {
   // Función para cambiar tab
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
+  };
+
+  const getEstadoColor = (estado) => {
+    return estado === 'activo' ? 'success' : 'error';
+  };
+
+  const getSexoColor = (estado) => {
+    return estado === 'FEMENINO' ? 'error' : 'info';
   };
 
   return (
@@ -716,8 +724,11 @@ const Personal = () => {
                         }}
                       >
                         <MenuItem value="">Seleccionar género</MenuItem>
-                        <MenuItem value="masculino">Masculino</MenuItem>
-                        <MenuItem value="femenino">Femenino</MenuItem>
+                        {Array.isArray(sexosD) && sexosD.map(sexo => (
+                        <MenuItem key={sexo.parameterid} value={sexo.parameterid}>
+                              {sexo.value1 || ''}
+                          </MenuItem>
+                        ))}
                       </Select>
                     </FormControl>
                   </ResponsiveField>
@@ -737,6 +748,7 @@ const Personal = () => {
                         value={formData.centro}
                         onChange={(e) => handleInputChange('centro', e.target.value)}
                         displayEmpty
+                        defaultValue="1"
                         sx={{
                           '& .MuiSelect-select': {
                             color: formData.centro ? '#000' : '#999'
@@ -744,9 +756,9 @@ const Personal = () => {
                         }}
                       >
                         <MenuItem value="">Seleccionar centro</MenuItem>
-                        {centros.map(centro => (
-                          <MenuItem key={centro.value} value={centro.value}>
-                            {centro.label}
+                        {Array.isArray(centrosD) && centrosD.map(centro => (
+                        <MenuItem key={centro.id} value={centro.id}>
+                              {centro.nombre || ''}
                           </MenuItem>
                         ))}
                       </Select>
@@ -1147,7 +1159,8 @@ const Personal = () => {
                   <TableHead>
                     <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                       <TableCell><strong>Documento</strong></TableCell>
-                      <TableCell><strong>Nombre Completo</strong></TableCell>
+                      <TableCell><strong>Nombres</strong></TableCell>
+                      <TableCell><strong>Sexo</strong></TableCell>
                       <TableCell><strong>Centro</strong></TableCell>
                       <TableCell><strong>Tipo</strong></TableCell>
                       <TableCell><strong>Estatus</strong></TableCell>
@@ -1168,13 +1181,22 @@ const Personal = () => {
                       filteredPersonal.map((person) => (
                         <TableRow key={person.id} hover>
                           <TableCell>{person.documento}</TableCell>
-                          <TableCell>{person.nombre} {person.apellido}</TableCell>
-                          <TableCell>{getCentroTexto(person.centro)}</TableCell>
-                          <TableCell sx={{ textTransform: 'capitalize' }}>{person.tipo}</TableCell>
+                          <TableCell>{person.nombres} {person.apellidos}</TableCell>
                           <TableCell>
                             <Chip
-                              label={person.estatus === 'activo' ? 'Activo' : person.estatus === 'inactivo' ? 'Inactivo' : 'En Licencia'}
-                              color={person.estatus === 'activo' ? 'success' : person.estatus === 'inactivo' ? 'default' : 'warning'}
+                              label={person.sexo === 'MASCULINO' ? 'M' : person.sexo === 'FEMENINO' ? 'F' : '-'}
+                              color={getSexoColor(person.sexo)}
+                              size="small"
+                              sx={{ fontWeight: 'bold', textTransform: 'capitalize' }}
+                            />
+                          </TableCell>
+
+                          <TableCell>{person.nombreCentro}</TableCell>
+                          <TableCell>{person.tipo}</TableCell>
+                          <TableCell>
+                            <Chip
+                              label={person.estado === 'activo' ? 'Activo' : person.estado === 'inactivo' ? 'Inactivo' : 'En Licencia'}
+                              color={getEstadoColor(person.estado)}
                               size="small"
                               sx={{ fontWeight: 'bold', textTransform: 'capitalize' }}
                             />
@@ -1361,11 +1383,12 @@ const Personal = () => {
                         }}
                       >
                         <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
-                        {centros.map(centro => (
-                          <MenuItem key={centro.value} value={centro.value}>
-                            {centro.label}
+                        {Array.isArray(centrosD) && centrosD.map(centro => (
+                        <MenuItem key={centro.id} value={centro.id}>
+                              {centro.nombre || ''}
                           </MenuItem>
                         ))}
+
                       </Select>
                     </FormControl>
                   </ResponsiveField>

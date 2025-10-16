@@ -609,6 +609,60 @@ export const centrosService = {
       throw error;
     }
   },
+  getSystemParameterId: async (id = 1) => {
+    try {
+      console.log('🌐 Llamando a la API de SystemParameter por ID...', id);
+
+      const url = `${process.env.REACT_APP_API_URL}/SystemParameter/${id}`;
+      console.log('🔗 URL:', url);
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const rawData = await response.json();
+      console.log('✅ Datos de SystemParameter recibidos:', rawData);
+
+      // Mapeamos los campos del backend a los campos del frontend
+      const mappedData = {
+        // IDs y referencias
+        parameterid: rawData.parameterid,
+        groupid: rawData.groupid,
+
+        // Información del SystemParameter
+        value1: rawData.value1 || '',
+        value2: rawData.value2 || '',
+        parentParameterId: rawData.parentParameterId,
+               
+        // Auditoría
+        createdAt: rawData.createdAt ? format(new Date(rawData.createdAt), 'dd/MM/yyyy HH:mm:ss zzzz') : null,
+        createdBy: rawData.createdBy,
+        updatedAt: rawData.updatedAt,
+        updatedBy: rawData.updatedBy,
+        isDeleted: rawData.isDeleted
+      };
+
+      return {
+        data: mappedData,
+        status: 'success'
+      };
+
+    } catch (error) {
+      console.error('❌ Error completo:', error);
+      console.error('❌ Error message:', error.message);
+
+      if (error.code === 'ERR_NETWORK') {
+        console.error('🚫 ERROR DE RED: Posible problema de CORS o servidor no disponible');
+      }
+      if (error.message.includes('CORS')) {
+        console.error('🚫 ERROR DE CORS: El servidor debe permitir origen del frontend');
+      }
+
+      throw error;
+    }
+  },
 
 };
 

@@ -1,28 +1,87 @@
 import { api } from '../utils/apiClient';
 import { API_ENDPOINTS } from '../constants/api';
 
+
 // Servicio para el manejo de personal médico y administrativo
 export const staffService = {
   // Obtener todo el personal con filtros
   getAll: async (params = {}) => {
-    const queryParams = {
-      page: params.page || 1,
-      limit: params.limit || 10,
-      search: params.search || '',
-      center: params.center || '',
-      role: params.role || '',
-      status: params.status || '',
-      type: params.type || '', // medico, enfermero, administrativo
-      sortBy: params.sortBy || 'createdAt',
-      sortOrder: params.sortOrder || 'desc'
-    };
+      try {
+        console.log('🌐 Obteniendo todos los personales...');
+  
+        const url = `${process.env.REACT_APP_API_URL}/Personal`;
+        console.log('🔗 URL:', url);
+  
+        const response = await fetch(url);
+  
+        if(!response.ok){
+          throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
+  
+        const rawData = await response.json();
+        console.log('✅ Datos de Personal recibidos:', rawData);
+        console.log('✅ Número de Personal:', rawData.length);
+  
+        //Filtrar solo recusros no eliminados (isDeletd : false)
+        const personalActivos = rawData.filter(personal => personal.isDeleted === false);
+        console.log('✅ Personal activos (isDeleted: false):', personalActivos.length);
+  
+        //Mapeamos los campos del backend a los campos dell frontend
+        const mappedData = personalActivos.map(personal => ({
+          //IDs y referencias
+          id: personal.personalid,
+          personalid: personal.personalid,
+          centroId: personal.centroId,
+          tipoTrabajo: personal.tipoTrabajo,
 
-    const cleanParams = Object.fromEntries(
-      Object.entries(queryParams).filter(([_, value]) => value !== '')
-    );
+          //Información del personal
+          documento: personal.documento,
+          nombres: personal.nombres,
+          apellidos: personal.apellidos,
+          genero : personal.genero,
 
-    return await api.get(API_ENDPOINTS.STAFF.BASE, { params: cleanParams });
-  },
+          correo: personal.correo,
+          pais: personal.pais,
+          departamento: personal.departamento,
+          provincia: personal.provincia,
+          distrito: personal.distrito,
+         
+          // Estado
+          estado: personal.estado ? 'activo' : 'inactivo',
+          status: personal.estado,
+                    
+          // Auditoría
+          createdAt: personal.createdAt,
+          createdBy: personal.createdBy,
+          updatedAt: personal.updatedAt,
+          updatedBy: personal.updatedBy,
+          isDeleted: personal.isDeleted
+  
+        }));
+        //ordenamos alfabeticamente por nombre
+        const sortedData = mappedData.sort((a,b) => 
+          a.nombres.toLowerCase().localeCompare(b.nombres.toLowerCase())
+        );
+  
+        return {
+          data: sortedData,
+          status: 'success'
+        };
+
+      } catch (error) {
+        console.error('❌ Error completo:', error);
+        console.error('❌ Error message:', error.message);
+  
+        if (error.code === 'ERR_NETWORK') {
+          console.error('🚫 ERROR DE RED: Posible problema de CORS o servidor no disponible');
+        }
+        if (error.message.includes('CORS')) {
+          console.error('🚫 ERROR DE CORS: El servidor debe permitir origen del frontend');
+        }
+  
+        throw error;
+      }
+    },
 
   // Obtener personal por ID
   getById: async (id) => {
