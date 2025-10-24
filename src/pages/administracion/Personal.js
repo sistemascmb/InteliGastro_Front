@@ -43,6 +43,83 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { staffService } from '../../services/staffService';
 import { centrosService } from '../../services/centrosService';
+import { ubigeoService } from '../../services/ubigeoService';
+
+// Componente para mostrar el valor de un parámetro
+const ParametroTexto = ({ id }) => {
+  const [valor, setValor] = useState('');
+
+  useEffect(() => {
+    const cargarParametro = async () => {
+      if (!id) {
+        setValor('');
+        return;
+      }
+
+      try {
+        // Si id es un número, lo usamos directamente
+        if (id && !isNaN(id)) {
+          try {
+            const response = await centrosService.getSystemParameterId(id);
+            if (response?.data?.value1) {
+              setValor(response.data.value1);
+              return;
+            }
+          } catch (error) {
+            console.error(`Error al obtener parámetro con ID ${id}:`, error);
+          }
+        }
+
+        // Si id es texto, intentamos obtener el ID numérico correspondiente
+        const parametrosMap = {
+          estado: 10006,    // Estados (activo/inactivo)
+          genero: 10000,    // Géneros
+          titulo: 10009,    // Títulos
+          tipoTrabajo: 10003, // Tipos de trabajo
+          pais: 1,         // Países
+          departamento: 2,  // Departamentos
+        };
+
+        // Intentamos cargar todos los parámetros del tipo correspondiente
+        for (const [tipo, parametroId] of Object.entries(parametrosMap)) {
+          try {
+            let response;
+            if (tipo === 'departamento') {
+              response = await centrosService.getAllSystemParameterIdRest(parametroId);
+            } else {
+              response = await centrosService.getAllSystemParameterId(parametroId);
+            }
+
+            const parametros = response.data || [];
+            const parametro = parametros.find(p => {
+              if (!p || !p.value1) return false;
+              const matchValue = p.value1.toLowerCase() === (id || '').toLowerCase();
+              const matchId = p.id && id ? p.id.toString() === id.toString() : false;
+              return matchValue || matchId;
+            });
+
+            if (parametro) {
+              setValor(parametro.value1);
+              return;
+            }
+          } catch (innerError) {
+            console.error(`Error al cargar parámetros de tipo ${tipo}:`, innerError);
+          }
+        }
+
+        // Si no encontramos el parámetro en ninguna lista, mostramos el valor original
+        setValor(id);
+      } catch (error) {
+        console.error('Error al obtener parámetro:', error);
+        setValor(id); // En caso de error, mostramos el valor original
+      }
+    };
+
+    cargarParametro();
+  }, [id]);
+
+  return valor || 'No especificado';
+};
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
@@ -110,7 +187,18 @@ const Personal = () => {
   const [error, setError] = useState('');
   const [sexosD, setGenerosCargados] = useState([]);
   const [centrosD, setCentrosCargados] = useState([]);
-
+  const [EstadoD, setEstadoCargados] = useState([]);
+  const [TituloD, setTituloCargados] = useState([]);
+  const [TipoTrabajoD, setTipoTrabajoCargados] = useState([]);
+  const [paisesD, setPaisesCargados] = useState([]);
+  const [departamentosD, setDepartamentosCargados] = useState([]);
+  const [provinciasD, setProvinciasCargados] = useState([]);
+  const [distritosD, setDistritosCargados] = useState([]);
+  const [distritosDisponibles, setDistritosDisponibles] = useState([]);
+   const [provinciasDisponibles, setProvinciasDisponibles] = useState([]);
+   const [provinciasEditDisponibles, setProvinciasEditDisponibles] = useState([]);
+    const [distritosEditDisponibles, setDistritosEditDisponibles] = useState([]);
+   
   // Datos simulados de centros (normalmente vendrían del backend)
 
   // Estados para modales
@@ -143,37 +231,180 @@ const cargarGeneros = async () => {
     }
   };
 
+  const cargarEstados = async () => {
+    try {
+      const responseSystemParameter = await centrosService.getAllSystemParameterId(10006);
+      console.log('✅ Respuesta de Géneros:', responseSystemParameter);
+      setEstadoCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                       responseSystemParameter?.data || []);
+    } catch (error) {
+      console.error('❌ Error al cargar estados:', error);
+      setError(`Error al cargar estados: ${error.message}`);
+    }
+  };
+
+  const cargarTitulos = async () => {
+    try {
+      const responseSystemParameter = await centrosService.getAllSystemParameterId(10009);
+      console.log('✅ Respuesta de Titulos:', responseSystemParameter);
+      setTituloCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                       responseSystemParameter?.data || []);
+    } catch (error) {
+      console.error('❌ Error al cargar titulos:', error);
+      setError(`Error al cargar titulos: ${error.message}`);
+    }
+  };
+  const tipoTrabajo = async () => {
+    try {
+      const responseSystemParameter = await centrosService.getAllSystemParameterId(10003);
+      console.log('✅ Respuesta de tipoTrabajo:', responseSystemParameter);
+      setTipoTrabajoCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                       responseSystemParameter?.data || []);
+    } catch (error) {
+      console.error('❌ Error al cargar tipoTrabajo:', error);
+      setError(`Error al cargar tipoTrabajo: ${error.message}`);
+    }
+  };
+const cargarPaises = async () => {
+    try {
+      const responseSystemParameter = await centrosService.getAllSystemParameterId(1);
+      console.log('✅ Respuesta de países:', responseSystemParameter);
+      setPaisesCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                       responseSystemParameter?.data || []);
+    } catch (error) {
+      console.error('❌ Error al cargar países:', error);
+      setError(`Error al cargar países: ${error.message}`);
+    }
+  };
+
+const cargarDepartamentos = async () => {
+    try {
+      const responseSystemParameter = await centrosService.getAllSystemParameterIdRest(2);
+      console.log('✅ Respuesta de Departamentos:', responseSystemParameter);
+      setDepartamentosCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                       responseSystemParameter?.data || []);
+    } catch (error) {
+      console.error('❌ Error al cargar Departamentos:', error);
+      setError(`Error al cargar Departamentos: ${error.message}`);
+    }
+  };
+
+  const cargarProvincias = async (departamentoId) => {
+      if (!departamentoId) {
+        console.log('No hay departamento seleccionado para cargar provincias');
+        setProvinciasCargados([]);
+        return;
+      }
+  
+      try {
+        console.log('🔄 Cargando provincias para departamento:', departamentoId);
+        const responseSystemParameter = await centrosService.getAllSystemParameterIdParent(2, departamentoId);
+        
+        if (!responseSystemParameter) {
+          console.error('❌ No se recibió respuesta del servidor');
+          setError('Error al cargar provincias: No se recibió respuesta del servidor');
+          setProvinciasCargados([]);
+          return;
+        }
+  
+        const provinciasData = Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                             responseSystemParameter?.data || [];
+        
+        console.log('✅ Provincias cargadas:', provinciasData);
+        setProvinciasCargados(provinciasData);
+        
+        // Limpiar error si existe
+        if (error && error.includes('Error al cargar provincias')) {
+          setError('');
+        }
+      } catch (error) {
+        console.error('❌ Error al cargar provincias:', error);
+        setError(`Error al cargar provincias: ${error.message}`);
+        setProvinciasCargados([]);
+      }
+    };
+
+    const cargarDistritos = async (provinciaId) => {
+        if (!provinciaId) {
+          console.log('No hay provincia seleccionado para cargar distrito');
+          setDistritosCargados([]);
+          return;
+        }
+    
+        try {
+          console.log('🔄 Cargando distritos para provincia:', provinciaId);
+          const responseSystemParameter = await centrosService.getAllSystemParameterIdParent(2, provinciaId);
+          
+          if (!responseSystemParameter) {
+            console.error('❌ No se recibió respuesta del servidor');
+            setError('Error al cargar distritos: No se recibió respuesta del servidor');
+            setDistritosCargados([]);
+            return;
+          }
+    
+          const distritosData = Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                               responseSystemParameter?.data || [];
+          
+          console.log('✅ Distritos cargadas:', distritosData);
+          setDistritosCargados(distritosData);
+          
+          // Limpiar error si existe
+          if (error && error.includes('Error al cargar distritos')) {
+            setError('');
+          }
+        } catch (error) {
+          console.error('❌ Error al cargar distritos:', error);
+          setError(`Error al cargar distritos: ${error.message}`);
+          setDistritosCargados([]);
+        }
+      };
+
   // Estado para el formulario
   const [formData, setFormData] = useState({
-    // Información
+    centroId: '',
     documento: '',
-    nombre: '',
-    apellido: '',
-    fechaNacimiento: '',
+    nombres: '',
+    apellidos: '',
+    fecNac: '',
     genero: '',
-    sexo:'',
-    // Centro
-    centro: '',
-    // Información del Personal
-    estatus: '',
+    telefono: '',
+    celular: '',
+    correo: '',
+    direccion: '',
+    estado: '10007', // activo
     titulo: '',
     grado: '',
-    numeroLicencia: '',
-    tipo: '',
-    fechaContratacion: '',
-    fechaCese: '',
-    // Dirección
-    direccion: '',
-    codPostal: '',
-    pais: '',
+    nLicencia: '',
+    tipoTrabajo: '',
     departamento: '',
     provincia: '',
     distrito: '',
-    // Información Personal
-    telefono: '',
-    celular: '',
-    correo: ''
+    pais: '',
+    tipoDoc: '',
   });
+
+  const [editFormData, setEditFormData] = useState({
+      centroId: '',
+      documento: '',
+      nombres: '',
+      apellidos: '',
+      fecNac: '',
+      genero: '',
+      telefono: '',
+      celular: '',
+      correo: '',
+      direccion: '',
+      estado: '10007', // activo
+      titulo: '',
+      grado: '',
+      nLicencia: '',
+      tipoTrabajo: '',
+      departamento: '',
+      provincia: '',
+      distrito: '',
+      pais: '',
+      tipoDoc: '',
+    });
 
   const [errors, setErrors] = useState({});
   
@@ -200,14 +431,15 @@ const cargarGeneros = async () => {
             const parTipoTrabj = await centrosService.getSystemParameterId(persona.tipoTrabajo);
             const sexoTrabj = await centrosService.getSystemParameterId(persona.genero);
 
-            
+            // Transformar el estado de texto a ID numérico
+            const estadoNumerico = persona.estado === 'activo' ? '10007' : '10008';
             
             return {
               ...persona,
               nombreCentro: centroDatos.data.nombre,
               tipo: parTipoTrabj.data.value1,
               sexo: sexoTrabj.data.value1,
-
+              estado: estadoNumerico // Usar el ID numérico en lugar del texto
             };
           } catch (error) {
             console.error(`Error al obtener centro ${persona.centroId}:`, error);
@@ -215,7 +447,8 @@ const cargarGeneros = async () => {
               ...persona,
               nombreCentro: 'Centro no encontrado',
               tipo: 'Tipo no especificado',
-              sexo: 'No especificado'
+              sexo: 'No especificado',
+              estado: '10007' // Por defecto activo si hay error
             };
           }
         })
@@ -238,6 +471,11 @@ const cargarGeneros = async () => {
     loadPersonal();
     cargarGeneros();
     cargarCentros();
+    cargarEstados();
+    cargarTitulos();
+    tipoTrabajo();
+    cargarPaises();
+    cargarDepartamentos();
   }, []);
 
   // Datos para cascading dropdowns (igual que en Centros)
@@ -262,192 +500,380 @@ const cargarGeneros = async () => {
   // Función para limpiar el formulario
   const clearForm = () => {
     setFormData({
+      centroId: '',
       documento: '',
-      nombre: '',
-      apellido: '',
-      fechaNacimiento: '',
+      nombres: '',
+      apellidos: '',
+      fecNac: '',
       genero: '',
-      centro: '',
-      estatus: '',
+      telefono: '',
+      celular: '',
+      correo: '',
+      direccion: '',
+      estado: '10007', // activo
       titulo: '',
       grado: '',
-      numeroLicencia: '',
-      tipo: '',
-      fechaContratacion: '',
-      fechaCese: '',
-      direccion: '',
-      codPostal: '',
-      pais: '',
+      nLicencia: '',
+      tipoTrabajo: '',
       departamento: '',
       provincia: '',
       distrito: '',
+      pais: '',
+      tipoDoc: '',
+    });
+    setErrors({});
+  };
+
+  // Función para limpiar el formulario de edición
+  const clearEditForm = () => {
+    setEditFormData({
+      centroId: '',
+      documento: '',
+      nombres: '',
+      apellidos: '',
+      fecNac: '',
+      genero: '',
       telefono: '',
       celular: '',
-      correo: ''
+      correo: '',
+      direccion: '',
+      estado: '10007', // activo
+      titulo: '',
+      grado: '',
+      nLicencia: '',
+      tipoTrabajo: '',
+      departamento: '',
+      provincia: '',
+      distrito: '',
+      pais: '',
+      tipoDoc: '',
     });
     setErrors({});
   };
 
   // Función genérica para manejar cambios en campos de texto
   const handleInputChange = useCallback((field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    // Limpiar error si existe
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
-    }
-  }, [errors]);
+      setFormData(prev => ({ ...prev, [field]: value }));
+      // Limpiar error si existe
+      if (errors[field]) {
+        setErrors(prev => ({ ...prev, [field]: '' }));
+      }
+    }, [errors]);
 
-  // Función para manejar cambios en selects con lógica de cascada
-  const handleSelectChangeWithCascade = useCallback((field, value) => {
-    // Lógica especial para cascading dropdowns
-    if (field === 'pais') {
-      setFormData(prev => ({
-        ...prev,
-        [field]: value,
-        departamento: '',
-        provincia: '',
-        distrito: ''
-      }));
-    } else if (field === 'departamento') {
-      setFormData(prev => ({
-        ...prev,
-        [field]: value,
-        provincia: '',
-        distrito: ''
-      }));
-    } else if (field === 'provincia') {
-      setFormData(prev => ({
-        ...prev,
-        [field]: value,
-        distrito: ''
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [field]: value
-      }));
-    }
+  // Función genérica para manejar cambios en campos de texto (formulario editar)
+    const handleEditInputChange = useCallback((field, value) => {
+      setEditFormData(prev => ({ ...prev, [field]: value }));
+      // Limpiar error si existe
+      if (errors[field]) {
+        setErrors(prev => ({ ...prev, [field]: '' }));
+      }
+    }, [errors]);
+
+  // Función para manejar cambios en selects con lógica de cascada (crear)
+    const handleSelectChangeWithCascade = useCallback((field, value) => {
+      // Lógica especial para cascading dropdowns UBIGEO
+      if (field === 'pais') {
+        setFormData(prev => ({
+          ...prev,
+          [field]: value,
+          departamento: '',
+          provincia: '',
+          distrito: ''
+        }));
+        setProvinciasDisponibles([]);
+        setDistritosDisponibles([]);
+      } 
+      
+      if (field === 'departamento') {
+        setFormData(prev => ({
+          ...prev,
+          [field]: value,
+          provincia: '',
+          distrito: ''
+        }));
+        
+        if (value) {
+          cargarProvincias(value);
+        } else {
+          setProvinciasCargados([]);
+        }
+        setDistritosDisponibles([]);
+      } else if (field === 'provincia') {
+        setFormData(prev => ({
+          ...prev,
+          [field]: value,
+          distrito: ''
+        }));
+        if (value) {
+          cargarDistritos(value);
+        } else {
+          setDistritosCargados([]);
+        }
+        setDistritosDisponibles([]);
+        // Cargar distritos de la provincia seleccionada
+        const nuevosDistritos = ubigeoService.getDistritosByProvincia(parseInt(value));
+        setDistritosDisponibles(nuevosDistritos);
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          [field]: value
+        }));
+      }
+  
+      // Limpiar error si existe
+      if (errors[field]) {
+        setErrors(prev => ({
+          ...prev,
+          [field]: ''
+        }));
+      }
+    }, [errors]);
+
+    const handleEditSelectChangeWithCascade = useCallback(async (field, value) => {
+        try {
+          // Lógica especial para cascading dropdowns UBIGEO
+          if (field === 'pais') {
+            setEditFormData(prev => ({
+              ...prev,
+              [field]: value,
+              departamento: '',
+              provincia: '',
+              distrito: ''
+            }));
+            setProvinciasEditDisponibles([]);
+            setDistritosEditDisponibles([]);
+          } else if (field === 'departamento') {
+            setEditFormData(prev => ({
+              ...prev,
+              [field]: value?.toString() || '',
+              provincia: '',
+              distrito: ''
+            }));
     
-    // Limpiar error si existe
-    if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: ''
-      }));
-    }
-  }, [errors]);
-
+            // Cargar provincias del departamento seleccionado usando centrosService
+            if (value) {
+              const responseProvincias = await centrosService.getAllSystemParameterIdParent(2, value);
+              const provinciasData = Array.isArray(responseProvincias) ? responseProvincias : responseProvincias?.data || [];
+              setProvinciasEditDisponibles(provinciasData);
+            } else {
+              setProvinciasEditDisponibles([]);
+            }
+            setDistritosEditDisponibles([]);
+          } else if (field === 'provincia') {
+            setEditFormData(prev => ({
+              ...prev,
+              [field]: value,
+              distrito: ''
+            }));
+    
+            // Cargar distritos de la provincia seleccionada usando centrosService
+            if (value) {
+              const responseDistritos = await centrosService.getAllSystemParameterIdParent(2, value);
+              const distritosData = Array.isArray(responseDistritos) ? responseDistritos : responseDistritos?.data || [];
+              setDistritosEditDisponibles(distritosData);
+            } else {
+              setDistritosEditDisponibles([]);
+            }
+          } else {
+            setEditFormData(prev => ({
+              ...prev,
+              [field]: value
+            }));
+          }
+    
+          // Limpiar error si existe
+          if (errors[field]) {
+            setErrors(prev => ({
+              ...prev,
+              [field]: ''
+            }));
+          }
+        } catch (error) {
+          console.error('Error al cargar datos de ubicación:', error);
+          setError('Error al cargar datos de ubicación');
+        }
+      }, [errors]);
   // Validación del formulario
   const validateForm = () => {
     const newErrors = {};
-    
-    // Información
+
+    // Información del Centro
     if (!formData.documento.trim()) {
       newErrors.documento = 'Documento es obligatorio';
     }
-    if (!formData.nombre.trim()) {
-      newErrors.nombre = 'Nombre es obligatorio';
+    if (!formData.nombres.trim()) {
+      newErrors.nombres = 'Nombres es obligatoria';
     }
-    if (!formData.apellido.trim()) {
-      newErrors.apellido = 'Apellido es obligatorio';
-    }
-    if (!formData.fechaNacimiento) {
-      newErrors.fechaNacimiento = 'Fecha de nacimiento es obligatoria';
-    }
-    if (!formData.genero) {
-      newErrors.genero = 'Género es obligatorio';
-    }
-    
-    // Centro
-    if (!formData.centro) {
-      newErrors.centro = 'Centro es obligatorio';
-    }
-    
-    // Información del Personal
-    if (!formData.estatus) {
-      newErrors.estatus = 'Estatus es obligatorio';
-    }
-    if (!formData.titulo.trim()) {
-      newErrors.titulo = 'Título es obligatorio';
-    }
-    if (!formData.grado) {
-      newErrors.grado = 'Grado es obligatorio';
-    }
-    if (!formData.numeroLicencia.trim()) {
-      newErrors.numeroLicencia = 'Número de licencia es obligatorio';
-    }
-    if (!formData.tipo) {
-      newErrors.tipo = 'Tipo es obligatorio';
-    }
-    if (!formData.fechaContratacion) {
-      newErrors.fechaContratacion = 'Fecha de contratación es obligatoria';
-    }
-    
-    // Dirección
-    if (!formData.direccion.trim()) {
-      newErrors.direccion = 'Dirección es obligatoria';
-    }
-    if (!formData.codPostal.trim()) {
-      newErrors.codPostal = 'Código postal es obligatorio';
-    }
-    if (!formData.pais) {
-      newErrors.pais = 'País es obligatorio';
-    }
-    if (!formData.departamento) {
-      newErrors.departamento = 'Departamento es obligatorio';
-    }
-    if (!formData.provincia) {
-      newErrors.provincia = 'Provincia es obligatoria';
-    }
-    if (!formData.distrito) {
-      newErrors.distrito = 'Distrito es obligatorio';
-    }
-    
-    // Información Personal
-    if (!formData.telefono.trim()) {
-      newErrors.telefono = 'Teléfono es obligatorio';
+    if (!formData.apellidos.trim()) {
+      newErrors.apellidos = 'Apellidos es obligatoria';
     }
     if (!formData.celular.trim()) {
       newErrors.celular = 'Celular es obligatorio';
     }
-    if (!formData.correo.trim()) {
-      newErrors.correo = 'Correo es obligatorio';
-    } else if (!/\S+@\S+\.\S+/.test(formData.correo)) {
-      newErrors.correo = 'Correo electrónico no válido';
+   
+    // Dirección del Centro
+    if (!formData.direccion.trim()) {
+      newErrors.direccion = 'La dirección es obligatoria';
+    }
+    if (!formData.telefono.trim()) {
+      newErrors.telefono = 'Teléfono es obligatorio';
+    }
+    // Validación del estado
+    if (!formData.estado || !['10007', '10008'].includes(formData.estado)) {
+      newErrors.estado = 'Estado debe ser un valor válido';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  const validateEditForm = () => {
+    const newErrors = {};
+
+    // Información del Centro
+    if (!editFormData.documento.trim()) {
+      newErrors.documento = 'Documento es obligatorio';
+    }
+    if (!editFormData.nombres.trim()) {
+      newErrors.nombres = 'Nombres es obligatoria';
+    }
+    if (!editFormData.apellidos.trim()) {
+      newErrors.apellidos = 'Apellidos es obligatoria';
+    }
+    if (!editFormData.celular.trim()) {
+      newErrors.celular = 'Celular es obligatorio';
+    }
+   
+    // Dirección del Centro
+    if (!editFormData.direccion.trim()) {
+      newErrors.direccion = 'La dirección es obligatoria';
+    }
+    if (!editFormData.telefono.trim()) {
+      newErrors.telefono = 'Teléfono es obligatorio';
+    }
+    // Validación del estado
+    if (!editFormData.estado || !['10007', '10008'].includes(editFormData.estado.toString())) {
+      newErrors.estado = 'Estado debe ser un valor válido';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
   // Funciones para manejar modales
-  const handleOpenEditModal = (person) => {
+  const handleOpenEditModal = async (person) => {
     setSelectedPersonal(person);
-    setFormData({
-      documento: person.documento,
-      nombre: person.nombres,
-      apellido: person.apellidos,
-      fechaNacimiento: person.fechaNacimiento,
-      genero: person.genero,
-      centro: person.centro,
-      estatus: person.estatus,
-      titulo: person.titulo,
-      grado: person.grado,
-      numeroLicencia: person.numeroLicencia,
-      tipo: person.tipo,
-      fechaContratacion: person.fechaContratacion,
-      fechaCese: person.fechaCese,
-      direccion: person.direccion,
-      codPostal: person.codPostal,
-      pais: person.pais,
-      departamento: person.departamento,
-      provincia: person.provincia,
-      distrito: person.distrito,
-      telefono: person.telefono,
-      celular: person.celular,
-      correo: person.correo
-    });
-    setOpenEditModal(true);
+
+    try {
+          // Inicializar editFormData con los valores del centro
+          const initialFormData = {
+            centroId: person.centroId,
+            documento: person.documento,
+            nombres: person.nombres,
+            apellidos: person.apellidos,
+            fecNac: person.fecNac ? new Date(person.fecNac).toISOString().split('T')[0] : '',
+            genero: person.genero,
+            telefono: person.telefono,
+            celular: person.celular,
+            correo: person.correo,
+            direccion: person.direccion,
+            estado: person.estado || '10007', // Usar 10007 como valor por defecto (activo)
+            titulo: person.titulo,
+            grado: person.grado,
+            nLicencia: person.nLicencia,
+            tipoTrabajo: person.tipoTrabajo,
+            departamento: '',  // Se establecerá después de la validación
+            provincia: '',     // Se establecerá después de cargar las provincias
+            distrito: '',      // Se establecerá después de cargar los distritos
+            pais: person.pais || '',
+            tipoDoc: person.tipoDoc
+          };
+          setEditFormData(initialFormData);
+    
+          // Verificar si el departamento existe en departamentosD y obtener el ID correcto
+          let departamentoId = '';
+          if (person.departamento) {
+            const departamentoStr = person.departamento.toString();
+            const departamentoEncontrado = departamentosD.find(dep => 
+              dep.parameterid?.toString() === departamentoStr
+            );
+    
+            if (departamentoEncontrado) {
+              departamentoId = departamentoEncontrado.parameterid?.toString();
+              console.log('Departamento encontrado:', departamentoEncontrado);
+              initialFormData.departamento = departamentoId;
+    
+              // Cargar provincias
+              const responseProvincias = await centrosService.getAllSystemParameterIdParent(2, departamentoId);
+              const provinciasData = Array.isArray(responseProvincias) ? responseProvincias : responseProvincias?.data || [];
+              setProvinciasEditDisponibles(provinciasData);
+    
+              if (person.provincia) {
+                const provinciaStr = person.provincia.toString();
+                const provinciaEncontrada = provinciasData.find(prov => 
+                  prov.parameterid?.toString() === provinciaStr
+                );
+    
+                if (provinciaEncontrada) {
+                  initialFormData.provincia = provinciaEncontrada.parameterid;
+    
+                  // Cargar distritos
+                  const responseDistritos = await centrosService.getAllSystemParameterIdParent(2, provinciaEncontrada.parameterid);
+                  const distritosData = Array.isArray(responseDistritos) ? responseDistritos : responseDistritos?.data || [];
+                  setDistritosEditDisponibles(distritosData);
+    
+                  if (person.distrito) {
+                    const distritoStr = person.distrito.toString();
+                    const distritoEncontrado = distritosData.find(dist => 
+                      dist.parameterid?.toString() === distritoStr
+                    );
+    
+                    if (distritoEncontrado) {
+                      initialFormData.distrito = distritoEncontrado.parameterid;
+                    } else {
+                      console.warn('Distrito no encontrado:', {
+                        distrito: person.distrito,
+                        distritoStr,
+                        opcionesDisponibles: distritosData.map(d => d.parameterid)
+                      });
+                    }
+                  }
+                } else {
+                  console.warn('Provincia no encontrada:', {
+                    provincia: person.provincia,
+                    provinciaStr,
+                    opcionesDisponibles: provinciasData.map(p => p.parameterid)
+                  });
+                  setDistritosEditDisponibles([]);
+                }
+              } else {
+                setDistritosEditDisponibles([]);
+              }
+            } else {
+              console.warn('Departamento no encontrado:', {
+                departamento: person.departamento,
+                departamentoStr,
+                opcionesDisponibles: departamentosD.map(d => d.parameterid)
+              });
+              setProvinciasEditDisponibles([]);
+              setDistritosEditDisponibles([]);
+            }
+          } else {
+            setProvinciasEditDisponibles([]);
+            setDistritosEditDisponibles([]);
+          }
+    
+          // Asegurarnos de que el estado se mantenga como ID numérico
+    initialFormData.estado = person.estado || '10007';
+
+    // Actualizar el formulario con todos los valores validados
+    setEditFormData(initialFormData);
+  } catch (error) {
+    console.error('Error al cargar datos de ubicación:', error);
+    setError('Error al cargar datos de ubicación');
+    setProvinciasEditDisponibles([]);
+    setDistritosEditDisponibles([]);
+  }
+  setOpenEditModal(true);
   };
 
   const handleCloseEditModal = () => {
@@ -478,42 +904,53 @@ const cargarGeneros = async () => {
 
   // Función para crear personal
   const handleCreatePersonal = async (e) => {
-    e.preventDefault();
-
-    if (validateForm()) {
-      try {
-        setLoading(true);
-        console.log('📤 Creando personal...');
-
-        const nuevoPersonal = await staffService.create(formData);
-        console.log('✅ Personal creado:', nuevoPersonal);
-
-        // Recargar la lista de personal
-        await loadPersonal();
-
-        clearForm();
-        // Cambiar automáticamente al tab de lista
-        setActiveTab(0);
-
-      } catch (error) {
-        console.error('❌ Error al crear personal:', error);
-        setError(`Error al crear personal: ${error.message}`);
-      } finally {
-        setLoading(false);
+      e.preventDefault();
+  
+      if (validateForm()) {
+        try {
+          setLoading(true);
+          console.log('📤 Creando Personal...');
+  
+          // Asegurarse de que estado sea un ID numérico
+          const personalData = {
+            ...formData,
+            estado: formData.estado || '10007' // Usar 10007 (activo) como valor por defecto
+          };
+  
+          const nuevoPersonal = await staffService.create(personalData);
+          console.log('✅ Personal creado:', nuevoPersonal);
+  
+          // Recargar la lista de centros
+          await loadPersonal();
+  
+          clearForm();
+          // Cambiar automáticamente al tab de lista
+          setActiveTab(0);
+  
+        } catch (error) {
+          console.error('❌ Error al crear Personal:', error);
+          setError(`Error al crear Personal: ${error.message}`);
+        } finally {
+          setLoading(false);
+        }
       }
-    }
-  };
+    };
 
   // Función para editar personal
   const handleEditPersonal = async (e) => {
     e.preventDefault();
 
-    if (validateForm()) {
+    if (validateEditForm()) {
       try {
         setLoading(true);
         console.log('📤 Editando personal...');
 
-        const personalActualizado = await staffService.update(selectedPersonal.id, formData);
+        // Asegurarse de que estado sea un ID numérico
+        const formDataToSend = {
+          ...editFormData,
+          estado: editFormData.estado === 10007 ? true : false
+        };
+        const personalActualizado = await staffService.update(selectedPersonal.id, formDataToSend);
         console.log('✅ Personal actualizado:', personalActualizado);
 
         // Recargar la lista de personal
@@ -554,25 +991,61 @@ const cargarGeneros = async () => {
 
   // Filtrar personal basado en la búsqueda
   const filteredPersonal = personal.filter(person => 
-    (person?.nombres || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (person?.apellidos || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (person?.documento || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (person?.correo || '').toLowerCase().includes(searchTerm.toLowerCase())
+    (person?.Nombres || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (person?.Apellidos || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (person?.Documento || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (person?.Correo || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Función para obtener el nombre legible de ubicación
-  const getUbicacionTexto = (person) => {
-    const provinciaObj = provincias.cajamarca?.find(p => p.value === person.provincia);
-    const distritoObj = distritos[person.provincia]?.find(d => d.value === person.distrito);
-    
-    return `${distritoObj?.label || ''}, ${provinciaObj?.label || ''}, Cajamarca`;
-  };
+  
+  const getUbicacionTexto = (personal) => {
+      return ubigeoService.formatUbicacionCompleta(
+        personal.pais,
+        personal.departamento,
+        personal.provincia,
+        personal.distrito
+      );
+    };
 
-  // Función para obtener el nombre del centro
-  const getCentroTexto = (centroValue) => {
-    const centro = centros.find(c => c.value === centroValue);
-    return centro ? centro.label : centroValue;
-  };
+    const [parametrosCache, setParametrosCache] = useState({});
+
+     const getParametroTexto = (id) => {
+       const [valor, setValor] = useState('');
+
+       useEffect(() => {
+         const cargarParametro = async () => {
+           try {
+             if (!id) return;
+             
+             // Si ya tenemos el valor en cache, lo usamos
+             if (parametrosCache[id]) {
+               setValor(parametrosCache[id]);
+               return;
+             }
+
+             const response = await centrosService.getSystemParameterId(id);
+             const nuevoValor = response.data.value1;
+             
+             // Actualizamos el cache
+             setParametrosCache(prev => ({
+               ...prev,
+               [id]: nuevoValor
+             }));
+             
+             setValor(nuevoValor);
+           } catch (error) {
+             console.error('Error al obtener parámetro:', error);
+             setValor('No especificado');
+           }
+         };
+
+         cargarParametro();
+       }, [id]);
+
+       return valor;
+     };
+
 
   // Función para cambiar tab
   const handleTabChange = (event, newValue) => {
@@ -580,7 +1053,7 @@ const cargarGeneros = async () => {
   };
 
   const getEstadoColor = (estado) => {
-    return estado === 'activo' ? 'success' : 'error';
+    return estado === '10007' ? 'success' : 'error';
   };
 
   const getSexoColor = (estado) => {
@@ -673,10 +1146,10 @@ const cargarGeneros = async () => {
                       fullWidth
                       required
                       placeholder="Ingrese el nombre"
-                      value={formData.nombre}
-                      onChange={(e) => handleInputChange('nombre', e.target.value)}
-                      error={!!errors.nombre}
-                      helperText={errors.nombre}
+                      value={formData.nombres}
+                      onChange={(e) => handleInputChange('nombres', e.target.value)}
+                      error={!!errors.nombres}
+                      helperText={errors.nombres}
                       size="small"
                     />
                   </ResponsiveField>
@@ -686,10 +1159,10 @@ const cargarGeneros = async () => {
                       fullWidth
                       required
                       placeholder="Ingrese el apellido"
-                      value={formData.apellido}
-                      onChange={(e) => handleInputChange('apellido', e.target.value)}
-                      error={!!errors.apellido}
-                      helperText={errors.apellido}
+                      value={formData.apellidos}
+                      onChange={(e) => handleInputChange('apellidos', e.target.value)}
+                      error={!!errors.apellidos}
+                      helperText={errors.apellidos}
                       size="small"
                     />
                   </ResponsiveField>
@@ -702,10 +1175,10 @@ const cargarGeneros = async () => {
                       fullWidth
                       required
                       type="date"
-                      value={formData.fechaNacimiento}
-                      onChange={(e) => handleInputChange('fechaNacimiento', e.target.value)}
-                      error={!!errors.fechaNacimiento}
-                      helperText={errors.fechaNacimiento}
+                      value={formData.fecNac}
+                      onChange={(e) => handleInputChange('fecNac', e.target.value)}
+                      error={!!errors.fecNac}
+                      helperText={errors.fecNac}
                       size="small"
                       InputLabelProps={{ shrink: true }}
                     />
@@ -743,15 +1216,15 @@ const cargarGeneros = async () => {
 
                 <FieldRow>
                   <ResponsiveField label="Seleccione el Centro" required>
-                    <FormControl fullWidth required error={!!errors.centro} size="small">
+                    <FormControl fullWidth required error={!!errors.centroId} size="small">
                       <Select
-                        value={formData.centro}
-                        onChange={(e) => handleInputChange('centro', e.target.value)}
+                        value={formData.centroId}
+                        onChange={(e) => handleInputChange('centroId', e.target.value)}
                         displayEmpty
                         defaultValue="1"
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.centro ? '#000' : '#999'
+                            color: formData.centroId ? '#000' : '#999'
                           }
                         }}
                       >
@@ -776,58 +1249,63 @@ const cargarGeneros = async () => {
                 {/* Fila 1: Estatus, Título, Grado */}
                 <FieldRow>
                   <ResponsiveField label="Estatus" required>
-                    <FormControl fullWidth required error={!!errors.estatus} size="small">
+                    <FormControl fullWidth required error={!!errors.estado} size="small">
                       <Select
-                        value={formData.estatus}
-                        onChange={(e) => handleInputChange('estatus', e.target.value)}
+                        value={formData.estado}
+                        onChange={(e) => handleInputChange('estado', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.estatus ? '#000' : '#999'
+                            color: formData.estado ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar estatus</MenuItem>
-                        <MenuItem value="activo">Activo</MenuItem>
-                        <MenuItem value="inactivo">Inactivo</MenuItem>
-                        <MenuItem value="licencia">En Licencia</MenuItem>
+                        {Array.isArray(EstadoD) && EstadoD.map(estado => (
+                        <MenuItem key={estado.parameterid} value={estado.parameterid}>
+                              {estado.value1 || ''}
+                          </MenuItem>
+                        ))}
                       </Select>
                     </FormControl>
                   </ResponsiveField>
 
                   <ResponsiveField label="Título" required>
+                    <FormControl fullWidth required error={!!errors.titulo} size="small">
+                      <Select
+                        value={formData.titulo}
+                        onChange={(e) => handleInputChange('titulo', e.target.value)}
+                        displayEmpty
+                        sx={{
+                          '& .MuiSelect-select': {
+                            color: formData.titulo ? '#000' : '#999'
+                          }
+                        }}
+                      >
+                        <MenuItem value="">Seleccionar título</MenuItem>
+                        {Array.isArray(TituloD) && TituloD.map(titulo => (
+                        <MenuItem key={titulo.parameterid} value={titulo.parameterid}>
+                              {titulo.value1 || ''}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </ResponsiveField>
+                  
+                  <ResponsiveField label="Grado" required>
                     <TextField
                       fullWidth
                       required
-                      placeholder="Ej: Doctor, Doctora, Lic."
-                      value={formData.titulo}
-                      onChange={(e) => handleInputChange('titulo', e.target.value)}
-                      error={!!errors.titulo}
-                      helperText={errors.titulo}
+                      placeholder="Ej: Bachiller, Doctora, Mg."
+                      value={formData.grado}
+                      onChange={(e) => handleInputChange('grado', e.target.value)}
+                      error={!!errors.grado}
+                      helperText={errors.grado}
                       size="small"
                     />
                   </ResponsiveField>
 
-                  <ResponsiveField label="Grado" required>
-                    <FormControl fullWidth required error={!!errors.grado} size="small">
-                      <Select
-                        value={formData.grado}
-                        onChange={(e) => handleInputChange('grado', e.target.value)}
-                        displayEmpty
-                        sx={{
-                          '& .MuiSelect-select': {
-                            color: formData.grado ? '#000' : '#999'
-                          }
-                        }}
-                      >
-                        <MenuItem value="">Seleccionar grado</MenuItem>
-                        <MenuItem value="residente">Residente</MenuItem>
-                        <MenuItem value="especialista">Especialista</MenuItem>
-                        <MenuItem value="subespecialista">Subespecialista</MenuItem>
-                        <MenuItem value="jefe_servicio">Jefe de Servicio</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </ResponsiveField>
+                  
                 </FieldRow>
 
                 {/* Fila 2: Número de Licencia, Tipo */}
@@ -837,48 +1315,48 @@ const cargarGeneros = async () => {
                       fullWidth
                       required
                       placeholder="Ej: LIC-001-2024"
-                      value={formData.numeroLicencia}
-                      onChange={(e) => handleInputChange('numeroLicencia', e.target.value)}
-                      error={!!errors.numeroLicencia}
-                      helperText={errors.numeroLicencia}
+                      value={formData.nLicencia}
+                      onChange={(e) => handleInputChange('nLicencia', e.target.value)}
+                      error={!!errors.nLicencia}
+                      helperText={errors.nLicencia}
                       size="small"
                     />
                   </ResponsiveField>
 
                   <ResponsiveField label="Tipo" required>
-                    <FormControl fullWidth required error={!!errors.tipo} size="small">
+                    <FormControl fullWidth required error={!!errors.tipoTrabajo} size="small">
                       <Select
-                        value={formData.tipo}
-                        onChange={(e) => handleInputChange('tipo', e.target.value)}
+                        value={formData.tipoTrabajo}
+                        onChange={(e) => handleInputChange('tipoTrabajo', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.tipo ? '#000' : '#999'
+                            color: formData.tipoTrabajo ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar tipo</MenuItem>
-                        <MenuItem value="medico">Médico</MenuItem>
-                        <MenuItem value="enfermero">Enfermero</MenuItem>
-                        <MenuItem value="tecnico">Técnico</MenuItem>
-                        <MenuItem value="administrativo">Administrativo</MenuItem>
-                        <MenuItem value="auxiliar">Auxiliar</MenuItem>
+                        {Array.isArray(TipoTrabajoD) && TipoTrabajoD.map(tipoTrabajo => (
+                        <MenuItem key={tipoTrabajo.parameterid} value={tipoTrabajo.parameterid}>
+                              {tipoTrabajo.value1 || ''}
+                          </MenuItem>
+                        ))}
                       </Select>
                     </FormControl>
                   </ResponsiveField>
                 </FieldRow>
 
-                {/* Fila 3: Fechas de Contratación y Cese */}
+                {/* Fila 3: Fechas de Contratación y Cese 
                 <FieldRow>
                   <ResponsiveField label="Fecha de Contratación" required>
                     <TextField
                       fullWidth
                       required
                       type="date"
-                      value={formData.fechaContratacion}
-                      onChange={(e) => handleInputChange('fechaContratacion', e.target.value)}
-                      error={!!errors.fechaContratacion}
-                      helperText={errors.fechaContratacion}
+                      value={formData.FechaContratacion}
+                      onChange={(e) => handleInputChange('FechaContratacion', e.target.value)}
+                      error={!!errors.FechaContratacion}
+                      helperText={errors.FechaContratacion}
                       size="small"
                       InputLabelProps={{ shrink: true }}
                     />
@@ -888,15 +1366,15 @@ const cargarGeneros = async () => {
                     <TextField
                       fullWidth
                       type="date"
-                      value={formData.fechaCese}
-                      onChange={(e) => handleInputChange('fechaCese', e.target.value)}
-                      error={!!errors.fechaCese}
-                      helperText={errors.fechaCese}
+                      value={formData.FechaCese}
+                      onChange={(e) => handleInputChange('FechaCese', e.target.value)}
+                      error={!!errors.FechaCese}
+                      helperText={errors.FechaCese}
                       size="small"
                       InputLabelProps={{ shrink: true }}
                     />
                   </ResponsiveField>
-                </FieldRow>
+                </FieldRow>*/}
               </Paper>
 
               {/* Sección 4: Dirección */}
@@ -905,34 +1383,7 @@ const cargarGeneros = async () => {
                   4. Dirección
                 </Typography>
 
-                {/* Fila 1: Dirección, Código Postal */}
-                <FieldRow>
-                  <ResponsiveField label="Dirección" required>
-                    <TextField
-                      fullWidth
-                      required
-                      placeholder="Ingrese la dirección completa"
-                      value={formData.direccion}
-                      onChange={(e) => handleInputChange('direccion', e.target.value)}
-                      error={!!errors.direccion}
-                      helperText={errors.direccion}
-                      size="small"
-                    />
-                  </ResponsiveField>
-
-                  <ResponsiveField label="Código Postal" required>
-                    <TextField
-                      fullWidth
-                      required
-                      placeholder="Código postal"
-                      value={formData.codPostal}
-                      onChange={(e) => handleInputChange('codPostal', e.target.value)}
-                      error={!!errors.codPostal}
-                      helperText={errors.codPostal}
-                      size="small"
-                    />
-                  </ResponsiveField>
-                </FieldRow>
+                
 
                 {/* Fila 2: País, Departamento, Provincia, Distrito */}
                 <FieldRow>
@@ -949,83 +1400,115 @@ const cargarGeneros = async () => {
                         }}
                       >
                         <MenuItem value="">Seleccionar país</MenuItem>
-                        <MenuItem value="peru">Perú</MenuItem>
+                        {Array.isArray(paisesD) && paisesD.map(pais => (
+                          <MenuItem key={pais.parameterid} value={pais.parameterid}>
+                            {pais.value1 || ''}
+                          </MenuItem>
+                        ))}
                       </Select>
                     </FormControl>
                   </ResponsiveField>
 
                   <ResponsiveField label="Departamento" required>
-                    <FormControl fullWidth required disabled={formData.pais !== 'peru'} error={!!errors.departamento} size="small">
+                    <FormControl fullWidth required error={!!errors.departamento} size="small">
                       <Select
                         value={formData.departamento}
                         onChange={(e) => handleSelectChangeWithCascade('departamento', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.departamento ? '#000' : '#999'
+                          color: formData.departamento ? '#000' : '#999'
                           }
-                        }}
+                          }}
                       >
                         <MenuItem value="">Seleccionar departamento</MenuItem>
-                        {formData.pais === 'peru' && (
-                          <MenuItem value="cajamarca">Cajamarca</MenuItem>
-                        )}
-                      </Select>
-                      {errors.departamento && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.departamento}</Typography>}
-                    </FormControl>
+                        {Array.isArray(departamentosD) && departamentosD.map(departamento => (
+                            <MenuItem key={departamento.parameterid} value={departamento.parameterid?.toString()}>
+                        {departamento.value1 || ''}
+                          </MenuItem>
+                        ))}
+                        </Select>
+                      {errors.Departamento && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.Departamento}</Typography>}
+                      </FormControl>
                   </ResponsiveField>
+                                          
                 </FieldRow>
 
                 <FieldRow>
                   <ResponsiveField label="Provincia" required>
-                    <FormControl fullWidth required disabled={formData.departamento !== 'cajamarca'} error={!!errors.provincia} size="small">
+                    <FormControl fullWidth required error={!!errors.provincia} size="small">
                       <Select
-                        value={formData.provincia}
-                        onChange={(e) => handleSelectChangeWithCascade('provincia', e.target.value)}
-                        displayEmpty
-                        sx={{
-                          '& .MuiSelect-select': {
+                          value={formData.provincia}
+                          onChange={(e) => handleSelectChangeWithCascade('provincia', e.target.value)}
+                          displayEmpty
+                          sx={{
+                            '& .MuiSelect-select': {
                             color: formData.provincia ? '#000' : '#999'
-                          }
-                        }}
+                            }
+                          }}
                       >
-                        <MenuItem value="">Seleccionar provincia</MenuItem>
-                        {formData.departamento === 'cajamarca' &&
-                          provincias.cajamarca.map(provincia => (
-                            <MenuItem key={provincia.value} value={provincia.value}>
-                              {provincia.label}
-                            </MenuItem>
-                          ))
-                        }
+                      <MenuItem value="">Seleccionar provincia</MenuItem>
+                        {Array.isArray(provinciasD) && provinciasD.map(provincia => (
+                          <MenuItem key={provincia.parameterid} value={provincia.parameterid}>
+                        {provincia.value1 || ''}
+                      </MenuItem>
+                      ))}
                       </Select>
-                      {errors.provincia && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.provincia}</Typography>}
+                      {errors.Provincia && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.Provincia}</Typography>}
                     </FormControl>
                   </ResponsiveField>
 
                   <ResponsiveField label="Distrito" required>
-                    <FormControl fullWidth required disabled={!formData.provincia || !distritos[formData.provincia]} error={!!errors.distrito} size="small">
-                      <Select
-                        value={formData.distrito}
-                        onChange={(e) => handleSelectChangeWithCascade('distrito', e.target.value)}
-                        displayEmpty
-                        sx={{
-                          '& .MuiSelect-select': {
-                            color: formData.distrito ? '#000' : '#999'
-                          }
-                        }}
-                      >
+                    <FormControl fullWidth required disabled={!formData.provincia} error={!!errors.distrito} size="small">
+                        <Select
+                          value={formData.distrito}
+                            onChange={(e) => handleSelectChangeWithCascade('distrito', e.target.value)}
+                            displayEmpty
+                          sx={{
+                            '& .MuiSelect-select': {
+                              color: formData.distrito ? '#000' : '#999'
+                            }
+                          }}
+                        >
                         <MenuItem value="">Seleccionar distrito</MenuItem>
-                        {formData.provincia && distritos[formData.provincia] &&
-                          distritos[formData.provincia].map(distrito => (
-                            <MenuItem key={distrito.value} value={distrito.value}>
-                              {distrito.label}
-                            </MenuItem>
-                          ))
-                        }
-                      </Select>
-                      {errors.distrito && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.distrito}</Typography>}
+                          {Array.isArray(distritosD) && distritosD.map(distrito => (
+                              <MenuItem key={distrito.parameterid} value={distrito.parameterid}>
+                            {distrito.value1}
+                          </MenuItem>
+                          ))}
+                        </Select>
+                      {errors.Distrito && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.Distrito}</Typography>}
                     </FormControl>
                   </ResponsiveField>
+                </FieldRow>
+
+                {/* Fila 1: Dirección, Código Postal */}
+                <FieldRow>
+                  <ResponsiveField label="Dirección" required>
+                    <TextField
+                      fullWidth
+                      required
+                      placeholder="Ingrese la dirección completa"
+                      value={formData.direccion}
+                      onChange={(e) => handleInputChange('direccion', e.target.value)}
+                      error={!!errors.direccion}
+                      helperText={errors.direccion}
+                      size="small"
+                    />
+                  </ResponsiveField>
+{/*
+                  <ResponsiveField label="Código Postal" required>
+                    <TextField
+                      fullWidth
+                      required
+                      placeholder="Código postal"
+                      value={formData.CodPostal}
+                      onChange={(e) => handleInputChange('CodPostal', e.target.value)}
+                      error={!!errors.CodPostal}
+                      helperText={errors.CodPostal}
+                      size="small"
+                    />
+                  </ResponsiveField> */}
                 </FieldRow>
               </Paper>
 
@@ -1195,7 +1678,7 @@ const cargarGeneros = async () => {
                           <TableCell>{person.tipo}</TableCell>
                           <TableCell>
                             <Chip
-                              label={person.estado === 'activo' ? 'Activo' : person.estado === 'inactivo' ? 'Inactivo' : 'En Licencia'}
+                              label={person.estado === '10007' ? 'Activo' : person.estado === '10008' ? 'Inactivo' : 'En Licencia'}
                               color={getEstadoColor(person.estado)}
                               size="small"
                               sx={{ fontWeight: 'bold', textTransform: 'capitalize' }}
@@ -1278,8 +1761,8 @@ const cargarGeneros = async () => {
                       fullWidth
                       required
                       placeholder="Ingrese el número de documento"
-                      value={formData.documento}
-                      onChange={(e) => handleInputChange('documento', e.target.value)}
+                      value={editFormData.documento}
+                      onChange={(e) => handleEditInputChange('documento', e.target.value)}
                       error={!!errors.documento}
                       helperText={errors.documento}
                       sx={{
@@ -1296,10 +1779,10 @@ const cargarGeneros = async () => {
                       fullWidth
                       required
                       placeholder="Ingrese el nombre"
-                      value={formData.nombre}
-                      onChange={(e) => handleInputChange('nombre', e.target.value)}
-                      error={!!errors.nombre}
-                      helperText={errors.nombre}
+                      value={editFormData.nombres}
+                      onChange={(e) => handleEditInputChange('nombres', e.target.value)}
+                      error={!!errors.nombres}
+                      helperText={errors.nombres}
                       sx={{
                         '& .MuiOutlinedInput-input::placeholder': {
                           color: '#999',
@@ -1314,10 +1797,10 @@ const cargarGeneros = async () => {
                       fullWidth
                       required
                       placeholder="Ingrese el apellido"
-                      value={formData.apellido}
-                      onChange={(e) => handleInputChange('apellido', e.target.value)}
-                      error={!!errors.apellido}
-                      helperText={errors.apellido}
+                      value={editFormData.apellidos}
+                      onChange={(e) => handleEditInputChange('apellidos', e.target.value)}
+                      error={!!errors.apellidos}
+                      helperText={errors.apellidos}
                       sx={{
                         '& .MuiOutlinedInput-input::placeholder': {
                           color: '#999',
@@ -1335,29 +1818,32 @@ const cargarGeneros = async () => {
                       fullWidth
                       required
                       type="date"
-                      value={formData.fechaNacimiento}
-                      onChange={(e) => handleInputChange('fechaNacimiento', e.target.value)}
-                      error={!!errors.fechaNacimiento}
-                      helperText={errors.fechaNacimiento}
+                      value={editFormData.fecNac}
+                      onChange={(e) => handleEditInputChange('fecNac', e.target.value)}
+                      error={!!errors.fecNac}
+                      helperText={errors.fecNac}
                       InputLabelProps={{ shrink: true }}
                     />
                   </ResponsiveField>
 
                   <ResponsiveField label="Género" required>
-                    <FormControl fullWidth required error={!!errors.genero}>
+                    <FormControl fullWidth required error={!!errors.Genero}>
                       <Select
-                        value={formData.genero}
-                        onChange={(e) => handleSelectChangeWithCascade('genero', e.target.value)}
+                        value={editFormData.genero}
+                        onChange={(e) => handleEditSelectChangeWithCascade('genero', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.genero ? '#000' : '#999'
+                            color: editFormData.genero ? '#000' : '#999'
                           }
                         }}
                       >
-                        <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
-                        <MenuItem value="masculino">Masculino</MenuItem>
-                        <MenuItem value="femenino">Femenino</MenuItem>
+                        <MenuItem value="">Seleccionar género</MenuItem>
+                        {Array.isArray(sexosD) && sexosD.map(sexo => (
+                        <MenuItem key={sexo.parameterid} value={sexo.parameterid}>
+                              {sexo.value1 || ''}
+                          </MenuItem>
+                        ))}
                       </Select>
                     </FormControl>
                   </ResponsiveField>
@@ -1371,14 +1857,14 @@ const cargarGeneros = async () => {
               <Box sx={{ p: 4 }}>
                 <FieldRow>
                   <ResponsiveField label="Nombre" required>
-                    <FormControl fullWidth required error={!!errors.centro}>
+                    <FormControl fullWidth required error={!!errors.CentroId}>
                       <Select
-                        value={formData.centro}
-                        onChange={(e) => handleSelectChangeWithCascade('centro', e.target.value)}
+                        value={editFormData.centroId}
+                        onChange={(e) => handleEditSelectChangeWithCascade('centroId', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.centro ? '#000' : '#999'
+                            color: editFormData.centroId ? '#000' : '#999'
                           }
                         }}
                       >
@@ -1408,34 +1894,59 @@ const cargarGeneros = async () => {
                 {/* Fila 1: Estatus, Título, Grado */}
                 <FieldRow>
                   <ResponsiveField label="Estatus" required>
-                    <FormControl fullWidth required error={!!errors.estatus}>
+                    <FormControl fullWidth required error={!!errors.estado}>
                       <Select
-                        value={formData.estatus}
-                        onChange={(e) => handleSelectChangeWithCascade('estatus', e.target.value)}
+                        value={editFormData.estado}
+                        onChange={(e) => handleEditSelectChangeWithCascade('estado', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.estatus ? '#000' : '#999'
+                            color: editFormData.estado ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
-                        <MenuItem value="activo">Activo</MenuItem>
-                        <MenuItem value="inactivo">Inactivo</MenuItem>
-                        <MenuItem value="suspendido">Suspendido</MenuItem>
+                        {Array.isArray(EstadoD) && EstadoD.map(estado => (
+                        <MenuItem key={estado.parameterid} value={estado.parameterid}>
+                              {estado.value1 || ''}
+                          </MenuItem>
+                        ))}
+                        
                       </Select>
                     </FormControl>
                   </ResponsiveField>
 
-                  <ResponsiveField label="Título" required>
+                  <ResponsiveField label="Titulo" required>
+                    <FormControl fullWidth required error={!!errors.titulo}>
+                      <Select
+                        value={editFormData.titulo}
+                        onChange={(e) => handleEditSelectChangeWithCascade('titulo', e.target.value)}
+                        displayEmpty
+                        sx={{
+                          '& .MuiSelect-select': {
+                            color: editFormData.titulo ? '#000' : '#999'
+                          }
+                        }}
+                      >
+                        <MenuItem value="">Seleccionar título</MenuItem>
+                        {Array.isArray(TituloD) && TituloD.map(titulo => (
+                        <MenuItem key={titulo.parameterid} value={titulo.parameterid}>
+                              {titulo.value1 || ''}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </ResponsiveField>
+
+                  <ResponsiveField label="Grado" required>
                     <TextField
                       fullWidth
                       required
                       placeholder="Ej: Doctor, Doctora, Lic."
-                      value={formData.titulo}
-                      onChange={(e) => handleInputChange('titulo', e.target.value)}
-                      error={!!errors.titulo}
-                      helperText={errors.titulo}
+                      value={editFormData.grado}
+                      onChange={(e) => handleEditInputChange('grado', e.target.value)}
+                      error={!!errors.grado}
+                      helperText={errors.grado}
                       sx={{
                         '& .MuiOutlinedInput-input::placeholder': {
                           color: '#999',
@@ -1445,27 +1956,7 @@ const cargarGeneros = async () => {
                     />
                   </ResponsiveField>
 
-                  <ResponsiveField label="Grado" required>
-                    <FormControl fullWidth required error={!!errors.grado}>
-                      <Select
-                        value={formData.grado}
-                        onChange={(e) => handleSelectChangeWithCascade('grado', e.target.value)}
-                        displayEmpty
-                        sx={{
-                          '& .MuiSelect-select': {
-                            color: formData.grado ? '#000' : '#999'
-                          }
-                        }}
-                      >
-                        <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
-                        <MenuItem value="especialista">Especialista</MenuItem>
-                        <MenuItem value="residente">Residente</MenuItem>
-                        <MenuItem value="interno">Interno</MenuItem>
-                        <MenuItem value="tecnico">Técnico</MenuItem>
-                        <MenuItem value="auxiliar">Auxiliar</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </ResponsiveField>
+                  
                 </FieldRow>
 
                 {/* Fila 2: Número de Licencia, Tipo, Fecha de Contratación */}
@@ -1475,10 +1966,10 @@ const cargarGeneros = async () => {
                       fullWidth
                       required
                       placeholder="Ej: LIC-001-2024"
-                      value={formData.numeroLicencia}
-                      onChange={(e) => handleInputChange('numeroLicencia', e.target.value)}
-                      error={!!errors.numeroLicencia}
-                      helperText={errors.numeroLicencia}
+                      value={editFormData.nLicencia}
+                      onChange={(e) => handleEditInputChange('nLicencia', e.target.value)}
+                      error={!!errors.nLicencia}
+                      helperText={errors.nLicencia}
                       sx={{
                         '& .MuiOutlinedInput-input::placeholder': {
                           color: '#999',
@@ -1489,58 +1980,57 @@ const cargarGeneros = async () => {
                   </ResponsiveField>
 
                   <ResponsiveField label="Tipo" required>
-                    <FormControl fullWidth required error={!!errors.tipo}>
+                    <FormControl fullWidth required error={!!errors.tipoTrabajo}>
                       <Select
-                        value={formData.tipo}
-                        onChange={(e) => handleSelectChangeWithCascade('tipo', e.target.value)}
+                        value={editFormData.tipoTrabajo}
+                        onChange={(e) => handleEditSelectChangeWithCascade('tipoTrabajo', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.tipo ? '#000' : '#999'
+                            color: editFormData.tipoTrabajo ? '#000' : '#999'
                           }
                         }}
                       >
-                        <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
-                        <MenuItem value="medico">Médico</MenuItem>
-                        <MenuItem value="enfermera">Enfermera</MenuItem>
-                        <MenuItem value="tecnico">Técnico</MenuItem>
-                        <MenuItem value="administrativo">Administrativo</MenuItem>
-                        <MenuItem value="limpieza">Limpieza</MenuItem>
-                        <MenuItem value="seguridad">Seguridad</MenuItem>
+                        <MenuItem value="">Seleccionar Tipo</MenuItem>
+                        {Array.isArray(TipoTrabajoD) && TipoTrabajoD.map(tipo => (
+                        <MenuItem key={tipo.parameterid} value={tipo.parameterid}>
+                              {tipo.value1 || ''}
+                          </MenuItem>
+                        ))}
                       </Select>
                     </FormControl>
                   </ResponsiveField>
-
+{/*
                   <ResponsiveField label="Fecha de Contratación" required>
                     <TextField
                       fullWidth
                       required
                       type="date"
-                      value={formData.fechaContratacion}
-                      onChange={(e) => handleInputChange('fechaContratacion', e.target.value)}
-                      error={!!errors.fechaContratacion}
-                      helperText={errors.fechaContratacion}
+                      value={formData.FechaContratacion}
+                      onChange={(e) => handleInputChange('FechaContratacion', e.target.value)}
+                      error={!!errors.FechaContratacion}
+                      helperText={errors.FechaContratacion}
                       InputLabelProps={{ shrink: true }}
                     />
-                  </ResponsiveField>
+                  </ResponsiveField>*/}
                 </FieldRow>
 
-                {/* Fila 3: Fecha de Cese */}
+                {/* Fila 3: Fecha de Cese 
                 <FieldRow>
                   <ResponsiveField label="Fecha de Cese">
                     <TextField
                       fullWidth
                       type="date"
-                      value={formData.fechaCese}
-                      onChange={(e) => handleInputChange('fechaCese', e.target.value)}
+                      value={formData.FechaCese}
+                      onChange={(e) => handleInputChange('FechaCese', e.target.value)}
                       InputLabelProps={{ shrink: true }}
                     />
                   </ResponsiveField>
 
                   <ResponsiveField label="  ">
-                    {/* Espacio vacío para mantener alineación */}
+                    {/* Espacio vacío para mantener alineación 
                   </ResponsiveField>
-                </FieldRow>
+                </FieldRow> */}
               </Box>
             </Paper>
 
@@ -1549,6 +2039,102 @@ const cargarGeneros = async () => {
               <SectionHeader title="Dirección" />
               <Box sx={{ p: 4 }}>
                 
+                
+
+                {/* Fila 2: País, Departamento */}
+                <FieldRow>
+                  <ResponsiveField label="País" required>
+                    <FormControl fullWidth required error={!!errors.pais}>
+                      <Select
+                        value={editFormData.pais}
+                        onChange={(e) => handleEditSelectChangeWithCascade('pais', e.target.value)}
+                        displayEmpty
+                        sx={{
+                          '& .MuiSelect-select': {
+                            color: editFormData.pais ? '#000' : '#999'
+                          }
+                        }}
+                      >
+                        <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                        {Array.isArray(paisesD) && paisesD.map(pais => (
+                          <MenuItem key={pais.parameterid} value={pais.parameterid}>
+                            {pais.value1}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </ResponsiveField>
+
+                  <ResponsiveField label="Departamento" required>
+                    <FormControl fullWidth required error={!!errors.departamento} size="small">
+                      <Select
+                        value={editFormData.departamento}
+                        onChange={(e) => handleEditSelectChangeWithCascade('departamento', e.target.value)}
+                        displayEmpty
+                        sx={{
+                          '& .MuiSelect-select': {
+                            color: editFormData.departamento ? '#000' : '#999'
+                          }
+                        }}
+                      >
+                        <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                        {Array.isArray(departamentosD) && departamentosD.map(departamento => (
+                          <MenuItem key={departamento.parameterid} value={departamento.parameterid?.toString()}>
+                            {departamento.value1}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </ResponsiveField>
+                </FieldRow>
+
+                {/* Fila 3: Provincia, Distrito */}
+                <FieldRow>
+                  <ResponsiveField label="Provincia" required>
+                    <FormControl fullWidth required error={!!errors.provincia} size="small">
+                      <Select
+                        value={editFormData.provincia}
+                        onChange={(e) => handleEditSelectChangeWithCascade('provincia', e.target.value)}
+                        displayEmpty
+                        sx={{
+                          '& .MuiSelect-select': {
+                            color: editFormData.provincia ? '#000' : '#999'
+                          }
+                        }}
+                      >
+                        <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                        {Array.isArray(provinciasEditDisponibles) && provinciasEditDisponibles.map(provincia => (
+                          <MenuItem key={provincia.parameterid} value={provincia.parameterid}>
+                            {provincia.value1}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </ResponsiveField>
+
+                  <ResponsiveField label="Distrito" required>
+                    <FormControl fullWidth required error={!!errors.distrito} size="small">
+                      <Select
+                        value={editFormData.distrito}
+                        onChange={(e) => handleEditSelectChangeWithCascade('distrito', e.target.value)}
+                        displayEmpty
+                        sx={{
+                          '& .MuiSelect-select': {
+                            color: editFormData.distrito ? '#000' : '#999'
+                          }
+                        }}
+                      >
+                        <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                        {Array.isArray(distritosEditDisponibles) && distritosEditDisponibles.map(distrito => (
+                          <MenuItem key={distrito.parameterid} value={distrito.parameterid}>
+                              {distrito.value1}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </ResponsiveField>
+                </FieldRow>
+
                 {/* Fila 1: Dirección, Código Postal */}
                 <FieldRow>
                   <ResponsiveField label="Dirección" required>
@@ -1556,8 +2142,8 @@ const cargarGeneros = async () => {
                       fullWidth
                       required
                       placeholder="Ingrese la dirección completa"
-                      value={formData.direccion}
-                      onChange={(e) => handleInputChange('direccion', e.target.value)}
+                      value={editFormData.direccion}
+                      onChange={(e) => handleEditInputChange('direccion', e.target.value)}
                       error={!!errors.direccion}
                       helperText={errors.direccion}
                       sx={{
@@ -1568,117 +2154,9 @@ const cargarGeneros = async () => {
                       }}
                     />
                   </ResponsiveField>
-
-                  <ResponsiveField label="Código Postal" required>
-                    <TextField
-                      fullWidth
-                      required
-                      placeholder="Código postal"
-                      value={formData.codPostal}
-                      onChange={(e) => handleInputChange('codPostal', e.target.value)}
-                      error={!!errors.codPostal}
-                      helperText={errors.codPostal}
-                      sx={{
-                        '& .MuiOutlinedInput-input::placeholder': {
-                          color: '#999',
-                          opacity: 1
-                        }
-                      }}
-                    />
-                  </ResponsiveField>
+                  
                 </FieldRow>
 
-                {/* Fila 2: País, Departamento */}
-                <FieldRow>
-                  <ResponsiveField label="País" required>
-                    <FormControl fullWidth required error={!!errors.pais}>
-                      <Select
-                        value={formData.pais}
-                        onChange={(e) => handleSelectChangeWithCascade('pais', e.target.value)}
-                        displayEmpty
-                        sx={{
-                          '& .MuiSelect-select': {
-                            color: formData.pais ? '#000' : '#999'
-                          }
-                        }}
-                      >
-                        <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
-                        <MenuItem value="peru">Perú</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </ResponsiveField>
-
-                  <ResponsiveField label="Departamento" required>
-                    <FormControl fullWidth required disabled={formData.pais !== 'peru'} error={!!errors.departamento}>
-                      <Select
-                        value={formData.departamento}
-                        onChange={(e) => handleSelectChangeWithCascade('departamento', e.target.value)}
-                        displayEmpty
-                        sx={{
-                          '& .MuiSelect-select': {
-                            color: formData.departamento ? '#000' : '#999'
-                          }
-                        }}
-                      >
-                        <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
-                        {formData.pais === 'peru' && (
-                          <MenuItem value="cajamarca">Cajamarca</MenuItem>
-                        )}
-                      </Select>
-                    </FormControl>
-                  </ResponsiveField>
-                </FieldRow>
-
-                {/* Fila 3: Provincia, Distrito */}
-                <FieldRow>
-                  <ResponsiveField label="Provincia" required>
-                    <FormControl fullWidth required disabled={formData.departamento !== 'cajamarca'} error={!!errors.provincia}>
-                      <Select
-                        value={formData.provincia}
-                        onChange={(e) => handleSelectChangeWithCascade('provincia', e.target.value)}
-                        displayEmpty
-                        sx={{
-                          '& .MuiSelect-select': {
-                            color: formData.provincia ? '#000' : '#999'
-                          }
-                        }}
-                      >
-                        <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
-                        {formData.departamento === 'cajamarca' && 
-                          provincias.cajamarca.map(provincia => (
-                            <MenuItem key={provincia.value} value={provincia.value}>
-                              {provincia.label}
-                            </MenuItem>
-                          ))
-                        }
-                      </Select>
-                    </FormControl>
-                  </ResponsiveField>
-
-                  <ResponsiveField label="Distrito" required>
-                    <FormControl fullWidth required disabled={!formData.provincia || !distritos[formData.provincia]} error={!!errors.distrito}>
-                      <Select
-                        value={formData.distrito}
-                        onChange={(e) => handleSelectChangeWithCascade('distrito', e.target.value)}
-                        displayEmpty
-                        sx={{
-                          '& .MuiSelect-select': {
-                            color: formData.distrito ? '#000' : '#999'
-                          }
-                        }}
-                      >
-                        <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
-                        {formData.provincia && distritos[formData.provincia] &&
-                          distritos[formData.provincia].map(distrito => (
-                            <MenuItem key={distrito.value} value={distrito.value}>
-                              {distrito.label}
-                            </MenuItem>
-                          ))
-                        }
-                      </Select>
-                    </FormControl>
-                  </ResponsiveField>
-                </FieldRow>
               </Box>
             </Paper>
 
@@ -1694,8 +2172,8 @@ const cargarGeneros = async () => {
                       fullWidth
                       required
                       placeholder="Número de teléfono"
-                      value={formData.telefono}
-                      onChange={(e) => handleInputChange('telefono', e.target.value)}
+                      value={editFormData.telefono}
+                      onChange={(e) => handleEditInputChange('telefono', e.target.value)}
                       error={!!errors.telefono}
                       helperText={errors.telefono}
                       sx={{
@@ -1712,8 +2190,8 @@ const cargarGeneros = async () => {
                       fullWidth
                       required
                       placeholder="Número de celular"
-                      value={formData.celular}
-                      onChange={(e) => handleInputChange('celular', e.target.value)}
+                      value={editFormData.celular}
+                      onChange={(e) => handleEditInputChange('Celular', e.target.value)}
                       error={!!errors.celular}
                       helperText={errors.celular}
                       sx={{
@@ -1731,8 +2209,8 @@ const cargarGeneros = async () => {
                       required
                       type="email"
                       placeholder="Correo electrónico"
-                      value={formData.correo}
-                      onChange={(e) => handleInputChange('correo', e.target.value)}
+                      value={editFormData.correo}
+                      onChange={(e) => handleEditInputChange('correo', e.target.value)}
                       error={!!errors.correo}
                       helperText={errors.correo}
                       sx={{
@@ -1809,18 +2287,18 @@ const cargarGeneros = async () => {
                   </Grid>
                   <Grid item xs={12} md={8}>
                     <Typography variant="body1">
-                      <strong>Nombre Completo:</strong> {selectedPersonal.nombre} {selectedPersonal.apellido}
+                      <strong>Nombre Completo:</strong> {selectedPersonal.nombres} {selectedPersonal.apellidos}
                     </Typography>
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <Typography variant="body1">
-                      <strong>Fecha de Nacimiento:</strong> {selectedPersonal.fechaNacimiento}
+                      <strong>Fecha de Nacimiento:</strong> {selectedPersonal.fecNac}
                     </Typography>
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <Typography variant="body1" sx={{ textTransform: 'capitalize' }}>
-                      <strong>Género:</strong> {selectedPersonal.genero}
-                    </Typography>
+                        <strong>Género:</strong> <ParametroTexto id={selectedPersonal?.genero} />
+                      </Typography>
                   </Grid>
                 </Grid>
               </Paper>
@@ -1833,46 +2311,46 @@ const cargarGeneros = async () => {
                 <Grid container spacing={2}>
                   <Grid item xs={12}>
                     <Typography variant="body1">
-                      <strong>Centro:</strong> {getCentroTexto(selectedPersonal.centro)}
+                      <strong>Centro:</strong> {selectedPersonal.nombreCentro}
                     </Typography>
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <Typography variant="body1" sx={{ textTransform: 'capitalize' }}>
-                      <strong>Estatus:</strong> {selectedPersonal.estatus}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body1">
-                      <strong>Título:</strong> {selectedPersonal.titulo}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body1" sx={{ textTransform: 'capitalize' }}>
-                      <strong>Grado:</strong> {selectedPersonal.grado}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body1">
-                      <strong>Número de Licencia:</strong> {selectedPersonal.numeroLicencia}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body1" sx={{ textTransform: 'capitalize' }}>
-                      <strong>Tipo:</strong> {selectedPersonal.tipo}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body1">
-                      <strong>Fecha de Contratación:</strong> {selectedPersonal.fechaContratacion}
-                    </Typography>
-                  </Grid>
-                  {selectedPersonal.fechaCese && (
-                    <Grid item xs={12} md={6}>
-                      <Typography variant="body1">
-                        <strong>Fecha de Cese:</strong> {selectedPersonal.fechaCese}
+                       <strong>Estatus:</strong> <ParametroTexto id={selectedPersonal?.estado} />
                       </Typography>
                     </Grid>
-                  )}
+                    <Grid item xs={12} md={6}>
+                      <Typography variant="body1">
+                       <strong>Título:</strong> <ParametroTexto id={selectedPersonal?.titulo} />
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <Typography variant="body1" sx={{ textTransform: 'capitalize' }}>
+                       <strong>Grado:</strong> <ParametroTexto id={selectedPersonal?.grado} />
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <Typography variant="body1">
+                       <strong>Número de Licencia:</strong> {selectedPersonal?.nLicencia}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <Typography variant="body1" sx={{ textTransform: 'capitalize' }}>
+                       <strong>Tipo:</strong> <ParametroTexto id={selectedPersonal?.tipoTrabajo} />
+                    </Typography>
+                  </Grid>
+                  {/*<Grid item xs={12} md={6}>
+                    <Typography variant="body1">
+                      <strong>Fecha de Contratación:</strong> {selectedPersonal.FechaContratacion}
+                    </Typography>
+                  </Grid>
+                  {selectedPersonal.FechaCese && (
+                    <Grid item xs={12} md={6}>
+                      <Typography variant="body1">
+                        <strong>Fecha de Cese:</strong> {selectedPersonal.FechaCese}
+                      </Typography>
+                    </Grid>
+                  )}*/}
                 </Grid>
               </Paper>
 
@@ -1942,7 +2420,7 @@ const cargarGeneros = async () => {
         <DialogContent sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="body1">
             ¿Está seguro de que desea eliminar a{' '}
-            <strong>"{selectedPersonal?.nombre} {selectedPersonal?.apellido}"</strong>?
+            <strong>"{selectedPersonal?.Nombres} {selectedPersonal?.Apellidos}"</strong>?
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
             Esta acción no se puede deshacer.

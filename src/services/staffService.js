@@ -32,24 +32,30 @@ export const staffService = {
           id: personal.personalid,
           personalid: personal.personalid,
           centroId: personal.centroId,
-          tipoTrabajo: personal.tipoTrabajo,
 
-          //Información del personal
           documento: personal.documento,
           nombres: personal.nombres,
           apellidos: personal.apellidos,
+          fecNac: personal.fecNac,
           genero : personal.genero,
-
+          telefono : personal.telefono,
+          celular : personal.celular,
           correo: personal.correo,
+          direccion: personal.direccion,
+
+          estado: personal.estado ? 'activo' : 'inactivo', // Map boolean to numeric IDs
+          status: personal.estado, // Map boolean to numeric IDs
+
+          titulo: personal.titulo,
+          grado: personal.grado,
+          nLicencia: personal.nLicencia,
+          tipoTrabajo: personal.tipoTrabajo,
+          
           pais: personal.pais,
           departamento: personal.departamento,
           provincia: personal.provincia,
           distrito: personal.distrito,
-         
-          // Estado
-          estado: personal.estado ? 'activo' : 'inactivo',
-          status: personal.estado,
-                    
+  
           // Auditoría
           createdAt: personal.createdAt,
           createdBy: personal.createdBy,
@@ -139,111 +145,194 @@ export const staffService = {
   },
 
   // Crear nuevo miembro del personal
-  create: async (staffData) => {
-    const requiredFields = ['firstName', 'lastName', 'documentNumber', 'gender', 'position', 'center'];
-    const missingFields = requiredFields.filter(field => !staffData[field]);
+  create: async (personalData) => {
+    try {
+      console.log('📤 Creando nuevo centro...');
 
-    if (missingFields.length > 0) {
-      throw new Error(`Campos requeridos faltantes: ${missingFields.join(', ')}`);
+      // Validar datos requeridos
+      const requiredFields = ['documento', 'nombres', 'apellidos', 'celular', 'direccion', 'telefono'];
+      const missingFields = requiredFields.filter(field => !personalData[field]);
+
+      if (missingFields.length > 0) {
+        throw new Error(`Campos requeridos faltantes: ${missingFields.join(', ')}`);
+      }
+
+      // Validar campos UBIGEO
+      if (!personalData.pais || !personalData.departamento || !personalData.provincia || !personalData.distrito) {
+        throw new Error('Todos los campos de ubicación (país, departamento, provincia y distrito) son obligatorios');
+      }
+
+      const formattedData = {
+        centroId: personalData.centroId,
+        documento: personalData.documento,
+        nombres: personalData.nombres,
+        apellidos: personalData.apellidos,
+        fecNac: personalData.fecNac,
+        genero: personalData.genero.toString(),
+        telefono: personalData.telefono,
+        celular: personalData.celular,
+        correo: personalData.correo,
+        direccion: personalData.direccion,
+        estado: personalData.estado === '10007', // Convert numeric ID to boolean
+        titulo: personalData.titulo.toString(),
+        grado: personalData.grado,
+        nLicencia: personalData.nLicencia,
+        tipoTrabajo: personalData.tipoTrabajo.toString(),
+
+        departamento: personalData.departamento, // Cajamarca
+        provincia: personalData.provincia, // Cajabamba
+        distrito: personalData.distrito, // Condebamba
+        pais: personalData.pais, // Perú
+        tipoDoc: 1,
+        createdAt: new Date().toISOString(),
+        createdBy: 'Arnold' // Usuario de prueba
+      };
+
+      console.log('📊 Datos a enviar:', formattedData);
+
+      const url = `${process.env.REACT_APP_API_URL}/Personal`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formattedData)
+      });
+
+      console.log('🔗 Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Error response:', errorText);
+        throw new Error(`Error ${response.status}: ${response.statusText} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Personal creado exitosamente:', data);
+
+      return {
+        data: data,
+        status: 'success'
+      };
+    } catch (error) {
+      console.error('❌ Error al crear personal:', error);
+      throw error;
     }
-
-    // Formatear datos según el formato esperado por la API
-    const formattedData = {
-      // Información personal
-      firstName: staffData.nombre || staffData.firstName,
-      lastName: staffData.apellido || staffData.lastName,
-      documentType: staffData.tipoDocumento || staffData.documentType || 'DNI',
-      documentNumber: staffData.documento || staffData.documentNumber,
-      gender: staffData.genero || staffData.gender,
-      birthDate: staffData.fechaNacimiento || staffData.birthDate,
-
-      // Información profesional
-      position: staffData.titulo || staffData.position,
-      specialization: staffData.especializacion || staffData.specialization || '',
-      degree: staffData.grado || staffData.degree || '',
-      type: staffData.tipo || staffData.type, // medico, enfermero, administrativo
-
-      // Información laboral
-      center: staffData.centro || staffData.center,
-      hireDate: staffData.fechaContratacion || staffData.hireDate,
-      salary: staffData.salario || staffData.salary,
-      schedule: staffData.horario || staffData.schedule || {},
-
-      // Información de contacto
-      email: staffData.correo || staffData.email || '',
-      phone: staffData.telefono || staffData.phone || '',
-      mobile: staffData.celular || staffData.mobile || '',
-
-      // Dirección
-      address: {
-        street: staffData.direccion || staffData.address?.street || '',
-        city: staffData.ciudad || staffData.address?.city || '',
-        state: staffData.estado || staffData.address?.state || '',
-        postalCode: staffData.codigoPostal || staffData.address?.postalCode || ''
-      },
-
-      // Estado y permisos
-      status: staffData.estatus || staffData.status || 'active',
-      permissions: staffData.permisos || staffData.permissions || [],
-
-      // Información adicional
-      emergencyContact: staffData.contactoEmergencia || staffData.emergencyContact || {},
-      medicalLicense: staffData.licenciaMedica || staffData.medicalLicense || ''
-    };
-
-    return await api.post(API_ENDPOINTS.STAFF.BASE, formattedData);
   },
 
+  
   // Actualizar miembro del personal
-  update: async (id, staffData) => {
-    if (!id) {
-      throw new Error('ID del personal es requerido');
+  update: async (id, personalData) => {
+    try {
+      console.log('📝 Actualizando centro con ID:', id);
+
+      if (!id) {
+        throw new Error('ID del centro es requerido');
+      }
+
+      // Formatear datos según el formato esperado por la API
+      const formattedData = {
+        personalid: parseInt(id),
+        centroId: personalData.centroId,
+        documento: personalData.documento,
+        nombres: personalData.nombres,
+        apellidos: personalData.apellidos,
+        fecNac: personalData.fecNac,
+        genero: personalData.genero.toString(),
+        telefono: personalData.telefono,
+        celular: personalData.celular,
+        correo: personalData.correo,
+        direccion: personalData.direccion,
+        estado: personalData.estado, // Convert numeric ID to boolean
+        titulo: personalData.titulo.toString(),
+        grado: personalData.grado,
+        nLicencia: personalData.nLicencia,
+        tipoTrabajo: personalData.tipoTrabajo.toString(),
+
+        departamento: personalData.departamento, // Cajamarca
+        provincia: personalData.provincia, // Cajabamba
+        distrito: personalData.distrito, // Condebamba
+        pais: personalData.pais, // Perú
+        tipoDoc: 1,
+        updatedAt: new Date().toISOString(),
+        updatedBy: 'Arnold',
+        isDeleted: false
+        
+      };
+
+      console.log('📊 Datos a enviar para actualizar:', formattedData);
+
+      const url = `${process.env.REACT_APP_API_URL}/Personal/${id}`;
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formattedData)
+      });
+
+      console.log('🔗 Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Error response:', errorText);
+        throw new Error(`Error ${response.status}: ${response.statusText} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Personal actualizado exitosamente:', data);
+
+      return {
+        data: data,
+        status: 'success'
+      };
+    } catch (error) {
+      console.error('❌ Error al actualizar Personal:', error);
+      throw error;
     }
-
-    const formattedData = {
-      firstName: staffData.nombre || staffData.firstName,
-      lastName: staffData.apellido || staffData.lastName,
-      documentType: staffData.tipoDocumento || staffData.documentType,
-      documentNumber: staffData.documento || staffData.documentNumber,
-      gender: staffData.genero || staffData.gender,
-      birthDate: staffData.fechaNacimiento || staffData.birthDate,
-
-      position: staffData.titulo || staffData.position,
-      specialization: staffData.especializacion || staffData.specialization,
-      degree: staffData.grado || staffData.degree,
-      type: staffData.tipo || staffData.type,
-
-      center: staffData.centro || staffData.center,
-      hireDate: staffData.fechaContratacion || staffData.hireDate,
-      salary: staffData.salario || staffData.salary,
-      schedule: staffData.horario || staffData.schedule,
-
-      email: staffData.correo || staffData.email,
-      phone: staffData.telefono || staffData.phone,
-      mobile: staffData.celular || staffData.mobile,
-
-      address: {
-        street: staffData.direccion || staffData.address?.street || '',
-        city: staffData.ciudad || staffData.address?.city || '',
-        state: staffData.estado || staffData.address?.state || '',
-        postalCode: staffData.codigoPostal || staffData.address?.postalCode || ''
-      },
-
-      status: staffData.estatus || staffData.status,
-      permissions: staffData.permisos || staffData.permissions,
-      emergencyContact: staffData.contactoEmergencia || staffData.emergencyContact,
-      medicalLicense: staffData.licenciaMedica || staffData.medicalLicense
-    };
-
-    return await api.put(API_ENDPOINTS.STAFF.BY_ID(id), formattedData);
   },
 
+  
   // Eliminar miembro del personal
   delete: async (id) => {
-    if (!id) {
-      throw new Error('ID del personal es requerido');
+    try {
+      console.log('🗑️ Eliminando Personal con ID:', id);
+
+      if (!id) {
+        throw new Error('ID del Personal es requerido');
+      }
+
+      const url = `${process.env.REACT_APP_API_URL}/Personal/${id}`;
+      console.log('🔗 URL de eliminación:', url);
+
+      // Enviar la solicitud DELETE con el campo eliminadoPor como un query parameter
+      const urlWithParams = `${url}?eliminadoPor=ADMIN`;
+      console.log('🔗 URL con parámetros:', urlWithParams);
+
+      const response = await fetch(urlWithParams, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('🔗 Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Error response:', errorText);
+        throw new Error(`Error ${response.status}: ${response.statusText} - ${errorText}`);
+      }
+
+      console.log('✅ Personal eliminado exitosamente');
+
+      return {
+        status: 'success'
+      };
+    } catch (error) {
+      console.error('❌ Error al eliminar Personal:', error);
+      throw error;
     }
-    return await api.delete(API_ENDPOINTS.STAFF.BY_ID(id));
   },
 
   // Cambiar estado del personal
@@ -251,12 +340,12 @@ export const staffService = {
     if (!id) {
       throw new Error('ID del personal es requerido');
     }
-
-    const validStatuses = ['active', 'inactive', 'suspended', 'vacation'];
+  
+    const validStatuses = ['10007', '10008']; // Numeric IDs for activo/inactivo
     if (!validStatuses.includes(status)) {
       throw new Error(`Estado inválido. Debe ser uno de: ${validStatuses.join(', ')}`);
     }
-
+  
     return await api.patch(API_ENDPOINTS.STAFF.BY_ID(id), { status });
   },
 

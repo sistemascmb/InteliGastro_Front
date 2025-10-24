@@ -2,19 +2,24 @@
 import React from 'react';
 import { api } from '../utils/apiClient';
 
-// Exportaciones centralizadas de todos los servicios
-export { default as patientsService } from './patientsService';
-export { default as staffService } from './staffService';
-export { default as centersService } from './centersService';
-export { default as appointmentsService } from './appointmentsService';
+// Importar servicios
+import patientsService from './patientsService';
+import staffService from './staffService';
+import centersService from './centersService';
+import appointmentsService from './appointmentsService';
 
-// Re-exportar servicios con alias más cortos si se prefiere
+// Exportar servicios con nombres completos y alias
 export {
+  patientsService,
+  staffService,
+  centersService,
+  appointmentsService,
+  // Alias más cortos
   patientsService as patients,
   staffService as staff,
   centersService as centers,
   appointmentsService as appointments
-} from './index';
+};
 
 // Servicio genérico para otros módulos (examenes, procedimientos, etc.)
 

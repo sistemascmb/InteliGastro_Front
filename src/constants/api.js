@@ -26,12 +26,12 @@ export const API_ENDPOINTS = {
 
   // Personal
   STAFF: {
-    BASE: '/staff',
-    BY_ID: (id) => `/staff/${id}`,
-    BY_CENTER: (centerId) => `/staff/center/${centerId}`,
-    BY_ROLE: (role) => `/staff/role/${role}`,
-    DOCTORS: '/staff/doctors',
-    NURSES: '/staff/nurses'
+    BASE: '/Personal',
+    BY_ID: (id) => `/Personal/${id}`,
+    BY_CENTER: (centerId) => `/Personal/center/${centerId}`,
+    BY_ROLE: (role) => `/Personal/role/${role}`,
+    DOCTORS: '/Personal/doctors',
+    NURSES: '/Personal/nurses'
   },
 
   // Centros
