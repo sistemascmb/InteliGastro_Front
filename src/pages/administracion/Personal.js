@@ -478,24 +478,6 @@ const cargarDepartamentos = async () => {
     cargarDepartamentos();
   }, []);
 
-  // Datos para cascading dropdowns (igual que en Centros)
-  const provincias = {
-    cajamarca: [
-      { value: 'cajabamba', label: 'Cajabamba' },
-      { value: 'bambamarca', label: 'Bambamarca' }
-    ]
-  };
-
-  const distritos = {
-    cajabamba: [
-      { value: 'cajabamba_distrito', label: 'Cajabamba' },
-      { value: 'cachachi', label: 'Cachachi' }
-    ],
-    bambamarca: [
-      { value: 'bambamarca_distrito', label: 'Bambamarca' },
-      { value: 'chugur', label: 'Chugur' }
-    ]
-  };
 
   // Función para limpiar el formulario
   const clearForm = () => {

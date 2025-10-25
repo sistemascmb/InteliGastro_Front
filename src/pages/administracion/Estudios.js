@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, useCallback, memo, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -25,6 +25,8 @@ import {
   Grid,
   Tabs,
   Tab,
+  CircularProgress,
+  Alert,
   Chip
 } from '@mui/material';
 import {
@@ -39,6 +41,8 @@ import {
   LocalHospital
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { estudiosService } from '../../services/estudiosService';
+import { centrosService } from '../../services/centrosService';
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
@@ -101,42 +105,11 @@ const Estudios = () => {
   const navigate = useNavigate();
 
   // Estado para la lista de estudios
-  const [estudios, setEstudios] = useState([
-    {
-      id: 1,
-      nombre: 'Colonoscopía Diagnóstica',
-      abreviacion: 'COLO-DX',
-      descripcion: 'Examen endoscópico para evaluación del colon y recto',
-      duracion: '45',
-      precio: '350.00',
-      estado: 'activo',
-      consentimientoInformado: 'si',
-      centro: 'centro-1'
-    },
-    {
-      id: 2,
-      nombre: 'Endoscopía Digestiva Alta',
-      abreviacion: 'EDA',
-      descripcion: 'Exploración endoscópica del tracto digestivo superior',
-      duracion: '30',
-      precio: '280.00',
-      estado: 'activo',
-      consentimientoInformado: 'si',
-      centro: 'centro-1'
-    },
-    {
-      id: 3,
-      nombre: 'Ecografía Abdominal',
-      abreviacion: 'ECO-ABD',
-      descripcion: 'Estudio ultrasonográfico del abdomen',
-      duracion: '25',
-      precio: '150.00',
-      estado: 'inactivo',
-      consentimientoInformado: 'no',
-      centro: 'centro-2'
-    }
-  ]);
-
+  const [estudios, setEstudios] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [centrosD, setCentrosCargados] = useState([]);
+  const [EstadoD, setEstadoCargados] = useState([]);
   // Datos simulados de centros
   const centros = [
     { value: 'centro-1', label: 'Clínica María Belén - Sede Central' },
@@ -149,16 +122,51 @@ const Estudios = () => {
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
   const [selectedEstudio, setSelectedEstudio] = useState(null);
 
+  const cargarCentros = async () => {
+    try {
+      const responseSystemParameter = await centrosService.getAll();
+      console.log('✅ Respuesta de Centros:', responseSystemParameter);
+      setCentrosCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                       responseSystemParameter?.data || []);
+    } catch (error) {
+      console.error('❌ Error al cargar Centros:', error);
+      setError(`Error al cargar Centros: ${error.message}`);
+    }
+  };
+
+const cargarEstados = async () => {
+    try {
+      const responseSystemParameter = await centrosService.getAllSystemParameterId(10006);
+      console.log('✅ Respuesta de Géneros:', responseSystemParameter);
+      setEstadoCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                       responseSystemParameter?.data || []);
+    } catch (error) {
+      console.error('❌ Error al cargar estados:', error);
+      setError(`Error al cargar estados: ${error.message}`);
+    }
+  };
   // Estado para el formulario
   const [formData, setFormData] = useState({
-    nombre: '',
-    abreviacion: '',
-    descripcion: '',
-    duracion: '',
-    precio: '',
-    estado: '',
+    name: '',
+    abbreviation: '',
+    description: '',
+    operatingHours: '',
+    status: '',
+    informedConsent: '',
     consentimientoInformado: '',
-    centro: ''
+    centroId: '',
+    price: ''
+  });
+
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    abbreviation: '',
+    description: '',
+    operatingHours: '',
+    status: '',
+    informedConsent: '',
+    centroId: '',
+    price: ''
   });
 
   const [errors, setErrors] = useState({});
@@ -169,17 +177,86 @@ const Estudios = () => {
   // Estado para tabs
   const [activeTab, setActiveTab] = useState(0);
 
+
+const loadEstudios = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      console.log('🔄 Cargando estudios desde el backend...');
+      const response = await estudiosService.getAll();
+
+      // Obtener los nombres de los centros para cada personal
+            const estudiosListCarga = await Promise.all(
+              response.data.map(async (estudio) => {
+                try {
+                  const centroDatos = await centrosService.getById(estudio.centroId);
+                  
+                  return {
+                    ...estudio,
+                    nombreCentro: centroDatos.data.nombre
+                    
+                  };
+                } catch (error) {
+                  console.error(`Error al obtener centro ${estudio.centroId}:`, error);
+                  return {
+                    ...estudio,
+                    nombreCentro: 'Centro no encontrado',
+                   
+                  };
+                }
+              })
+            );
+      
+
+
+
+      
+      console.log('✅ Estudios cargados:', estudiosListCarga);
+      setEstudios(estudiosListCarga || []);
+
+    } catch (error) {
+      console.error('❌ Error al cargar Estudios:', error);
+      setError(`Error al cargar Estudios: ${error.message}`);
+
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+useEffect(() => {
+    const cargarDatosIniciales = async () => {
+      setLoading(true);
+      cargarCentros();
+      cargarEstados();
+      try {
+        await Promise.all([
+          loadEstudios()
+        ]);
+      } catch (error) {
+        console.error('❌ Error al cargar datos iniciales:', error);
+        setError(`Error al cargar datos iniciales: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarDatosIniciales();
+  }, []);
+
+
   // Función para limpiar el formulario
   const clearForm = () => {
     setFormData({
-      nombre: '',
-      abreviacion: '',
-      descripcion: '',
-      duracion: '',
-      precio: '',
-      estado: '',
-      consentimientoInformado: '',
-      centro: ''
+      name: '',
+      abbreviation: '',
+      description: '',
+      operatingHours: '',
+      status: '',
+      informedConsent: '',
+      centroId: '',
+      price: ''
     });
     setErrors({});
   };
@@ -192,6 +269,16 @@ const Estudios = () => {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
   }, [errors]);
+
+  // Función genérica para manejar cambios en campos de texto (formulario editar)
+      const handleEditInputChange = useCallback((field, value) => {
+        setEditFormData(prev => ({ ...prev, [field]: value }));
+        // Limpiar error si existe
+        if (errors[field]) {
+          setErrors(prev => ({ ...prev, [field]: '' }));
+        }
+      }, [errors]);
+  
 
   // 2. Memoiza los componentes de input
   const MemoizedTextField = memo(({
@@ -213,33 +300,67 @@ const Estudios = () => {
 
   MemoizedTextField.displayName = 'MemoizedTextField';
 
+  const handleEditSelectChangeWithCascade = useCallback(async (field, value) => {
+          try {
+            // Lógica especial para cascading dropdowns UBIGEO
+                 
+            // Limpiar error si existe
+            if (errors[field]) {
+              setErrors(prev => ({
+                ...prev,
+                [field]: ''
+              }));
+            }
+          } catch (error) {
+            console.error('Error al cargar datos de ubicación:', error);
+            setError('Error al cargar datos de ubicación');
+          }
+        }, [errors]);
+
   // Validación del formulario (TODOS los campos obligatorios)
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.nombre.trim()) {
-      newErrors.nombre = 'Nombre es obligatorio';
+    if (!formData.name.trim()) {
+      newErrors.name = 'Nombre es obligatorio';
     }
-    if (!formData.abreviacion.trim()) {
-      newErrors.abreviacion = 'Abreviación es obligatoria';
+    if (!formData.abbreviation.trim()) {
+      newErrors.abbreviation = 'Abreviación es obligatoria';
     }
-    if (!formData.descripcion.trim()) {
-      newErrors.descripcion = 'Descripción es obligatoria';
+    if (!formData.description.trim()) {
+      newErrors.description = 'Descripción es obligatoria';
     }
-    if (!formData.duracion.trim()) {
-      newErrors.duracion = 'Duración es obligatoria';
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validateEditForm = () => {
+    const newErrors = {};
+
+    if (!editFormData.name.trim()) {
+      newErrors.name = 'Nombre es obligatorio';
     }
-    if (!formData.precio.trim()) {
-      newErrors.precio = 'Precio es obligatorio';
+    if (!editFormData.abbreviation.trim()) {
+      newErrors.abbreviation = 'Abreviación es obligatoria';
     }
-    if (!formData.estado) {
-      newErrors.estado = 'Estado es obligatorio';
+    if (!editFormData.description.trim()) {
+      newErrors.description = 'Descripción es obligatoria';
     }
-    if (!formData.consentimientoInformado) {
-      newErrors.consentimientoInformado = 'Consentimiento informado es obligatorio';
+    if (!editFormData.operatingHours) {
+      newErrors.operatingHours = 'Duración es obligatoria';
     }
-    if (!formData.centro) {
-      newErrors.centro = 'Centro es obligatorio';
+    if (!editFormData.price) {
+      newErrors.price = 'Precio es obligatorio';
+    }
+    if (!editFormData.status) {
+      newErrors.status = 'Estado es obligatorio';
+    }
+    if (!editFormData.centroId) {
+      newErrors.centroId = 'Centro es obligatorio';
+    }
+    if (editFormData.informedConsent === '') {
+      newErrors.informedConsent = 'Consentimiento Informado es obligatorio';
     }
 
     setErrors(newErrors);
@@ -249,16 +370,18 @@ const Estudios = () => {
   // Funciones para manejar modales
   const handleOpenEditModal = (estudio) => {
     setSelectedEstudio(estudio);
-    setFormData({
-      nombre: estudio.nombre,
-      abreviacion: estudio.abreviacion,
-      descripcion: estudio.descripcion,
-      duracion: estudio.duracion,
-      precio: estudio.precio,
-      estado: estudio.estado,
-      consentimientoInformado: estudio.consentimientoInformado,
-      centro: estudio.centro
-    });
+    const initialFormData = {
+      name: estudio.name,
+      abbreviation: estudio.abbreviation,
+      description: estudio.description,
+      operatingHours: estudio.operatingHours,
+      status: estudio.status,
+      informedConsent: estudio.informedConsent,
+      centroId: estudio.centroId,
+      price: estudio.price
+    };
+    setEditFormData(initialFormData);
+
     setOpenEditModal(true);
   };
 
@@ -289,64 +412,98 @@ const Estudios = () => {
   };
 
   // Función para crear estudio
-  const handleCreateEstudio = (e) => {
-    e.preventDefault();
-
-    if (validateForm()) {
-      const newEstudio = {
-        id: Math.max(...estudios.map(c => c.id)) + 1,
-        nombre: formData.nombre.trim(),
-        abreviacion: formData.abreviacion.trim(),
-        descripcion: formData.descripcion.trim(),
-        duracion: formData.duracion.trim(),
-        precio: formData.precio.trim(),
-        estado: formData.estado,
-        consentimientoInformado: formData.consentimientoInformado,
-        centro: formData.centro
+  const handleCreateEstudio = async (e) => {
+        e.preventDefault();
+    
+        if (validateForm()) {
+          try {
+            setLoading(true);
+            console.log('📤 Creando Estudio...');
+    
+            // Asegurarse de que estado sea un ID numérico
+            const estudioData = {
+              ...formData,
+              status: formData.status === 10007 ? true : false 
+            };
+    
+            const nuevoEstudio = await estudiosService.create(estudioData);
+            console.log('✅ Estudio creado:', nuevoEstudio);
+    
+            // Recargar la lista de centros
+            await loadEstudios();
+    
+            clearForm();
+            // Cambiar automáticamente al tab de lista
+            setActiveTab(0);
+    
+          } catch (error) {
+            console.error('❌ Error al crear Estudio:', error);
+            setError(`Error al crear Estudio: ${error.message}`);
+          } finally {
+            setLoading(false);
+          }
+        }
       };
 
-      setEstudios(prev => [...prev, newEstudio]);
-      clearForm();
-      // Cambiar automáticamente al tab de lista
-      setActiveTab(1);
-    }
-  };
-
-  // Función para editar estudio
-  const handleEditEstudio = (e) => {
-    e.preventDefault();
-
-    if (validateForm()) {
-      setEstudios(prev => prev.map(e =>
-        e.id === selectedEstudio.id
-          ? {
-              ...e,
-              nombre: formData.nombre.trim(),
-              abreviacion: formData.abreviacion.trim(),
-              descripcion: formData.descripcion.trim(),
-              duracion: formData.duracion.trim(),
-              precio: formData.precio.trim(),
-              estado: formData.estado,
-              consentimientoInformado: formData.consentimientoInformado,
-              centro: formData.centro
-            }
-          : e
-      ));
-      handleCloseEditModal();
-    }
-  };
+  // Función para editar Estudio
+    const handleEditEstudio = async (e) => {
+      e.preventDefault();
+  
+      if (validateEditForm()) {
+        try {
+          setLoading(true);
+          console.log('📤 Editando Estudio...');
+  
+          // Asegurarse de que estado sea un booleano
+          const formDataToSend = {
+            ...editFormData,
+            status: editFormData.status === '10007', // Convertir a booleano basado en el valor del estado
+            informedConsent: editFormData.informedConsent === 'true' || editFormData.informedConsent === true
+          };
+          const personalActualizado = await estudiosService.update(selectedEstudio.id, formDataToSend);
+          console.log('✅ Estudio actualizado:', personalActualizado);
+  
+          // Recargar la lista de Estudio
+          await loadEstudios();
+  
+          handleCloseEditModal();
+  
+        } catch (error) {
+          console.error('❌ Error al editar Estudio:', error);
+          setError(`Error al editar Estudio: ${error.message}`);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
 
   // Función para eliminar estudio
-  const handleDeleteEstudio = () => {
-    setEstudios(prev => prev.filter(e => e.id !== selectedEstudio.id));
-    handleCloseDeleteConfirm();
-  };
+    const handleDeleteEstudio = async () => {
+      try {
+        setLoading(true);
+        console.log('📤 Eliminando Estudio...');
+  
+        await estudiosService.delete(selectedEstudio.id);
+        console.log('✅ Estudio eliminado');
+  
+        // Recargar la lista de Estudio
+        await loadEstudios();
+  
+        handleCloseDeleteConfirm();
+  
+      } catch (error) {
+        console.error('❌ Error al eliminar Estudio:', error);
+        setError(`Error al eliminar Estudio: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
+    };
 
   // Filtrar estudios basado en la búsqueda
   const filteredEstudios = estudios.filter(estudio =>
-    estudio.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    estudio.abreviacion.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    estudio.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
+    (estudio.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (estudio.abbreviation || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (estudio.description || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Función para obtener el label del centro
@@ -424,6 +581,20 @@ const Estudios = () => {
         {/* Contenido del Tab 1: Crear Estudio */}
         {activeTab === 1 && (
           <Box sx={{ p: 4 }}>
+            {/* Mostrar errores */}
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {error}
+              </Alert>
+            )}
+            
+            {/* Mostrar loading */}
+            {loading && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                <CircularProgress />
+              </Box>
+            )}
+
             <form onSubmit={handleCreateEstudio}>
               {/* Sección 1: Información del Estudio */}
               <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f8f9fa' }}>
@@ -438,10 +609,10 @@ const Estudios = () => {
                       fullWidth
                       required
                       placeholder="Ingrese el nombre del estudio"
-                      value={formData.nombre}
-                      onChange={(e) => handleInputChange('nombre', e.target.value)}
-                      error={!!errors.nombre}
-                      helperText={errors.nombre}
+                      value={formData.name}
+                      onChange={(e) => handleInputChange('name', e.target.value)}
+                      error={!!errors.name}
+                      helperText={errors.name}
                       size="small"
                     />
                   </ResponsiveField>
@@ -451,10 +622,10 @@ const Estudios = () => {
                       fullWidth
                       required
                       placeholder="Ej: EDA, COLO"
-                      value={formData.abreviacion}
-                      onChange={(e) => handleInputChange('abreviacion', e.target.value)}
-                      error={!!errors.abreviacion}
-                      helperText={errors.abreviacion}
+                      value={formData.abbreviation}
+                      onChange={(e) => handleInputChange('abbreviation', e.target.value)}
+                      error={!!errors.abbreviation}
+                      helperText={errors.abbreviation}
                       size="small"
                     />
                   </ResponsiveField>
@@ -465,10 +636,10 @@ const Estudios = () => {
                       required
                       type="number"
                       placeholder="30"
-                      value={formData.duracion}
-                      onChange={(e) => handleInputChange('duracion', e.target.value)}
-                      error={!!errors.duracion}
-                      helperText={errors.duracion}
+                      value={formData.operatingHours}
+                      onChange={(e) => handleInputChange('operatingHours', e.target.value)}
+                      error={!!errors.operatingHours}
+                      helperText={errors.operatingHours}
                       size="small"
                     />
                   </ResponsiveField>
@@ -480,10 +651,10 @@ const Estudios = () => {
                       type="number"
                       step="0.01"
                       placeholder="0.00"
-                      value={formData.precio}
-                      onChange={(e) => handleInputChange('precio', e.target.value)}
-                      error={!!errors.precio}
-                      helperText={errors.precio}
+                      value={formData.price}
+                      onChange={(e) => handleInputChange('price', e.target.value)}
+                      error={!!errors.price}
+                      helperText={errors.price}
                       size="small"
                     />
                   </ResponsiveField>
@@ -498,10 +669,10 @@ const Estudios = () => {
                       multiline
                       rows={3}
                       placeholder="Ingrese la descripción del estudio"
-                      value={formData.descripcion}
-                      onChange={(e) => handleInputChange('descripcion', e.target.value)}
-                      error={!!errors.descripcion}
-                      helperText={errors.descripcion}
+                      value={formData.description}
+                      onChange={(e) => handleInputChange('description', e.target.value)}
+                      error={!!errors.description}
+                      helperText={errors.description}
                       size="small"
                     />
                   </ResponsiveField>
@@ -516,21 +687,21 @@ const Estudios = () => {
 
                 <FieldRow>
                   <ResponsiveField label="Centro" required>
-                    <FormControl fullWidth required error={!!errors.centro} size="small">
+                    <FormControl fullWidth required error={!!errors.centroId} size="small">
                       <Select
-                        value={formData.centro}
-                        onChange={(e) => handleInputChange('centro', e.target.value)}
+                        value={formData.centroId}
+                        onChange={(e) => handleInputChange('centroId', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.centro ? '#000' : '#999'
+                            color: formData.centroId ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar centro</MenuItem>
-                        {centros.map(centro => (
-                          <MenuItem key={centro.value} value={centro.value}>
-                            {centro.label}
+                        {Array.isArray(centrosD) && centrosD.map(centro => (
+                          <MenuItem key={centro.id} value={centro.id}>
+                            {centro.nombre || ''}
                           </MenuItem>
                         ))}
                       </Select>
@@ -538,39 +709,42 @@ const Estudios = () => {
                   </ResponsiveField>
 
                   <ResponsiveField label="Estado" required>
-                    <FormControl fullWidth required error={!!errors.estado} size="small">
+                    <FormControl fullWidth required error={!!errors.status} size="small">
                       <Select
-                        value={formData.estado}
-                        onChange={(e) => handleInputChange('estado', e.target.value)}
+                        value={formData.status}
+                        onChange={(e) => handleInputChange('status', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.estado ? '#000' : '#999'
+                            color: formData.status ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar estado</MenuItem>
-                        <MenuItem value="activo">Activo</MenuItem>
-                        <MenuItem value="inactivo">Inactivo</MenuItem>
+                        {Array.isArray(EstadoD) && EstadoD.map(estado => (
+                          <MenuItem key={estado.parameterid} value={estado.parameterid}>
+                            {estado.value1 || ''}
+                          </MenuItem>
+                        ))}
                       </Select>
                     </FormControl>
                   </ResponsiveField>
 
                   <ResponsiveField label="Consentimiento Informado" required>
-                    <FormControl fullWidth required error={!!errors.consentimientoInformado} size="small">
+                    <FormControl fullWidth required error={!!errors.informedConsent} size="small">
                       <Select
-                        value={formData.consentimientoInformado}
-                        onChange={(e) => handleInputChange('consentimientoInformado', e.target.value)}
+                        value={formData.informedConsent}
+                        onChange={(e) => handleInputChange('informedConsent', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.consentimientoInformado ? '#000' : '#999'
+                            color: formData.informedConsent ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar opción</MenuItem>
-                        <MenuItem value="si">Sí</MenuItem>
-                        <MenuItem value="no">No</MenuItem>
+                        <MenuItem value= {true}>Sí</MenuItem>
+                        <MenuItem value= {false}>No</MenuItem>
                       </Select>
                     </FormControl>
                   </ResponsiveField>
@@ -604,6 +778,21 @@ const Estudios = () => {
         {/* Contenido del Tab 2: Lista de Estudios */}
         {activeTab === 0 && (
           <Box sx={{ p: 3 }}>
+            {/* Mostrar errores */}
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {error}
+              </Alert>
+            )}
+            
+            {/* Mostrar loading */}
+            {loading && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                <CircularProgress />
+              </Box>
+            )}
+            
+
             {/* Barra de Búsqueda */}
             <Box sx={{ mb: 3 }}>
               <TextField
@@ -664,10 +853,10 @@ const Estudios = () => {
                     ) : (
                       filteredEstudios.map((estudio) => (
                       <TableRow key={estudio.id} hover>
-                        <TableCell>{estudio.nombre}</TableCell>
-                        <TableCell>{estudio.abreviacion}</TableCell>
-                        <TableCell>{estudio.duracion} min</TableCell>
-                        <TableCell>S/. {estudio.precio}</TableCell>
+                        <TableCell>{estudio.name}</TableCell>
+                        <TableCell>{estudio.abbreviation}</TableCell>
+                        <TableCell>{estudio.operatingHours} min</TableCell>
+                        <TableCell>S/. {estudio.price}</TableCell>
                         <TableCell>
                           <Chip
                             label={estudio.estado === 'activo' ? 'Activo' : 'Inactivo'}
@@ -750,10 +939,10 @@ const Estudios = () => {
                       fullWidth
                       required
                       placeholder="Ingrese el nombre del estudio"
-                      value={formData.nombre}
-                      onChange={(e) => handleInputChange('nombre', e.target.value)}
-                      error={!!errors.nombre}
-                      helperText={errors.nombre}
+                      value={editFormData.name}
+                      onChange={(e) => handleEditInputChange('name', e.target.value)}
+                      error={!!errors.name}
+                      helperText={errors.name}
                       size="small"
                     />
                   </ResponsiveField>
@@ -763,10 +952,10 @@ const Estudios = () => {
                       fullWidth
                       required
                       type="number"
-                      value={formData.duracion}
-                      onChange={(e) => handleInputChange('duracion', e.target.value)}
-                      error={!!errors.duracion}
-                      helperText={errors.duracion}
+                      value={editFormData.operatingHours}
+                      onChange={(e) => handleEditInputChange('operatingHours', e.target.value)}
+                      error={!!errors.operatingHours}
+                      helperText={errors.operatingHours}
                       size="small"
                     />
                   </ResponsiveField>
@@ -777,10 +966,10 @@ const Estudios = () => {
                       required
                       type="number"
                       step="0.01"
-                      value={formData.precio}
-                      onChange={(e) => handleInputChange('precio', e.target.value)}
-                      error={!!errors.precio}
-                      helperText={errors.precio}
+                      value={editFormData.price}
+                      onChange={(e) => handleEditInputChange('price', e.target.value)}
+                      error={!!errors.price}
+                      helperText={errors.price}
                       size="small"
                     />
                   </ResponsiveField>
@@ -792,10 +981,10 @@ const Estudios = () => {
                       fullWidth
                       required
                       placeholder="Ej: EDA, COLO"
-                      value={formData.abreviacion}
-                      onChange={(e) => handleInputChange('abreviacion', e.target.value)}
-                      error={!!errors.abreviacion}
-                      helperText={errors.abreviacion}
+                      value={editFormData.abbreviation}
+                      onChange={(e) => handleEditInputChange('abbreviation', e.target.value)}
+                      error={!!errors.abbreviation}
+                      helperText={errors.abbreviation}
                       size="small"
                     />
                   </ResponsiveField>
@@ -813,10 +1002,10 @@ const Estudios = () => {
                       multiline
                       rows={3}
                       placeholder="Ingrese la descripción del estudio"
-                      value={formData.descripcion}
-                      onChange={(e) => handleInputChange('descripcion', e.target.value)}
-                      error={!!errors.descripcion}
-                      helperText={errors.descripcion}
+                      value={editFormData.description}
+                      onChange={(e) => handleEditInputChange('description', e.target.value)}
+                      error={!!errors.description}
+                      helperText={errors.description}
                       size="small"
                     />
                   </ResponsiveField>
@@ -830,21 +1019,21 @@ const Estudios = () => {
               </Typography>
               <FieldRow>
                   <ResponsiveField label="Centro" required>
-                    <FormControl fullWidth required error={!!errors.centro} size="small">
+                    <FormControl fullWidth required error={!!errors.centroId} size="small">
                       <Select
-                        value={formData.centro}
-                        onChange={(e) => handleInputChange('centro', e.target.value)}
+                        value={editFormData.centroId}
+                        onChange={(e) => handleEditInputChange('centroId', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.centro ? '#000' : '#999'
+                            color: editFormData.centroId ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar centro</MenuItem>
-                        {centros.map(centro => (
-                          <MenuItem key={centro.value} value={centro.value}>
-                            {centro.label}
+                        {Array.isArray(centrosD) && centrosD.map(centro => (
+                          <MenuItem key={centro.id} value={centro.id}>
+                            {centro.nombre || ''}
                           </MenuItem>
                         ))}
                       </Select>
@@ -852,39 +1041,43 @@ const Estudios = () => {
                   </ResponsiveField>
 
                   <ResponsiveField label="Estado" required>
-                    <FormControl fullWidth required error={!!errors.estado} size="small">
+                    <FormControl fullWidth required error={!!errors.status} size="small">
                       <Select
-                        value={formData.estado}
-                        onChange={(e) => handleInputChange('estado', e.target.value)}
+                        value={editFormData.status}
+                        onChange={(e) => handleEditInputChange('status', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.estado ? '#000' : '#999'
+                            color: editFormData.status ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar estado</MenuItem>
-                        <MenuItem value="activo">Activo</MenuItem>
-                        <MenuItem value="inactivo">Inactivo</MenuItem>
+                        {Array.isArray(EstadoD) && EstadoD.map(estado => (
+                          <MenuItem key={estado.parameterid} value={estado.parameterid.toString()}>
+                            {estado.value1 || ''}
+                          </MenuItem>
+                        ))}
                       </Select>
+                     
                     </FormControl>
                   </ResponsiveField>
 
                   <ResponsiveField label="Consentimiento Informado" required>
-                    <FormControl fullWidth required error={!!errors.consentimientoInformado} size="small">
+                    <FormControl fullWidth required error={!!errors.informedConsent} size="small">
                       <Select
-                        value={formData.consentimientoInformado}
-                        onChange={(e) => handleInputChange('consentimientoInformado', e.target.value)}
+                        value={editFormData.informedConsent}
+                        onChange={(e) => handleEditInputChange('informedConsent', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.consentimientoInformado ? '#000' : '#999'
+                            color: editFormData.informedConsent ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar opción</MenuItem>
-                        <MenuItem value="si">Sí</MenuItem>
-                        <MenuItem value="no">No</MenuItem>
+                        <MenuItem value= {true}>Sí</MenuItem>
+                        <MenuItem value= {false}>No</MenuItem>
                       </Select>
                     </FormControl>
                   </ResponsiveField>
@@ -925,14 +1118,20 @@ const Estudios = () => {
           sx: { borderRadius: 2 }
         }}
       >
-        <DialogTitle sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          backgroundColor: '#2184be',
-          color: 'white'
-        }}>
-          <Typography variant="h6" fontWeight="bold">Detalles del Estudio</Typography>
+        <DialogTitle 
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: '#2184be',
+            color: 'white',
+            '& .MuiTypography-root': {
+              fontSize: '1.25rem',
+              fontWeight: 'bold'
+            }
+          }}
+        >
+          Detalles del Estudio
           <IconButton onClick={handleCloseDetailModal} sx={{ color: 'white' }}>
             <Close />
           </IconButton>
@@ -945,30 +1144,30 @@ const Estudios = () => {
                 <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
                   Información del Estudio
                 </Typography>
-                <Grid container spacing={3}>
-                  <Grid item xs={12}>
+                <Grid container spacing={3} sx={{ width: '100%' }}>
+                  <Grid size={12}>
                     <Typography variant="body1">
-                      <strong>Nombre:</strong> {selectedEstudio.nombre}
+                      <strong>Nombre:</strong> {selectedEstudio.name}
                     </Typography>
                   </Grid>
-                  <Grid item xs={12}>
+                  <Grid size={12}>
                     <Typography variant="body1">
-                      <strong>Descripción:</strong> {selectedEstudio.descripcion}
+                      <strong>Descripción:</strong> {selectedEstudio.description}
                     </Typography>
                   </Grid>
-                  <Grid item xs={12} md={4}>
+                  <Grid size={{ xs: 12, md: 4 }}>
                     <Typography variant="body1">
-                      <strong>Abreviación:</strong> {selectedEstudio.abreviacion}
+                      <strong>Abreviación:</strong> {selectedEstudio.abbreviation}
                     </Typography>
                   </Grid>
-                  <Grid item xs={12} md={4}>
+                  <Grid size={{ xs: 12, md: 4 }}>
                     <Typography variant="body1">
-                      <strong>Duración:</strong> {selectedEstudio.duracion} minutos
+                      <strong>Duración:</strong> {selectedEstudio.operatingHours} minutos
                     </Typography>
                   </Grid>
-                  <Grid item xs={12} md={4}>
+                  <Grid size={{ xs: 12, md: 4 }}>
                     <Typography variant="body1">
-                      <strong>Precio:</strong> S/. {selectedEstudio.precio}
+                      <strong>Precio:</strong> S/. {selectedEstudio.price}
                     </Typography>
                   </Grid>
                 </Grid>
@@ -979,24 +1178,26 @@ const Estudios = () => {
                 <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
                   Estado y Centro
                 </Typography>
-                <Grid container spacing={3}>
-                  <Grid item xs={12} md={6}>
+                <Grid container spacing={3} sx={{ width: '100%' }}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <Typography variant="body1">
-                      <strong>Centro:</strong> {getCentroLabel(selectedEstudio.centro)}
+                      <strong>Centro:</strong> {selectedEstudio.nombreCentro}
                     </Typography>
                   </Grid>
-                  <Grid item xs={12} md={3}>
-                    <Typography variant="body1">
-                      <strong>Estado:</strong>
-                      <Chip
-                        label={selectedEstudio.estado === 'activo' ? 'Activo' : 'Inactivo'}
-                        color={getEstadoColor(selectedEstudio.estado)}
-                        size="small"
-                        sx={{ ml: 1 }}
-                      />
-                    </Typography>
+                  <Grid size={{ xs: 12, md: 3 }}>
+                    <Box display="flex" alignItems="center">
+                        <Typography variant="body1" component="span">
+                          <strong>Estado:</strong>
+                        </Typography>
+                        <Chip
+                          label={selectedEstudio.estado === 'activo' ? 'Activo' : 'Inactivo'}
+                          color={getEstadoColor(selectedEstudio.estado)}
+                          size="small"
+                          sx={{ ml: 1 }}
+                        />
+                      </Box>
                   </Grid>
-                  <Grid item xs={12} md={3}>
+                  <Grid size={{ xs: 12, md: 3 }}>
                     <Typography variant="body1">
                       <strong>Consentimiento:</strong> {selectedEstudio.consentimientoInformado === 'si' ? 'Sí' : 'No'}
                     </Typography>
