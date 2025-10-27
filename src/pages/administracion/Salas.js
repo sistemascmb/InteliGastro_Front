@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, useCallback, memo, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -24,6 +24,8 @@ import {
   MenuItem,
   Tabs,
   Tab,
+  CircularProgress,
+  Alert,
   Chip
 } from '@mui/material';
 import {
@@ -37,6 +39,8 @@ import {
   MeetingRoom
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { salasService } from '../../services/salasService';
+import { centrosService } from '../../services/centrosService';
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
@@ -98,61 +102,72 @@ FieldRow.displayName = 'FieldRow';
 const Salas = () => {
   const navigate = useNavigate();
 
-  // Estado para la lista de salas
-  const [salas, setSalas] = useState([
-    {
-      id: 1,
-      nombre: 'Sala de Endoscopía 1',
-      descripcion: 'Sala equipada para procedimientos endoscópicos diagnósticos y terapéuticos',
-      estado: 'activo',
-      tipo: 'procedimiento',
-      centro: 'centro-1'
-    },
-    {
-      id: 2,
-      nombre: 'Consultorio Gastroenterología A',
-      descripcion: 'Consultorio para consultas ambulatorias de gastroenterología',
-      estado: 'activo',
-      tipo: 'consultorio',
-      centro: 'centro-1'
-    },
-    {
-      id: 3,
-      nombre: 'Quirófano de Cirugía Menor',
-      descripcion: 'Quirófano equipado para procedimientos quirúrgicos menores',
-      estado: 'inactivo',
-      tipo: 'cirugia',
-      centro: 'centro-2'
-    },
-    {
-      id: 4,
-      nombre: 'Sala de Recuperación',
-      descripcion: 'Área destinada para la recuperación post-procedimiento de pacientes',
-      estado: 'activo',
-      tipo: 'otro',
-      centro: 'centro-1'
-    }
-  ]);
-
-  // Datos simulados de centros
-  const centros = [
-    { value: 'centro-1', label: 'Clínica María Belén - Sede Central' },
-    { value: 'centro-2', label: 'Clínica María Belén - Sede Norte' }
-  ];
+  // Estado para la lista de estudios
+    const [salas, setSalas] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [centrosD, setCentrosCargados] = useState([]);
+    const [EstadoD, setEstadoCargados] = useState([]);
+    const [TipoAtencionD, setTipoAtencionCargados] = useState([]);
 
   // Estados para modales (solo editar y eliminar)
   const [openEditModal, setOpenEditModal] = useState(false);
+  const [openDetailModal, setOpenDetailModal] = useState(false);
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
   const [selectedSala, setSelectedSala] = useState(null);
 
+  const cargarCentros = async () => {
+      try {
+        const responseSystemParameter = await centrosService.getAll();
+        console.log('✅ Respuesta de Centros:', responseSystemParameter);
+        setCentrosCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                         responseSystemParameter?.data || []);
+      } catch (error) {
+        console.error('❌ Error al cargar Centros:', error);
+        setError(`Error al cargar Centros: ${error.message}`);
+      }
+    };
+
+  const cargarEstados = async () => {
+      try {
+        const responseSystemParameter = await centrosService.getAllSystemParameterId(10006);
+        console.log('✅ Respuesta de Géneros:', responseSystemParameter);
+        setEstadoCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                         responseSystemParameter?.data || []);
+      } catch (error) {
+        console.error('❌ Error al cargar estados:', error);
+        setError(`Error al cargar estados: ${error.message}`);
+      }
+    };
+
+    const cargarTipoAtencion = async () => {
+      try {
+        const responseSystemParameter = await centrosService.getAllSystemParameterId(10018);
+        console.log('✅ Respuesta de TipoAtencion:', responseSystemParameter);
+        setTipoAtencionCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                         responseSystemParameter?.data || []);
+      } catch (error) {
+        console.error('❌ Error al cargar TipoAtencion:', error);
+        setError(`Error al cargar TipoAtencion: ${error.message}`);
+      }
+    };
+
   // Estado para el formulario
-  const [formData, setFormData] = useState({
-    nombre: '',
-    descripcion: '',
-    estado: '',
-    tipo: '',
-    centro: ''
-  });
+    const [formData, setFormData] = useState({
+      name: '',
+      description: '',
+      status: '',
+      type: '',
+      centroId: ''
+    });
+  
+    const [editFormData, setEditFormData] = useState({
+      name: '',
+      description: '',
+      status: '',
+      type: '',
+      centroId: ''
+    });
 
   const [errors, setErrors] = useState({});
 
@@ -161,6 +176,69 @@ const Salas = () => {
 
   // Estado para tabs
   const [activeTab, setActiveTab] = useState(0);
+
+  const loadSalas = async () => {
+      try {
+        setLoading(true);
+        setError('');
+  
+        console.log('🔄 Cargando estudios desde el backend...');
+        const response = await salasService.getAll();
+  
+        // Obtener los nombres de los centros para cada personal
+              const salasListCarga = await Promise.all(
+                response.data.map(async (salas) => {
+                  try {
+                    const centroDatos = await centrosService.getById(salas.centroId);
+                    
+                    return {
+                      ...salas,
+                      nombreCentro: centroDatos.data.nombre
+                      
+                    };
+                  } catch (error) {
+                    console.error(`Error al obtener centro ${salas.centroId}:`, error);
+                    return {
+                      ...salas,
+                      nombreCentro: 'Centro no encontrado',
+                     
+                    };
+                  }
+                })
+              );
+
+        console.log('✅ Estudios cargados:', salasListCarga);
+        setSalas(salasListCarga || []);
+  
+      } catch (error) {
+        console.error('❌ Error al cargar Salas:', error);
+        setError(`Error al cargar Salas: ${error.message}`);
+  
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    useEffect(() => {
+        const cargarDatosIniciales = async () => {
+          setLoading(true);
+          cargarCentros();
+          cargarEstados();
+          cargarTipoAtencion();
+          try {
+            await Promise.all([
+              loadSalas()
+            ]);
+          } catch (error) {
+            console.error('❌ Error al cargar datos iniciales:', error);
+            setError(`Error al cargar datos iniciales: ${error.message}`);
+          } finally {
+            setLoading(false);
+          }
+        };
+    
+        cargarDatosIniciales();
+      }, []);
 
   // Función para limpiar el formulario
   const clearForm = () => {
@@ -182,6 +260,17 @@ const Salas = () => {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
   }, [errors]);
+
+  // Función genérica para manejar cambios en campos de texto (formulario editar)
+        const handleEditInputChange = useCallback((field, value) => {
+          setEditFormData(prev => ({ ...prev, [field]: value }));
+          // Limpiar error si existe
+          if (errors[field]) {
+            setErrors(prev => ({ ...prev, [field]: '' }));
+          }
+        }, [errors]);
+    
+
 
   // 2. Memoiza los componentes de input
   const MemoizedTextField = memo(({
@@ -207,22 +296,26 @@ const Salas = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.nombre.trim()) {
-      newErrors.nombre = 'Nombre es obligatorio';
+    if (!formData.name.trim()) {
+      newErrors.name = 'Nombre es obligatorio';
     }
-    if (!formData.descripcion.trim()) {
-      newErrors.descripcion = 'Descripción es obligatoria';
-    }
-    if (!formData.estado) {
-      newErrors.estado = 'Estado es obligatorio';
-    }
-    if (!formData.tipo) {
-      newErrors.tipo = 'Tipo es obligatorio';
-    }
-    if (!formData.centro) {
-      newErrors.centro = 'Centro es obligatorio';
+    if (!formData.description.trim()) {
+      newErrors.description = 'Descripcion es obligatoria';
     }
 
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validateEditForm = () => {
+    const newErrors = {};
+
+    if (!editFormData.name.trim()) {
+      newErrors.name = 'Nombre es obligatorio';
+    }
+    if (!editFormData.description.trim()) {
+      newErrors.description = 'Descripción es obligatoria';
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -230,13 +323,15 @@ const Salas = () => {
   // Funciones para manejar modales
   const handleOpenEditModal = (sala) => {
     setSelectedSala(sala);
-    setFormData({
-      nombre: sala.nombre,
-      descripcion: sala.descripcion,
-      estado: sala.estado,
-      tipo: sala.tipo,
-      centro: sala.centro
-    });
+    const initialFormData = {
+      name: sala.name,
+      description: sala.description,
+      status: sala.status,
+      type: sala.type,
+      centroId: sala.centroId
+    };
+    setEditFormData(initialFormData);
+
     setOpenEditModal(true);
   };
 
@@ -257,64 +352,97 @@ const Salas = () => {
   };
 
   // Función para crear sala
-  const handleCreateSala = (e) => {
-    e.preventDefault();
-
-    if (validateForm()) {
-      const newSala = {
-        id: Math.max(...salas.map(s => s.id)) + 1,
-        nombre: formData.nombre.trim(),
-        descripcion: formData.descripcion.trim(),
-        estado: formData.estado,
-        tipo: formData.tipo,
-        centro: formData.centro
-      };
-
-      setSalas(prev => [...prev, newSala]);
-      clearForm();
-      // Cambiar automáticamente al tab de lista
-      setActiveTab(1);
-    }
-  };
+  const handleCreateSala = async (e) => {
+          e.preventDefault();
+      
+          if (validateForm()) {
+            try {
+              setLoading(true);
+              console.log('📤 Creando Sala...');
+      
+              // Asegurarse de que estado sea un ID numérico
+              const salaData = {
+                ...formData,
+                status: formData.status === 10007 ? true : false 
+              };
+      
+              const nuevoSala = await salasService.create(salaData);
+              console.log('✅ Sala creado:', nuevoSala);
+      
+              // Recargar la lista de centros
+              await loadSalas();
+      
+              clearForm();
+              // Cambiar automáticamente al tab de lista
+              setActiveTab(0);
+      
+            } catch (error) {
+              console.error('❌ Error al crear Sala:', error);
+              setError(`Error al crear Sala: ${error.message}`);
+            } finally {
+              setLoading(false);
+            }
+          }
+        };
 
   // Función para editar sala
-  const handleEditSala = (e) => {
-    e.preventDefault();
-
-    if (validateForm()) {
-      setSalas(prev => prev.map(s =>
-        s.id === selectedSala.id
-          ? {
-              ...s,
-              nombre: formData.nombre.trim(),
-              descripcion: formData.descripcion.trim(),
-              estado: formData.estado,
-              tipo: formData.tipo,
-              centro: formData.centro
-            }
-          : s
-      ));
-      handleCloseEditModal();
-    }
-  };
+  const handleEditSala = async (e) => {
+        e.preventDefault();
+    
+        if (validateEditForm()) {
+          try {
+            setLoading(true);
+            console.log('📤 Editando Sala...');
+    
+            // Asegurarse de que estado sea un booleano
+            const formDataToSend = {
+              ...editFormData,
+              status: editFormData.status === '10007', // Convertir a booleano basado en el valor del estado
+            };
+            const salaActualizado = await salasService.update(selectedSala.id, formDataToSend);
+            console.log('✅ Sala actualizado:', salaActualizado);
+    
+            // Recargar la lista de Salas
+            await loadSalas();
+    
+            handleCloseEditModal();
+    
+          } catch (error) {
+            console.error('❌ Error al editar Sala:', error);
+            setError(`Error al editar Sala: ${error.message}`);
+          } finally {
+            setLoading(false);
+          }
+        }
+      };
 
   // Función para eliminar sala
-  const handleDeleteSala = () => {
-    setSalas(prev => prev.filter(s => s.id !== selectedSala.id));
-    handleCloseDeleteConfirm();
-  };
+  const handleDeleteSala = async () => {
+        try {
+          setLoading(true);
+          console.log('📤 Eliminando Sala...');
+    
+          await salasService.delete(selectedSala.id);
+          console.log('✅ Sala eliminado');
+    
+          // Recargar la lista de Estudio
+          await loadSalas();
+    
+          handleCloseDeleteConfirm();
+    
+        } catch (error) {
+          console.error('❌ Error al eliminar Sala:', error);
+          setError(`Error al eliminar Sala: ${error.message}`);
+        } finally {
+          setLoading(false);
+        }
+      };
 
   // Filtrar salas basado en la búsqueda
   const filteredSalas = salas.filter(sala =>
-    sala.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    sala.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
+    sala.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    sala.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  // Función para obtener el label del centro
-  const getCentroLabel = (centroValue) => {
-    const centro = centros.find(c => c.value === centroValue);
-    return centro ? centro.label : centroValue;
-  };
 
   // Función para obtener el color del estado
   const getEstadoColor = (estado) => {
@@ -324,10 +452,10 @@ const Salas = () => {
   // Función para obtener el color del tipo
   const getTipoColor = (tipo) => {
     switch (tipo) {
-      case 'procedimiento': return 'primary';
-      case 'consultorio': return 'secondary';
-      case 'cirugia': return 'error';
-      case 'otro': return 'default';
+      case 10019: return 'primary';
+      case 10020: return 'secondary';
+      case 10021: return 'error';
+      case 10022: return 'default';
       default: return 'default';
     }
   };
@@ -335,10 +463,10 @@ const Salas = () => {
   // Función para obtener el label del tipo
   const getTipoLabel = (tipo) => {
     switch (tipo) {
-      case 'procedimiento': return 'Procedimiento';
-      case 'consultorio': return 'Consultorio';
-      case 'cirugia': return 'Cirugía';
-      case 'otro': return 'Otro';
+      case 10019: return 'Procedimiento';
+      case 10020: return 'Consultorio';
+      case 10021: return 'Cirugía';
+      case 10022: return 'Otro';
       default: return tipo;
     }
   };
@@ -408,6 +536,20 @@ const Salas = () => {
         {/* Contenido del Tab 1: Crear Sala */}
         {activeTab === 1 && (
           <Box sx={{ p: 4 }}>
+            {/* Mostrar errores */}
+              {error && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {error}
+                </Alert>
+              )}
+                        
+              {/* Mostrar loading */}
+                {loading && (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                    <CircularProgress />
+                  </Box>
+              )}
+            
             <form onSubmit={handleCreateSala}>
               {/* Sección: Información de la Sala */}
               <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f8f9fa' }}>
@@ -422,10 +564,10 @@ const Salas = () => {
                       fullWidth
                       required
                       placeholder="Ingrese el nombre de la sala"
-                      value={formData.nombre}
-                      onChange={(e) => handleInputChange('nombre', e.target.value)}
-                      error={!!errors.nombre}
-                      helperText={errors.nombre}
+                      value={formData.name}
+                      onChange={(e) => handleInputChange('name', e.target.value)}
+                      error={!!errors.name}
+                      helperText={errors.name}
                       size="small"
                     />
                   </ResponsiveField>
@@ -433,18 +575,21 @@ const Salas = () => {
                   <ResponsiveField label="Estado" required>
                     <FormControl fullWidth required error={!!errors.estado} size="small">
                       <Select
-                        value={formData.estado}
-                        onChange={(e) => handleInputChange('estado', e.target.value)}
+                        value={formData.status}
+                        onChange={(e) => handleInputChange('status', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.estado ? '#000' : '#999'
+                            color: formData.status ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar estado</MenuItem>
-                        <MenuItem value="activo">Activo</MenuItem>
-                        <MenuItem value="inactivo">Inactivo</MenuItem>
+                        {Array.isArray(EstadoD) && EstadoD.map(estado => (
+                          <MenuItem key={estado.parameterid} value={estado.parameterid}>
+                            {estado.value1 || ''}
+                          </MenuItem>
+                        ))}
                       </Select>
                     </FormControl>
                   </ResponsiveField>
@@ -453,42 +598,43 @@ const Salas = () => {
                 {/* Fila 2: Tipo, Centro */}
                 <FieldRow>
                   <ResponsiveField label="Tipo" required>
-                    <FormControl fullWidth required error={!!errors.tipo} size="small">
+                    <FormControl fullWidth required error={!!errors.type} size="small">
                       <Select
-                        value={formData.tipo}
-                        onChange={(e) => handleInputChange('tipo', e.target.value)}
+                        value={formData.type}
+                        onChange={(e) => handleInputChange('type', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.tipo ? '#000' : '#999'
+                            color: formData.type ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar tipo</MenuItem>
-                        <MenuItem value="procedimiento">Procedimiento</MenuItem>
-                        <MenuItem value="consultorio">Consultorio</MenuItem>
-                        <MenuItem value="cirugia">Cirugía</MenuItem>
-                        <MenuItem value="otro">Otro</MenuItem>
+                        {Array.isArray(TipoAtencionD) && TipoAtencionD.map(tipo => (
+                          <MenuItem key={tipo.parameterid} value={tipo.parameterid}>
+                            {tipo.value1 || ''}
+                          </MenuItem>
+                        ))}
                       </Select>
                     </FormControl>
                   </ResponsiveField>
 
                   <ResponsiveField label="Centro" required>
-                    <FormControl fullWidth required error={!!errors.centro} size="small">
+                    <FormControl fullWidth required error={!!errors.centroId} size="small">
                       <Select
-                        value={formData.centro}
-                        onChange={(e) => handleInputChange('centro', e.target.value)}
+                        value={formData.centroId}
+                        onChange={(e) => handleInputChange('centroId', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.centro ? '#000' : '#999'
+                            color: formData.centroId ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar centro</MenuItem>
-                        {centros.map(centro => (
-                          <MenuItem key={centro.value} value={centro.value}>
-                            {centro.label}
+                        {Array.isArray(centrosD) && centrosD.map(centro => (
+                          <MenuItem key={centro.id} value={centro.id}>
+                            {centro.nombre || ''}
                           </MenuItem>
                         ))}
                       </Select>
@@ -505,10 +651,10 @@ const Salas = () => {
                       multiline
                       rows={3}
                       placeholder="Ingrese la descripción de la sala"
-                      value={formData.descripcion}
-                      onChange={(e) => handleInputChange('descripcion', e.target.value)}
-                      error={!!errors.descripcion}
-                      helperText={errors.descripcion}
+                      value={formData.description}
+                      onChange={(e) => handleInputChange('description', e.target.value)}
+                      error={!!errors.description}
+                      helperText={errors.description}
                       size="small"
                     />
                   </ResponsiveField>
@@ -603,24 +749,24 @@ const Salas = () => {
                       <TableRow key={sala.id} hover>
                         <TableCell>
                           <Typography variant="body2" fontWeight="bold">
-                            {sala.nombre}
+                            {sala.name}
                           </Typography>
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2">
-                            {sala.descripcion}
+                            {sala.description}
                           </Typography>
                         </TableCell>
                         <TableCell>
                           <Chip
-                            label={getTipoLabel(sala.tipo)}
-                            color={getTipoColor(sala.tipo)}
+                            label={getTipoLabel(sala.type)}
+                            color={getTipoColor(sala.type)}
                             size="small"
                           />
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2">
-                            {getCentroLabel(sala.centro)}
+                            {sala.nombreCentro}
                           </Typography>
                         </TableCell>
                         <TableCell>
@@ -695,29 +841,32 @@ const Salas = () => {
                     fullWidth
                     required
                     placeholder="Ingrese el nombre de la sala"
-                    value={formData.nombre}
-                    onChange={(e) => handleInputChange('nombre', e.target.value)}
-                    error={!!errors.nombre}
-                    helperText={errors.nombre}
+                    value={editFormData.name}
+                    onChange={(e) => handleEditInputChange('name', e.target.value)}
+                    error={!!errors.name}
+                    helperText={errors.name}
                     size="small"
                   />
                 </ResponsiveField>
 
                 <ResponsiveField label="Estado" required>
-                  <FormControl fullWidth required error={!!errors.estado} size="small">
+                  <FormControl fullWidth required error={!!errors.status} size="small">
                     <Select
-                      value={formData.estado}
-                      onChange={(e) => handleInputChange('estado', e.target.value)}
+                      value={editFormData.status}
+                      onChange={(e) => handleEditInputChange('status', e.target.value)}
                       displayEmpty
                       sx={{
                         '& .MuiSelect-select': {
-                          color: formData.estado ? '#000' : '#999'
+                          color: editFormData.status ? '#000' : '#999'
                         }
                       }}
                     >
                       <MenuItem value="">Seleccionar estado</MenuItem>
-                      <MenuItem value="activo">Activo</MenuItem>
-                      <MenuItem value="inactivo">Inactivo</MenuItem>
+                      {Array.isArray(EstadoD) && EstadoD.map(estado => (
+                        <MenuItem key={estado.parameterid} value={estado.parameterid.toString()}>
+                          {estado.value1 || ''}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 </ResponsiveField>
@@ -725,44 +874,45 @@ const Salas = () => {
 
               <FieldRow>
                 <ResponsiveField label="Tipo" required>
-                  <FormControl fullWidth required error={!!errors.tipo} size="small">
+                  <FormControl fullWidth required error={!!errors.type} size="small">
                     <Select
-                      value={formData.tipo}
-                      onChange={(e) => handleInputChange('tipo', e.target.value)}
+                      value={editFormData.type}
+                      onChange={(e) => handleEditInputChange('type', e.target.value)}
                       displayEmpty
                       sx={{
                         '& .MuiSelect-select': {
-                          color: formData.tipo ? '#000' : '#999'
+                          color: editFormData.type ? '#000' : '#999'
                         }
                       }}
                     >
                       <MenuItem value="">Seleccionar tipo</MenuItem>
-                      <MenuItem value="procedimiento">Procedimiento</MenuItem>
-                      <MenuItem value="consultorio">Consultorio</MenuItem>
-                      <MenuItem value="cirugia">Cirugía</MenuItem>
-                      <MenuItem value="otro">Otro</MenuItem>
+                        {Array.isArray(TipoAtencionD) && TipoAtencionD.map(tipo => (
+                          <MenuItem key={tipo.parameterid} value={tipo.parameterid}>
+                            {tipo.value1 || ''}
+                          </MenuItem>
+                        ))}
                     </Select>
                   </FormControl>
                 </ResponsiveField>
 
                 <ResponsiveField label="Centro" required>
-                  <FormControl fullWidth required error={!!errors.centro} size="small">
+                  <FormControl fullWidth required error={!!errors.centroId} size="small">
                     <Select
-                      value={formData.centro}
-                      onChange={(e) => handleInputChange('centro', e.target.value)}
+                      value={editFormData.centroId}
+                      onChange={(e) => handleEditInputChange('centroId', e.target.value)}
                       displayEmpty
                       sx={{
                         '& .MuiSelect-select': {
-                          color: formData.centro ? '#000' : '#999'
+                          color: editFormData.centroId ? '#000' : '#999'
                         }
                       }}
                     >
                       <MenuItem value="">Seleccionar centro</MenuItem>
-                      {centros.map(centro => (
-                        <MenuItem key={centro.value} value={centro.value}>
-                          {centro.label}
-                        </MenuItem>
-                      ))}
+                      {Array.isArray(centrosD) && centrosD.map(centro => (
+                          <MenuItem key={centro.id} value={centro.id}>
+                            {centro.nombre || ''}
+                          </MenuItem>
+                        ))}
                     </Select>
                   </FormControl>
                 </ResponsiveField>
@@ -776,10 +926,10 @@ const Salas = () => {
                     multiline
                     rows={3}
                     placeholder="Ingrese la descripción de la sala"
-                    value={formData.descripcion}
-                    onChange={(e) => handleInputChange('descripcion', e.target.value)}
-                    error={!!errors.descripcion}
-                    helperText={errors.descripcion}
+                    value={editFormData.description}
+                    onChange={(e) => handleEditInputChange('description', e.target.value)}
+                    error={!!errors.description}
+                    helperText={errors.description}
                     size="small"
                   />
                 </ResponsiveField>

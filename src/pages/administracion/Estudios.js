@@ -110,11 +110,6 @@ const Estudios = () => {
   const [error, setError] = useState('');
   const [centrosD, setCentrosCargados] = useState([]);
   const [EstadoD, setEstadoCargados] = useState([]);
-  // Datos simulados de centros
-  const centros = [
-    { value: 'centro-1', label: 'Clínica María Belén - Sede Central' },
-    { value: 'centro-2', label: 'Clínica María Belén - Sede Norte' }
-  ];
 
   // Estados para modales (solo editar, detallar y eliminar)
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -134,7 +129,7 @@ const Estudios = () => {
     }
   };
 
-const cargarEstados = async () => {
+  const cargarEstados = async () => {
     try {
       const responseSystemParameter = await centrosService.getAllSystemParameterId(10006);
       console.log('✅ Respuesta de Géneros:', responseSystemParameter);
@@ -145,6 +140,7 @@ const cargarEstados = async () => {
       setError(`Error al cargar estados: ${error.message}`);
     }
   };
+
   // Estado para el formulario
   const [formData, setFormData] = useState({
     name: '',
@@ -505,12 +501,6 @@ useEffect(() => {
     (estudio.abbreviation || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (estudio.description || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  // Función para obtener el label del centro
-  const getCentroLabel = (centroValue) => {
-    const centro = centros.find(c => c.value === centroValue);
-    return centro ? centro.label : centroValue;
-  };
 
   // Función para obtener el color del estado
   const getEstadoColor = (estado) => {
