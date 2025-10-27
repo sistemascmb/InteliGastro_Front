@@ -65,6 +65,59 @@ export const salasService = {
         }
     },
 
+  getById: async (id = 1) => {
+    try {
+      console.log('🌐 Llamando a la API de Sala por ID...', id);
+
+      const url = `${process.env.REACT_APP_API_URL}/Salas/${id}`;
+      console.log('🔗 URL:', url);
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const rawData = await response.json();
+      console.log('✅ Datos de Salas recibidos:', rawData);
+
+      // Mapear los campos del backend a los campos del frontend
+      const mappedData = {
+        // IDs y referencias
+        id: rawData.procedureroomid,
+        procedureroomid: rawData.procedureroomid,
+        name: rawData.name,
+        description: rawData.description,
+
+        // Auditoría
+        createdAt: rawData.createdAt,
+        createdBy: rawData.createdBy,
+        updatedAt: rawData.updatedAt,
+        updatedBy: rawData.updatedBy,
+        eliminado: rawData.isDeleted,
+        isDeleted: rawData.isDeleted
+      };
+
+      return {
+        data: mappedData,
+        status: 'success'
+      };
+
+    } catch (error) {
+      console.error('❌ Error completo:', error);
+      console.error('❌ Error message:', error.message);
+
+      if (error.code === 'ERR_NETWORK') {
+        console.error('🚫 ERROR DE RED: Posible problema de CORS o servidor no disponible');
+      }
+      if (error.message.includes('CORS')) {
+        console.error('🚫 ERROR DE CORS: El servidor debe permitir origen del frontend');
+      }
+
+      throw error;
+    }
+  },
+
     // Crear nuevo miembro del personal
   create: async (salaData) => {
     try {

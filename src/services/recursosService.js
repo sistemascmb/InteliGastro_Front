@@ -44,11 +44,11 @@ export const recursosService = {
 
         // Para el frontend (mapear a nombres legibles más adelante)
         centro: recurso.centroId, // Por ahora mantenemos el ID
-        locacionId: `SALA-${recurso.procedureroomid}`, // Simulamos locación basada en procedureroomid
+        locacionId: recurso.procedureroomid, // Simulamos locación basada en procedureroomid
 
         // Estado
         estado: recurso.status ? 'activo' : 'inactivo',
-        status: recurso.status,
+        status: recurso.status ? '10007' : '10008',
 
         // Procedimientos (por ahora vacío, se puede extender)
         procedimientos: [], // El backend no maneja procedimientos aún
@@ -161,11 +161,11 @@ export const recursosService = {
         name: recursoData.nombre || recursoData.name,
         description: recursoData.descripcion || recursoData.description,
         serialNumber: recursoData.numeroSerie || recursoData.serialNumber,
-        centroId: 1, // Por defecto al centro único disponible
-        status: recursoData.estado === 'activo', // Convertir string a boolean
-        procedureroomid: 1, // Por defecto a sala 1 (puedes ajustar esto)
+        centroId: recursoData.centro, // Por defecto al centro único disponible
+        status: recursoData.status, // Convertir string a boolean
+        procedureroomid: recursoData.locacionId, // Por defecto a sala 1 (puedes ajustar esto)
         createdAt: new Date().toISOString(),
-        createdBy: 'Jhon' // Usuario de prueba
+        createdBy: 'ARNOLD' // Usuario de prueba
       };
 
       console.log('📊 Datos a enviar:', formattedData);
@@ -215,11 +215,11 @@ export const recursosService = {
         name: recursoData.nombre || recursoData.name,
         description: recursoData.descripcion || recursoData.description,
         serialNumber: recursoData.numeroSerie || recursoData.serialNumber,
-        centroId: 1, // Por defecto al centro único disponible
-        status: recursoData.estado === 'activo', // Convertir string a boolean
-        procedureroomid: 1, // Por defecto a sala 1
+        centroId: recursoData.centro, // Por defecto al centro único disponible
+        status: recursoData.status, // Convertir string a boolean
+        procedureroomid: recursoData.locacionId , // Por defecto a sala 1
         updatedAt: new Date().toISOString(),
-        updatedBy: 'Jhon', // Usuario de prueba
+        updatedBy: 'Arnold', // Usuario de prueba
         isDeleted: false // Mantener como no eliminado
       };
 

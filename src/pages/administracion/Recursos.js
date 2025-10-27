@@ -45,6 +45,9 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { recursosService } from '../../services/recursosService';
+import { centrosService } from '../../services/centrosService';
+import { salasService } from '../../services/salasService';
+
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
@@ -110,8 +113,48 @@ const Recursos = () => {
   const [recursos, setRecursos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [centrosD, setCentrosCargados] = useState([]);
+  const [EstadoD, setEstadoCargados] = useState([]);
+  const [SalasD, setSalasCargados] = useState([]);
 
   // Datos de centros (simplificado para usar con la API)
+
+  const cargarCentros = async () => {
+      try {
+        const responseSystemParameter = await centrosService.getAll();
+        console.log('✅ Respuesta de Centros:', responseSystemParameter);
+        setCentrosCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                         responseSystemParameter?.data || []);
+      } catch (error) {
+        console.error('❌ Error al cargar Centros:', error);
+        setError(`Error al cargar Centros: ${error.message}`);
+      }
+    };
+
+  const cargarEstados = async () => {
+  try {
+          const responseSystemParameter = await centrosService.getAllSystemParameterId(10006);
+          console.log('✅ Respuesta de Géneros:', responseSystemParameter);
+          setEstadoCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                           responseSystemParameter?.data || []);
+        } catch (error) {
+          console.error('❌ Error al cargar estados:', error);
+          setError(`Error al cargar estados: ${error.message}`);
+        }
+      };
+
+  const cargarSalas = async () => {
+      try {
+        const responseSystemParameter = await salasService.getAll();
+        console.log('✅ Respuesta de Salas:', responseSystemParameter);
+        setSalasCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                         responseSystemParameter?.data || []);
+      } catch (error) {
+        console.error('❌ Error al cargar Salas:', error);
+        setError(`Error al cargar Salas: ${error.message}`);
+      }
+    };
+    
   const centros = [
     { value: 1, label: 'Clínica María Belén - Sede Central' }
   ];
@@ -140,6 +183,7 @@ const Recursos = () => {
     locacionId: '',
     centro: '',
     estado: 'activo',
+    status: '',
     procedimientos: []
   });
 
@@ -150,6 +194,7 @@ const Recursos = () => {
     locacionId: '',
     centro: '',
     estado: 'activo',
+    status: '10007', // Inicializado con valor por defecto
     procedimientos: []
   });
 
@@ -170,8 +215,33 @@ const Recursos = () => {
       console.log('🔄 Cargando recursos desde el backend...');
       const response = await recursosService.getAll();
 
-      console.log('✅ Recursos cargados:', response.data);
-      setRecursos(response.data || []);
+      const busquedasId = await Promise.all(
+              response.data.map(async (recursos) => {
+                try {
+                  const centroDatos = await centrosService.getById(recursos.centroId);
+                  const salaDatos = await salasService.getById(recursos.procedureroomid);
+
+                  
+                  return {
+                    ...recursos,
+                    nombreCentro: centroDatos.data.nombre,
+                    nombreSala: salaDatos.data.name
+                  };
+                } catch (error) {
+                  console.error(`Error al obtener centro ${recursos.centroId}:`, error);
+                  return {
+                    ...recursos,
+                    nombreCentro: 'Centro no encontrado',
+                    nombreSala: 'Sala no encontrado'
+                  };
+                }
+              })
+            );
+
+
+
+      console.log('✅ Recursos cargados:', busquedasId);
+      setRecursos(busquedasId || []);
 
     } catch (error) {
       console.error('❌ Error al cargar recursos:', error);
@@ -183,7 +253,26 @@ const Recursos = () => {
 
   // Cargar recursos al montar el componente
   useEffect(() => {
-    loadRecursos();
+    const cargarDatosIniciales = async () => {
+      setLoading(true);
+      cargarCentros();
+      cargarEstados();
+      cargarSalas();
+
+      try {
+        await Promise.all([
+          loadRecursos()
+        ]);
+      } catch (error) {
+        console.error('❌ Error al cargar datos iniciales:', error);
+        setError(`Error al cargar datos iniciales: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarDatosIniciales();
+
   }, []);
 
   // Función para limpiar el formulario
@@ -193,8 +282,8 @@ const Recursos = () => {
       descripcion: '',
       numeroSerie: '',
       locacionId: '',
-      centro: '',
-      estado: 'activo',
+      centro: '1',
+      status: '', // Valor por defecto para el estado
       procedimientos: []
     });
     setErrors({});
@@ -208,7 +297,7 @@ const Recursos = () => {
       numeroSerie: '',
       locacionId: '',
       centro: '',
-      estado: 'activo',
+      status: '10007', // Valor por defecto para el estado
       procedimientos: []
     });
     setErrors({});
@@ -295,8 +384,8 @@ const Recursos = () => {
     if (!formData.numeroSerie.trim()) {
       newErrors.numeroSerie = 'Número de Serie es obligatorio';
     }
-    if (!formData.estado) {
-      newErrors.estado = 'Estado es obligatorio';
+    if (!formData.status) {
+      newErrors.status = 'Estado es obligatorio';
     }
     // Nota: locacionId y centro son opcionales por ahora ya que el backend maneja defaults
     // Nota: procedimientos son opcionales ya que el backend aún no los maneja
@@ -318,8 +407,8 @@ const Recursos = () => {
     if (!editFormData.numeroSerie.trim()) {
       newErrors.numeroSerie = 'Número de Serie es obligatorio';
     }
-    if (!editFormData.estado) {
-      newErrors.estado = 'Estado es obligatorio';
+    if (!editFormData.status) {
+      newErrors.status = 'Estado es obligatorio';
     }
 
     setErrors(newErrors);
@@ -330,12 +419,12 @@ const Recursos = () => {
   const handleOpenEditModal = (recurso) => {
     setSelectedRecurso(recurso);
     setEditFormData({
-      nombre: recurso.nombre,
-      descripcion: recurso.descripcion,
-      numeroSerie: recurso.numeroSerie,
-      locacionId: recurso.locacionId,
-      centro: recurso.centro,
-      estado: recurso.estado,
+      nombre: recurso.nombre || '',
+      descripcion: recurso.descripcion || '',
+      numeroSerie: recurso.numeroSerie || '',
+      locacionId: recurso.locacionId || '',
+      centro: recurso.centroId > 0 ? recurso.centroId.toString() : '1',
+      status: recurso.status || '10007',  // Aseguramos un valor por defecto
       procedimientos: recurso.procedimientos || []
     });
     setOpenEditModal(true);
@@ -344,7 +433,16 @@ const Recursos = () => {
   const handleCloseEditModal = () => {
     setOpenEditModal(false);
     setSelectedRecurso(null);
-    clearEditForm();
+    setEditFormData({
+      nombre: '',
+      descripcion: '',
+      numeroSerie: '',
+      locacionId: '',
+      centro: '',
+      status: '10007',
+      procedimientos: []
+    });
+    setErrors({});
   };
 
   const handleOpenDetailModal = (recurso) => {
@@ -376,7 +474,17 @@ const Recursos = () => {
         setLoading(true);
         console.log('📤 Creando recurso...');
 
-        const nuevoRecurso = await recursosService.create(formData);
+        const recursosData = {
+            nombre: formData.nombre,
+            descripcion: formData.descripcion,
+            numeroSerie: formData.numeroSerie,
+            status: formData.status === 10007 ? true : false ,
+            estado: formData.status === '10007', // Convertir a booleano basado en el valor del estado
+            centro: Math.max(1, parseInt(formData.centro) || 1), // Aseguramos que sea un número mayor a 0
+            locacionId: parseInt(formData.locacionId) || 1 // Valor por defecto si no está definido
+          };
+
+        const nuevoRecurso = await recursosService.create(recursosData);
         console.log('✅ Recurso creado:', nuevoRecurso);
 
         // Recargar la lista de recursos
@@ -396,30 +504,38 @@ const Recursos = () => {
   };
 
   // Función para editar recurso
-  const handleEditRecurso = async (e) => {
-    e.preventDefault();
+const handleEditRecurso = async (e) => {
+        e.preventDefault();
+    
+        if (validateEditForm()) {
+          try {
+            setLoading(true);
+            console.log('📤 Editando recurso...');
+    
+            // Asegurarse de que estado sea un booleano
+            const formDataToSend = {
+              ...editFormData,
+              status: editFormData.status === 10007 ? true : false 
+            };
+            const salaActualizado = await recursosService.update(selectedRecurso.id, formDataToSend);
+            console.log('✅ Sala actualizado:', salaActualizado);
+    
+            // Recargar la lista de Salas
+            await loadRecursos();
+    
+            handleCloseEditModal();
+    
+          } catch (error) {
+            console.error('❌ Error al editar recurso:', error);
+            setError(`Error al editar recurso: ${error.message}`);
+          } finally {
+            setLoading(false);
+          }
+        }
+      };
 
-    if (validateEditForm()) {
-      try {
-        setLoading(true);
-        console.log('📤 Editando recurso...');
 
-        const recursoActualizado = await recursosService.update(selectedRecurso.id, editFormData);
-        console.log('✅ Recurso actualizado:', recursoActualizado);
-
-        // Recargar la lista de recursos
-        await loadRecursos();
-
-        handleCloseEditModal();
-
-      } catch (error) {
-        console.error('❌ Error al editar recurso:', error);
-        setError(`Error al editar recurso: ${error.message}`);
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
+  
 
   // Función para eliminar recurso
   const handleDeleteRecurso = async () => {
@@ -574,18 +690,28 @@ const Recursos = () => {
                     />
                   </ResponsiveField>
 
-                  <ResponsiveField label="Locación ID" required>
-                    <TextField
-                      fullWidth
-                      required
-                      placeholder="Ej: SALA-ENDO-01"
-                      value={formData.locacionId}
-                      onChange={(e) => handleInputChange('locacionId', e.target.value)}
-                      error={!!errors.locacionId}
-                      helperText={errors.locacionId}
-                      size="small"
-                    />
+                  <ResponsiveField label="Sala" required>
+                    <FormControl fullWidth required error={!!errors.locacionId} size="small">
+                      <Select
+                        value={formData.locacionId}
+                        onChange={(e) => handleInputChange('locacionId', e.target.value)}
+                        displayEmpty
+                        sx={{
+                          '& .MuiSelect-select': {
+                            color: formData.locacionId ? '#000' : '#999'
+                          }
+                        }}
+                      >
+                        <MenuItem value="">Seleccionar centro</MenuItem>
+                        {Array.isArray(SalasD) && SalasD.map(salas => (
+                          <MenuItem key={salas.id} value={salas.id}>
+                              {salas.name || ''}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
                   </ResponsiveField>
+
                 </FieldRow>
 
                 {/* Fila 2: Descripción */}
@@ -621,9 +747,9 @@ const Recursos = () => {
                         }}
                       >
                         <MenuItem value="">Seleccionar centro</MenuItem>
-                        {centros.map(centro => (
-                          <MenuItem key={centro.value} value={centro.value}>
-                            {centro.label}
+                        {Array.isArray(centrosD) && centrosD.map(centro => (
+                          <MenuItem key={centro.id} value={centro.id}>
+                              {centro.nombre || ''}
                           </MenuItem>
                         ))}
                       </Select>
@@ -633,18 +759,21 @@ const Recursos = () => {
                   <ResponsiveField label="Estado" required>
                     <FormControl fullWidth required error={!!errors.estado} size="small">
                       <Select
-                        value={formData.estado}
-                        onChange={(e) => handleInputChange('estado', e.target.value)}
+                        value={formData.status}
+                        onChange={(e) => handleInputChange('status', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.estado ? '#000' : '#999'
+                            color: formData.status ? '#000' : '#999'
                           }
                         }}
                       >
-                        <MenuItem value="">Seleccionar estado</MenuItem>
-                        <MenuItem value="activo">Activo</MenuItem>
-                        <MenuItem value="inactivo">Inactivo</MenuItem>
+                        <MenuItem value="">Seleccionar estatus</MenuItem>
+                        {Array.isArray(EstadoD) && EstadoD.map(estado => (
+                          <MenuItem key={estado.parameterid} value={estado.parameterid}>
+                            {estado.value1 || ''}
+                          </MenuItem>
+                        ))}
                       </Select>
                     </FormControl>
                   </ResponsiveField>
@@ -831,8 +960,8 @@ const Recursos = () => {
                       <TableRow key={recurso.id} hover>
                         <TableCell>{recurso.nombre}</TableCell>
                         <TableCell>{recurso.numeroSerie}</TableCell>
-                        <TableCell>{recurso.locacionId}</TableCell>
-                        <TableCell>{getCentroLabel(recurso.centro)}</TableCell>
+                        <TableCell>{recurso.nombreSala}</TableCell>
+                        <TableCell>{recurso.nombreCentro}</TableCell>
                         <TableCell>
                           <Chip
                             label={recurso.estado === 'activo' ? 'Activo' : 'Inactivo'}
@@ -896,7 +1025,7 @@ const Recursos = () => {
           backgroundColor: '#2184be',
           color: 'white'
         }}>
-          <Typography variant="h6" fontWeight="bold">Editar Recurso</Typography>
+          <Box sx={{ typography: 'h6', fontWeight: 'bold' }}>Editar Recurso</Box>
           <IconButton onClick={handleCloseEditModal} sx={{ color: 'white' }}>
             <Close />
           </IconButton>
@@ -912,9 +1041,9 @@ const Recursos = () => {
 
             {/* Sección 1: Información del Recurso */}
             <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f8f9fa' }}>
-              <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
+              <Box sx={{ typography: 'h6', fontWeight: 'bold', mb: 3, color: '#2184be' }}>
                 Información del Recurso
-              </Typography>
+              </Box>
 
               <FieldRow>
                 <ResponsiveField label="Nombre" required sx={{flex:2}}>
@@ -942,17 +1071,28 @@ const Recursos = () => {
                   />
                 </ResponsiveField>
 
-                <ResponsiveField label="Locación ID" required sx={{flex:1}}>
-                  <TextField
-                    fullWidth
-                    required
-                    value={editFormData.locacionId}
-                    onChange={(e) => handleEditInputChange('locacionId', e.target.value)}
-                    error={!!errors.locacionId}
-                    helperText={errors.locacionId}
-                    size="small"
-                  />
-                </ResponsiveField>
+                <ResponsiveField label="Sala" required>
+                    <FormControl fullWidth required error={!!errors.locacionId} size="small">
+                      <Select
+                        value={editFormData.locacionId}
+                        onChange={(e) => handleEditInputChange('locacionId', e.target.value)}
+                        displayEmpty
+                        sx={{
+                          '& .MuiSelect-select': {
+                            color: editFormData.locacionId ? '#000' : '#999'
+                          }
+                        }}
+                      >
+                        <MenuItem value="">Seleccionar centro</MenuItem>
+                        {Array.isArray(SalasD) && SalasD.map(salas => (
+                          <MenuItem key={salas.id} value={salas.id}>
+                              {salas.name || ''}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </ResponsiveField>
+
               </FieldRow>
 
               <FieldRow>
@@ -986,9 +1126,9 @@ const Recursos = () => {
                       }}
                     >
                       <MenuItem value="">Seleccionar centro</MenuItem>
-                      {centros.map(centro => (
-                        <MenuItem key={centro.value} value={centro.value}>
-                          {centro.label}
+                      {Array.isArray(centrosD) && centrosD.map(centro => (
+                        <MenuItem key={centro.id} value={centro.id}>
+                          {centro.nombre || ''}
                         </MenuItem>
                       ))}
                     </Select>
@@ -996,20 +1136,23 @@ const Recursos = () => {
                 </ResponsiveField>
 
                 <ResponsiveField label="Estado" required>
-                  <FormControl fullWidth required error={!!errors.estado} size="small">
+                  <FormControl fullWidth required error={!!errors.status} size="small">
                     <Select
-                      value={editFormData.estado}
-                      onChange={(e) => handleEditInputChange('estado', e.target.value)}
+                      value={editFormData.status}
+                      onChange={(e) => handleEditInputChange('status', e.target.value)}
                       displayEmpty
                       sx={{
                         '& .MuiSelect-select': {
-                          color: editFormData.estado ? '#000' : '#999'
+                          color: editFormData.status ? '#000' : '#999'
                         }
                       }}
                     >
                       <MenuItem value="">Seleccionar estado</MenuItem>
-                      <MenuItem value="activo">Activo</MenuItem>
-                      <MenuItem value="inactivo">Inactivo</MenuItem>
+                      {Array.isArray(EstadoD) && EstadoD.map(estado => (
+                          <MenuItem key={estado.parameterid} value={estado.parameterid}>
+                            {estado.value1 || ''}
+                          </MenuItem>
+                        ))}
                     </Select>
                   </FormControl>
                 </ResponsiveField>
@@ -1022,9 +1165,9 @@ const Recursos = () => {
 
             {/* Sección 2: Procedimientos */}
             <Paper sx={{ p: 3, backgroundColor: '#f8f9fa' }}>
-              <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
+              <Box sx={{ typography: 'h6', fontWeight: 'bold', mb: 3, color: '#2184be' }}>
                 Procedimientos
-              </Typography>
+              </Box>
 
               <ResponsiveField label="Seleccione los procedimientos asociados al recurso" required>
                 <Box sx={{ mt: 2 }}>
@@ -1131,7 +1274,7 @@ const Recursos = () => {
           backgroundColor: '#2184be',
           color: 'white'
         }}>
-          <Typography variant="h6" fontWeight="bold">Detalles del Recurso</Typography>
+          <Box sx={{ typography: 'h6', fontWeight: 'bold' }}>Detalles del Recurso</Box>
           <IconButton onClick={handleCloseDetailModal} sx={{ color: 'white' }}>
             <Close />
           </IconButton>
@@ -1141,9 +1284,9 @@ const Recursos = () => {
             <>
               {/* Sección 1: Información del Recurso */}
               <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f8f9fa' }}>
-                <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
+                <Box sx={{ typography: 'h6', fontWeight: 'bold', mb: 3, color: '#2184be' }}>
                   Información del Recurso
-                </Typography>
+                </Box>
                 <Grid container spacing={3}>
                   <Grid item xs={12}>
                     <Typography variant="body1">
@@ -1166,7 +1309,7 @@ const Recursos = () => {
                     </Typography>
                   </Grid>
                   <Grid item xs={12} md={4}>
-                    <Typography variant="body1">
+                    <Box sx={{ display: 'flex', alignItems: 'center', typography: 'body1' }}>
                       <strong>Estado:</strong>
                       <Chip
                         label={selectedRecurso.estado === 'activo' ? 'Activo' : 'Inactivo'}
@@ -1174,7 +1317,7 @@ const Recursos = () => {
                         size="small"
                         sx={{ ml: 1 }}
                       />
-                    </Typography>
+                    </Box>
                   </Grid>
                   <Grid item xs={12}>
                     <Typography variant="body1">
@@ -1186,9 +1329,9 @@ const Recursos = () => {
 
               {/* Sección 2: Procedimientos */}
               <Paper sx={{ p: 3, backgroundColor: '#f8f9fa' }}>
-                <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
+                <Box sx={{ typography: 'h6', fontWeight: 'bold', mb: 3, color: '#2184be' }}>
                   Procedimientos Asociados
-                </Typography>
+                </Box>
                 <Grid container spacing={2}>
                   {selectedRecurso.procedimientos && selectedRecurso.procedimientos.length > 0 ? (
                     selectedRecurso.procedimientos.map((proc, index) => {
@@ -1241,7 +1384,7 @@ const Recursos = () => {
           color: 'white',
           textAlign: 'center'
         }}>
-          <Typography variant="h6" fontWeight="bold">Confirmar Eliminación</Typography>
+          <Box sx={{ typography: 'h6', fontWeight: 'bold' }}>Confirmar Eliminación</Box>
         </DialogTitle>
         <DialogContent sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="body1">
