@@ -368,14 +368,19 @@ const Examenes = () => {
           sx: { borderRadius: 2 }
         }}
       >
-        <DialogTitle sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          backgroundColor: '#2184be', 
-          color: 'white' 
-        }}>
-          <Typography variant="h6" fontWeight="bold">Agregar Nuevo Examen</Typography>
+        <DialogTitle 
+          sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            backgroundColor: '#2184be', 
+            color: 'white',
+            '& .MuiTypography-root': {
+              fontWeight: 'bold'
+            }
+          }}
+        >
+          Agregar Nuevo Examen
           <IconButton onClick={handleCloseAddModal} sx={{ color: 'white' }}>
             <Close />
           </IconButton>

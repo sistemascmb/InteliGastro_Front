@@ -92,9 +92,56 @@ export const staffService = {
   // Obtener personal por ID
   getById: async (id) => {
     if (!id) {
-      throw new Error('ID del personal es requerido');
+      throw new Error('ID del Personal es requerido');
     }
-    return await api.get(API_ENDPOINTS.STAFF.BY_ID(id));
+
+    try {
+      const url = `${process.env.REACT_APP_API_URL}/Personal/${id}`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      return {
+        data: {
+          id: data.personalid,
+          personalid: data.personalid,
+          centroId: data.centroId,
+
+          documento: data.documento,
+          nombres: data.nombres,
+          apellidos: data.apellidos,
+          fecNac: data.fecNac,
+          genero : data.genero,
+          telefono : data.telefono,
+          celular : data.celular,
+          correo: data.correo,
+          direccion: data.direccion,
+
+          estado: data.estado ? 'activo' : 'inactivo', // Map boolean to numeric IDs
+          status: data.estado, // Map boolean to numeric IDs
+
+          titulo: data.titulo,
+          grado: data.grado,
+          nLicencia: data.nLicencia,
+          tipoTrabajo: data.tipoTrabajo,
+          
+          pais: data.pais,
+          departamento: data.departamento,
+          provincia: data.provincia,
+          distrito: data.distrito,
+  
+          // Auditoría
+          createdAt: data.createdAt,
+          createdBy: data.createdBy,
+          updatedAt: data.updatedAt,
+          updatedBy: data.updatedBy,
+          isDeleted: data.isDeleted
+        },
+        status: 'success'
+      };
+    } catch (error) {
+      console.error('❌ Error al obtener Personal por ID:', error);
+      throw error;
+    }
   },
 
   // Obtener personal por centro

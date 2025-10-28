@@ -622,14 +622,19 @@ const Finalizadas = () => {
           sx: { borderRadius: 2 }
         }}
       >
-        <DialogTitle sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          backgroundColor: '#2184be',
-          color: 'white'
-        }}>
-          <Typography variant="h6" fontWeight="bold">Detalles de la Cita Finalizada</Typography>
+        <DialogTitle 
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: '#2184be',
+            color: 'white',
+            '& .MuiTypography-root': {
+              fontWeight: 'bold'
+            }
+          }}
+        >
+          Detalles de la Cita Finalizada
           <IconButton onClick={handleCloseDetailModal} sx={{ color: 'white' }}>
             <Close />
           </IconButton>
@@ -789,14 +794,19 @@ const Finalizadas = () => {
           sx: { borderRadius: 2 }
         }}
       >
-        <DialogTitle sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          backgroundColor: '#2184be',
-          color: 'white'
-        }}>
-          <Typography variant="h6" fontWeight="bold">Editar Cita Finalizada</Typography>
+        <DialogTitle 
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: '#2184be',
+            color: 'white',
+            '& .MuiTypography-root': {
+              fontWeight: 'bold'
+            }
+          }}
+        >
+          Editar Cita Finalizada
           <IconButton onClick={handleCloseEditModal} sx={{ color: 'white' }}>
             <Close />
           </IconButton>

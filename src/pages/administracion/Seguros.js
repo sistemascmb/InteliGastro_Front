@@ -328,7 +328,7 @@ const Seguros = () => {
 
         clearForm();
         // Cambiar automáticamente al tab de lista
-        setActiveTab(1);
+        setActiveTab(0);
 
       } catch (error) {
         console.error('❌ Error al crear seguro:', error);

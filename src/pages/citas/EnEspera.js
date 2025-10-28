@@ -609,14 +609,19 @@ const EnEspera = () => {
           sx: { borderRadius: 2 }
         }}
       >
-        <DialogTitle sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          backgroundColor: '#2184be',
-          color: 'white'
-        }}>
-          <Typography variant="h6" fontWeight="bold">Detalles de la Cita en Espera</Typography>
+        <DialogTitle 
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: '#2184be',
+            color: 'white',
+            '& .MuiTypography-root': {
+              fontWeight: 'bold'
+            }
+          }}
+        >
+          Detalles de la Cita en Espera
           <IconButton onClick={handleCloseDetailModal} sx={{ color: 'white' }}>
             <Close />
           </IconButton>

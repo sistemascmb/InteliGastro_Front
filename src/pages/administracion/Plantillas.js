@@ -1184,14 +1184,19 @@ const Plantillas = () => {
           sx: { borderRadius: 2 }
         }}
       >
-        <DialogTitle sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          backgroundColor: '#2196f3',
-          color: 'white'
-        }}>
-          <Typography variant="h6" fontWeight="bold">Detalles de la Plantilla</Typography>
+        <DialogTitle 
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: '#2196f3',
+            color: 'white',
+            '& .MuiTypography-root': {
+              fontWeight: 'bold'
+            }
+          }}
+        >
+          Detalles de la Plantilla
           <IconButton onClick={handleCloseDetailsModal} sx={{ color: 'white' }}>
             <Close />
           </IconButton>

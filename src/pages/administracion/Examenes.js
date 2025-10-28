@@ -745,6 +745,10 @@ const handleDeleteExamen = async () => {
         onClose={handleCloseEditModal}
         maxWidth="md"
         fullWidth
+        aria-labelledby="edit-exam-title"
+        container={() => document.getElementById('modal-root')}
+        disableEnforceFocus
+        disableAutoFocus
         PaperProps={{
           sx: { borderRadius: 2 }
         }}
@@ -756,7 +760,7 @@ const handleDeleteExamen = async () => {
           backgroundColor: '#2184be',
           color: 'white'
         }}>
-          <Typography variant="h6" fontWeight="bold">Editar Examen</Typography>
+          <Typography id="edit-exam-title" variant="h6" fontWeight="bold">Editar Examen</Typography>
           <IconButton onClick={handleCloseEditModal} sx={{ color: 'white' }}>
             <Close />
           </IconButton>
@@ -873,6 +877,11 @@ const handleDeleteExamen = async () => {
         onClose={handleCloseDeleteConfirm}
         maxWidth="xs"
         fullWidth
+        aria-labelledby="delete-confirm-title"
+        aria-describedby="delete-confirm-description"
+        container={() => document.getElementById('modal-root')}
+        disableEnforceFocus
+        disableAutoFocus
         PaperProps={{
           sx: { borderRadius: 2 }
         }}
@@ -882,10 +891,10 @@ const handleDeleteExamen = async () => {
           color: 'white',
           textAlign: 'center'
         }}>
-          <Typography variant="h6" fontWeight="bold">Confirmar Eliminación</Typography>
+          <Typography id="delete-confirm-title" variant="h6" fontWeight="bold">Confirmar Eliminación</Typography>
         </DialogTitle>
         <DialogContent sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="body1">
+          <Typography id="delete-confirm-description" variant="body1">
             ¿Está seguro de que desea eliminar el examen{' '}
             <strong>"{selectedExamen?.descripcion}"</strong>?
           </Typography>

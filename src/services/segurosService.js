@@ -147,7 +147,7 @@ export const segurosService = {
         adress: seguroData.direccion || seguroData.adress,
         status: seguroData.estado === 'activo', // Convertir string a boolean
         createdAt: new Date().toISOString(),
-        createdBy: 'Jhon' // Usuario de prueba como solicitaste
+        createdBy: 'Arnold' // Usuario de prueba como solicitaste
       };
 
       console.log('📊 Datos a enviar:', formattedData);
@@ -200,7 +200,7 @@ export const segurosService = {
         adress: seguroData.direccion || seguroData.adress,
         status: seguroData.estado === 'activo', // Convertir string a boolean
         updatedAt: new Date().toISOString(),
-        updatedBy: 'Jhon', // Usuario de prueba
+        updatedBy: 'Arnold', // Usuario de prueba
         isDeleted: false // Mantener como no eliminado
       };
 
@@ -237,7 +237,7 @@ export const segurosService = {
   },
 
   // Eliminar seguro
-  delete: async (id, eliminadoPor = 'Jhon') => {
+  delete: async (id, eliminadoPor = 'Arnold') => {
     try {
       console.log('🗑️ Eliminando seguro con ID:', id);
 

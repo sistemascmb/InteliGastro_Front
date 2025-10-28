@@ -137,7 +137,7 @@ export const preparacionService = {
         description: preparacionData.descripcion || preparacionData.description,
         status: preparacionData.estado === 'activo', // Convertir string a boolean
         createdAt: new Date().toISOString(),
-        createdBy: 'Jhon' // Usuario de prueba
+        createdBy: 'Arnold' // Usuario de prueba
       };
 
       console.log('📊 Datos a enviar:', formattedData);
@@ -187,7 +187,7 @@ export const preparacionService = {
         description: preparacionData.descripcion || preparacionData.description,
         status: preparacionData.estado === 'activo', // Convertir string a boolean
         updatedAt: new Date().toISOString(),
-        updatedBy: 'Jhon', // Usuario de prueba
+        updatedBy: 'Arnold', // Usuario de prueba
         isDeleted: false // Mantener como no eliminado
       };
 
@@ -224,7 +224,7 @@ export const preparacionService = {
   },
 
   // Eliminar preparación
-  delete: async (id, eliminadoPor = 'Jhon') => {
+  delete: async (id, eliminadoPor = 'Arnold') => {
     try {
       console.log('🗑️ Eliminando preparación con ID:', id);
 

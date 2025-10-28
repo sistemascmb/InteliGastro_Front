@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, useCallback, memo, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -24,6 +24,8 @@ import {
   MenuItem,
   Tabs,
   Tab,
+  CircularProgress,
+  Alert,
   Chip,
   Grid,
   Divider
@@ -40,6 +42,10 @@ import {
   VisibilityOff
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { staffService } from '../../services/staffService';
+import { rolesService } from '../../services/rolesService';
+import { centrosService } from '../../services/centrosService';
+import { usuariosService } from 'services/usuariosService';
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
@@ -101,66 +107,86 @@ FieldRow.displayName = 'FieldRow';
 const Usuarios = () => {
   const navigate = useNavigate();
 
-  // Datos mock para seleccionables
-  const [personales] = useState([
-    { id: 1, nombre: 'Dr. Juan Pérez', cargo: 'Médico Gastroenterólogo' },
-    { id: 2, nombre: 'Dra. María García', cargo: 'Enfermera Jefe' },
-    { id: 3, nombre: 'Carlos Rodriguez', cargo: 'Administrador' },
-    { id: 4, nombre: 'Ana Martínez', cargo: 'Recepcionista' }
-  ]);
-
-  const [rolesDisponibles] = useState([
-    { id: 1, nombre: 'Administrador' },
-    { id: 2, nombre: 'Médico' },
-    { id: 3, nombre: 'Enfermero' },
-    { id: 4, nombre: 'Recepcionista' }
-  ]);
-
   // Estado para la lista de usuarios
-  const [usuarios, setUsuarios] = useState([
-    {
-      id: 1,
-      personalId: 1,
-      personalNombre: 'Dr. Juan Pérez',
-      usuario: 'jperez',
-      estado: 'activo',
-      rolId: 1,
-      rolNombre: 'Administrador',
-      fechaCreacion: '2024-01-15T10:30:00',
-      ultimoAcceso: '2024-03-15T14:25:00',
-      creadoPor: 'Sistema',
-      intentosLogin: 0
-    },
-    {
-      id: 2,
-      personalId: 2,
-      personalNombre: 'Dra. María García',
-      usuario: 'mgarcia',
-      estado: 'activo',
-      rolId: 2,
-      rolNombre: 'Médico',
-      fechaCreacion: '2024-02-01T09:15:00',
-      ultimoAcceso: '2024-03-14T16:45:00',
-      creadoPor: 'jperez',
-      intentosLogin: 0
-    }
-  ]);
+  const [usuarios, setUsuarios] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [PersonalD, setPersonalCargados] = useState([]);
+  const [EstadoD, setEstadoCargados] = useState([]);
+  const [RolesD, setRolesCargados] = useState([]);
 
   // Estados para modales
   const [openEditModal, setOpenEditModal] = useState(false);
+  const [openDetailModal, setOpenDetailModal] = useState(false);
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
   const [openDetailsModal, setOpenDetailsModal] = useState(false);
   const [selectedUsuario, setSelectedUsuario] = useState(null);
 
+  const cargarPersonal = async () => {
+        try {
+          const responseSystemParameter = await staffService.getAll();
+          console.log('✅ Respuesta de Personal:', responseSystemParameter);
+          setPersonalCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                           responseSystemParameter?.data || []);
+        } catch (error) {
+          console.error('❌ Error al cargar Personal:', error);
+          setError(`Error al cargar Personal: ${error.message}`);
+        }
+      };
+
+  const cargarRoles = async () => {
+        try {
+          const responseSystemParameter = await rolesService.getAll();
+          console.log('✅ Respuesta de Roles:', responseSystemParameter);
+          
+          // Asegurarse de que los datos estén en el formato correcto
+          const rolesData = responseSystemParameter?.data || [];
+          console.log('✅ Datos de roles antes de mapear:', rolesData);
+          
+          // Mapear los datos asegurando que id y nombre estén presentes
+          const rolesMapeados = rolesData.map(rol => ({
+            id: rol.id || rol.profiletypeid,
+            nombre: rol.nombre || rol.profile_name || '',
+            descripcion: rol.descripcion || rol.description || ''
+          }));
+          
+          console.log('✅ Roles mapeados:', rolesMapeados);
+          setRolesCargados(rolesMapeados);
+        } catch (error) {
+          console.error('❌ Error al cargar Roles:', error);
+          setError(`Error al cargar Roles: ${error.message}`);
+        }
+      };
+      
+  const cargarEstados = async () => {
+          try {
+            const responseSystemParameter = await centrosService.getAllSystemParameterId(10006);
+            console.log('✅ Respuesta de Géneros:', responseSystemParameter);
+            setEstadoCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                              responseSystemParameter?.data || []);
+          } catch (error) {
+            console.error('❌ Error al cargar estados:', error);
+            setError(`Error al cargar estados: ${error.message}`);
+           }
+        };
   // Estado para el formulario
   const [formData, setFormData] = useState({
-    personalId: '',
+    profiletypeid: '',
+    personalid: '',
     usuario: '',
-    password: '',
-    confirmPassword: '',
+    contraseña: '',
+    contraseñaC: '',
     estado: '',
-    rolId: '',
   });
+
+  const [editFormData, setEditFormData] = useState({
+        profiletypeid: '',
+    personalid: '',
+    usuario: '',
+    contraseña: '',
+    contraseñaC: '',
+    estado: '',
+      });
 
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
@@ -172,15 +198,82 @@ const Usuarios = () => {
   // Estado para tabs
   const [activeTab, setActiveTab] = useState(0);
 
+  const loadUsuarios = async () => {
+        try {
+          setLoading(true);
+          setError('');
+    
+          console.log('🔄 Cargando Usuarios desde el backend...');
+          const response = await usuariosService.getAll();
+    
+          // Obtener los nombres de los centros para cada personal
+                const usuariosListCarga = await Promise.all(
+                  response.data.map(async (systemUsuarios) => {
+                    try {
+                      const personalDatos = await staffService.getById(systemUsuarios.personalid);
+                      const rolDatos = await rolesService.getById(systemUsuarios.profiletypeid);
+                      const Profesion = await centrosService.getSystemParameterId(personalDatos.data.titulo);
+
+                      return {
+                        ...systemUsuarios,
+                        nombrePersonal: personalDatos.data.nombres + ' ' + personalDatos.data.apellidos,
+                        profesionPer: Profesion.data.value1,
+                        nombreRol: rolDatos.data.nombre
+                      };
+                    } catch (error) {
+                      console.error(`Error al obtener centro ${systemUsuarios.personalid}:`, error);
+                      return {
+                        ...systemUsuarios,
+                        nombrePersonal: 'Personal no encontrado',
+                        profesionPer: 'Profesion no encontrada',
+                        nombreRol: 'Rol no encontrado'
+                      };
+                    }
+                  })
+                );
+  
+          console.log('✅ Estudios cargados:', usuariosListCarga);
+          setUsuarios(usuariosListCarga || []);
+    
+        } catch (error) {
+          console.error('❌ Error al cargar Usuarios:', error);
+          setError(`Error al cargar Usuarios: ${error.message}`);
+    
+        } finally {
+          setLoading(false);
+        }
+      };
+useEffect(() => {
+        const cargarDatosIniciales = async () => {
+          setLoading(true);
+          try {
+            await Promise.all([
+              cargarPersonal(),
+              cargarEstados(),
+              cargarRoles(),
+              loadUsuarios()
+            ]);
+          } catch (error) {
+            console.error('❌ Error al cargar datos iniciales:', error);
+            setError(`Error al cargar datos iniciales: ${error.message}`);
+          } finally {
+            setLoading(false);
+          }
+        };
+    
+        cargarDatosIniciales();
+      }, []);
+
+      
   // Función para limpiar el formulario
   const clearForm = () => {
     setFormData({
-      personalId: '',
+      profiletypeid: '',
+      personalid: '',
       usuario: '',
-      password: '',
-      confirmPassword: '',
+      contraseña: '',
+      contraseñaC: '',
       estado: '',
-      rolId: '',
     });
     setErrors({});
     setShowPassword(false);
@@ -196,32 +289,72 @@ const Usuarios = () => {
     }
   }, [errors]);
 
+  const handleEditInputChange = useCallback((field, value) => {
+            setEditFormData(prev => ({ ...prev, [field]: value }));
+            // Limpiar error si existe
+            if (errors[field]) {
+              setErrors(prev => ({ ...prev, [field]: '' }));
+            }
+          }, [errors]);
+    
+  // 2. Memoiza los componentes de input
+    const MemoizedTextField = memo(({
+      value,
+      onChange,
+      error,
+      helperText,
+      ...props
+    }) => (
+      <TextField
+        {...props}
+        value={value}
+        onChange={onChange}
+        error={error}
+        helperText={helperText}
+        size="small"
+      />
+    ));
+  
+    MemoizedTextField.displayName = 'MemoizedTextField';
+
   // Validación del formulario
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.personalId) {
-      newErrors.personalId = 'Personal es obligatorio';
-    }
     if (!formData.usuario.trim()) {
       newErrors.usuario = 'Usuario es obligatorio';
     }
-    if (!formData.password.trim()) {
-      newErrors.password = 'Contraseña es obligatoria';
-    }
-    if (!formData.confirmPassword.trim()) {
-      newErrors.confirmPassword = 'Confirmar contraseña es obligatorio';
-    }
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Las contraseñas no coinciden';
-    }
-    if (!formData.estado) {
-      newErrors.estado = 'Estado es obligatorio';
-    }
-    if (!formData.rolId) {
-      newErrors.rolId = 'Rol es obligatorio';
+
+    if (!formData.contraseña.trim()) {
+      newErrors.contraseña = 'Contraseña es obligatoria';
     }
 
+    if (!formData.contraseñaC.trim()) {
+      newErrors.contraseñaC = 'Confirmar contraseña es obligatorio';
+    }
+
+    if (formData.contraseña.trim() !== formData.contraseñaC.trim()) {
+      newErrors.contraseña = 'Contraseñas no coinciden, vuelva a digitar.';
+    }
+
+   
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validateEditForm = () => {
+    const newErrors = {};
+
+    if (!editFormData.usuario.trim()) {
+      newErrors.usuario = 'Usuario es obligatorio';
+    }
+    if (!editFormData.contraseña.trim()) {
+      newErrors.contraseña = 'Contraseña es obligatoria';
+    }
+    if (!editFormData.contraseñaC.trim()) {
+      newErrors.contraseñaC = 'Confirmar contraseña es obligatorio';
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -229,16 +362,23 @@ const Usuarios = () => {
   // Funciones para manejar modales
   const handleOpenEditModal = (usuario) => {
     setSelectedUsuario(usuario);
-    setFormData({
-      personalId: usuario.personalId,
+    const initialFormData = {
+      profiletypeid: usuario.profiletypeid,
+      personalid: usuario.personalid,
       usuario: usuario.usuario,
-      password: '',
-      confirmPassword: '',
+      contraseña: usuario.contraseña,
+      contraseñaC: usuario.contraseñaC,
       estado: usuario.estado,
-      rolId: usuario.rolId,
-    });
+      createdAt: usuario.createdAt,
+      createdBy: usuario.createdBy,
+      updatedAt: usuario.updatedAt,
+      updatedBy: usuario.updatedBy
+    };
+    setEditFormData(initialFormData);
+
     setOpenEditModal(true);
   };
+
 
   const handleCloseEditModal = () => {
     setOpenEditModal(false);
@@ -267,88 +407,94 @@ const Usuarios = () => {
   };
 
   // Función para crear usuario
-  const handleCreateUsuario = (e) => {
-    e.preventDefault();
-
-    if (validateForm()) {
-      const selectedPersonal = personales.find(p => p.id === parseInt(formData.personalId));
-      const selectedRol = rolesDisponibles.find(r => r.id === parseInt(formData.rolId));
-
-      const newUsuario = {
-        id: Math.max(...usuarios.map(u => u.id)) + 1,
-        personalId: parseInt(formData.personalId),
-        personalNombre: selectedPersonal.nombre,
-        usuario: formData.usuario.trim(),
-        estado: formData.estado,
-        rolId: parseInt(formData.rolId),
-        rolNombre: selectedRol.nombre,
-        fechaCreacion: new Date().toISOString(),
-        ultimoAcceso: null,
-        creadoPor: 'Sistema',
-        intentosLogin: 0
-      };
-
-      setUsuarios(prev => [...prev, newUsuario]);
-      clearForm();
-      // Cambiar automáticamente al tab de lista
-      setActiveTab(1);
-    }
-  };
-
-  // Función para editar usuario
-  const handleEditUsuario = (e) => {
-    e.preventDefault();
-
-    // Para editar, la validación de contraseña es opcional
-    const newErrors = {};
-    if (!formData.personalId) {
-      newErrors.personalId = 'Personal es obligatorio';
-    }
-    if (!formData.usuario.trim()) {
-      newErrors.usuario = 'Usuario es obligatorio';
-    }
-    if (formData.password && formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Las contraseñas no coinciden';
-    }
-    if (!formData.estado) {
-      newErrors.estado = 'Estado es obligatorio';
-    }
-    if (!formData.rolId) {
-      newErrors.rolId = 'Rol es obligatorio';
-    }
-
-    setErrors(newErrors);
-
-    if (Object.keys(newErrors).length === 0) {
-      const selectedPersonal = personales.find(p => p.id === parseInt(formData.personalId));
-      const selectedRol = rolesDisponibles.find(r => r.id === parseInt(formData.rolId));
-
-      setUsuarios(prev => prev.map(u =>
-        u.id === selectedUsuario.id
-          ? {
-              ...u,
-              personalId: parseInt(formData.personalId),
-              personalNombre: selectedPersonal.nombre,
-              usuario: formData.usuario.trim(),
-              estado: formData.estado,
-              rolId: parseInt(formData.rolId),
-              rolNombre: selectedRol.nombre
+  const handleCreateUsuario = async (e) => {
+            e.preventDefault();
+        
+            if (validateForm()) {
+              try {
+                setLoading(true);
+                console.log('📤 Creando Usuario...');
+        
+                // Asegurarse de que estado sea un ID numérico
+                const usuarioData = {
+                  ...formData,
+                  estado: formData.estado === 10007 ? true : false 
+                };
+        
+                const nuevoUsuario = await usuariosService.create(usuarioData);
+                console.log('✅ Usuario creado:', nuevoUsuario);
+        
+                // Recargar la lista de centros
+                await loadUsuarios();
+        
+                clearForm();
+                // Cambiar automáticamente al tab de lista
+                setActiveTab(0);
+        
+              } catch (error) {
+                console.error('❌ Error al crear Usuario:', error);
+                setError(`Error al crear Usuario: ${error.message}`);
+              } finally {
+                setLoading(false);
+              }
             }
-          : u
-      ));
-      handleCloseEditModal();
-    }
-  };
+          };
+  // Función para editar usuario
+  const handleEditUsuario = async (e) => {
+          e.preventDefault();
+      
+          if (validateEditForm()) {
+            try {
+              setLoading(true);
+              console.log('📤 Editando Usuario...');
+      
+              // Asegurarse de que estado sea un booleano
+              const formDataToSend = {
+                ...editFormData,
+                estado: editFormData.estado === '10007', // Convertir a booleano basado en el valor del estado
+              };
+              const salaActualizado = await usuariosService.update(selectedUsuario.id, formDataToSend);
+              console.log('✅ Usuario actualizado:', salaActualizado);
+      
+              // Recargar la lista de Salas
+              await loadUsuarios();
+      
+              handleCloseEditModal();
+      
+            } catch (error) {
+              console.error('❌ Error al editar Usuario:', error);
+              setError(`Error al editar Usuario: ${error.message}`);
+            } finally {
+              setLoading(false);
+            }
+          }
+        };
 
+  
   // Función para eliminar usuario
-  const handleDeleteUsuario = () => {
-    setUsuarios(prev => prev.filter(u => u.id !== selectedUsuario.id));
-    handleCloseDeleteConfirm();
-  };
+const handleDeleteUsuario = async () => {
+        try {
+          setLoading(true);
+          console.log('📤 Eliminando Usuario...');
+    
+          await usuariosService.delete(selectedUsuario.id);
+          console.log('✅ Usuario eliminado');
+    
+          // Recargar la lista de Estudio
+          await loadUsuarios();
+    
+          handleCloseDeleteConfirm();
+    
+        } catch (error) {
+          console.error('❌ Error al eliminar Usuario:', error);
+          setError(`Error al eliminar Usuario: ${error.message}`);
+        } finally {
+          setLoading(false);
+        }
+      };
 
   // Filtrar usuarios basado en la búsqueda
   const filteredUsuarios = usuarios.filter(usuario =>
-    usuario.personalNombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
     usuario.usuario.toLowerCase().includes(searchTerm.toLowerCase()) ||
     usuario.estado.toLowerCase().includes(searchTerm.toLowerCase()) ||
     usuario.rolNombre.toLowerCase().includes(searchTerm.toLowerCase())
@@ -436,30 +582,31 @@ const Usuarios = () => {
                   <ResponsiveField label="Personal" required>
                     <FormControl fullWidth required error={!!errors.personalId} size="small">
                       <Select
-                        value={formData.personalId}
-                        onChange={(e) => handleInputChange('personalId', e.target.value)}
+                        value={formData.personalid}
+                        onChange={(e) => handleInputChange('personalid', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.personalId ? '#000' : '#999'
+                            color: formData.personalid ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar personal</MenuItem>
-                        {personales.map((personal) => (
+                        {Array.isArray(PersonalD) && PersonalD.map(personal => (
                           <MenuItem key={personal.id} value={personal.id}>
-                            {personal.nombre} - {personal.cargo}
+                            {personal.nombres + ' ' + personal.apellidos || ''}
                           </MenuItem>
                         ))}
                       </Select>
                     </FormControl>
-                    {errors.personalId && (
+                    {errors.personalid && (
                       <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
-                        {errors.personalId}
+                        {errors.personalid}
                       </Typography>
                     )}
                   </ResponsiveField>
-
+                </FieldRow>
+                <FieldRow>
                   <ResponsiveField label="Usuario" required>
                     <TextField
                       fullWidth
@@ -482,10 +629,10 @@ const Usuarios = () => {
                       required
                       type={showPassword ? 'text' : 'password'}
                       placeholder="Ingrese la contraseña"
-                      value={formData.password}
-                      onChange={(e) => handleInputChange('password', e.target.value)}
-                      error={!!errors.password}
-                      helperText={errors.password}
+                      value={formData.contraseña}
+                      onChange={(e) => handleInputChange('contraseña', e.target.value)}
+                      error={!!errors.contraseña}
+                      helperText={errors.contraseña}
                       size="small"
                       InputProps={{
                         endAdornment: (
@@ -507,10 +654,10 @@ const Usuarios = () => {
                       required
                       type={showConfirmPassword ? 'text' : 'password'}
                       placeholder="Confirme la contraseña"
-                      value={formData.confirmPassword}
-                      onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                      error={!!errors.confirmPassword}
-                      helperText={errors.confirmPassword}
+                      value={formData.contraseñaC}
+                      onChange={(e) => handleInputChange('contraseñaC', e.target.value)}
+                      error={!!errors.contraseñaC}
+                      helperText={errors.contraseñaC}
                       size="small"
                       InputProps={{
                         endAdornment: (
@@ -542,8 +689,11 @@ const Usuarios = () => {
                         }}
                       >
                         <MenuItem value="">Seleccionar estado</MenuItem>
-                        <MenuItem value="activo">Activo</MenuItem>
-                        <MenuItem value="inactivo">Inactivo</MenuItem>
+                        {Array.isArray(EstadoD) && EstadoD.map(estado => (
+                          <MenuItem key={estado.parameterid} value={estado.parameterid}>
+                            {estado.value1 || ''}
+                          </MenuItem>
+                        ))}
                       </Select>
                     </FormControl>
                     {errors.estado && (
@@ -554,28 +704,28 @@ const Usuarios = () => {
                   </ResponsiveField>
 
                   <ResponsiveField label="Rol" required>
-                    <FormControl fullWidth required error={!!errors.rolId} size="small">
+                    <FormControl fullWidth required error={!!errors.profiletypeid} size="small">
                       <Select
-                        value={formData.rolId}
-                        onChange={(e) => handleInputChange('rolId', e.target.value)}
+                        value={formData.profiletypeid}
+                        onChange={(e) => handleInputChange('profiletypeid', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.rolId ? '#000' : '#999'
+                            color: formData.profiletypeid ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar rol</MenuItem>
-                        {rolesDisponibles.map((rol) => (
+                        {Array.isArray(RolesD) && RolesD.map(rol => (
                           <MenuItem key={rol.id} value={rol.id}>
-                            {rol.nombre}
+                            {rol.nombre || ''}
                           </MenuItem>
                         ))}
                       </Select>
                     </FormControl>
-                    {errors.rolId && (
+                    {errors.profiletypeid && (
                       <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
-                        {errors.rolId}
+                        {errors.profiletypeid}
                       </Typography>
                     )}
                   </ResponsiveField>
@@ -649,6 +799,7 @@ const Usuarios = () => {
                   <TableHead>
                     <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                       <TableCell><strong>Personal</strong></TableCell>
+                      <TableCell><strong>Profesion</strong></TableCell>
                       <TableCell><strong>Usuario</strong></TableCell>
                       <TableCell><strong>Estado</strong></TableCell>
                       <TableCell><strong>Rol</strong></TableCell>
@@ -671,7 +822,12 @@ const Usuarios = () => {
                       <TableRow key={usuario.id} hover>
                         <TableCell>
                           <Typography variant="body2">
-                            {usuario.personalNombre}
+                            {usuario.nombrePersonal} 
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">
+                            {usuario.profesionPer} 
                           </Typography>
                         </TableCell>
                         <TableCell>
@@ -681,14 +837,14 @@ const Usuarios = () => {
                         </TableCell>
                         <TableCell>
                           <Chip
-                            label={usuario.estado === 'activo' ? 'Activo' : 'Inactivo'}
-                            color={getEstadoColor(usuario.estado)}
+                            label={usuario.status === 'activo' ? 'Activo' : 'Inactivo'}
+                            color={getEstadoColor(usuario.status)}
                             size="small"
                           />
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2">
-                            {usuario.rolNombre}
+                            {usuario.nombreRol}
                           </Typography>
                         </TableCell>
                         <TableCell align="center">
@@ -740,14 +896,19 @@ const Usuarios = () => {
           sx: { borderRadius: 2 }
         }}
       >
-        <DialogTitle sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          backgroundColor: '#2184be',
-          color: 'white'
-        }}>
-          <Typography variant="h6" fontWeight="bold">Editar Usuario</Typography>
+        <DialogTitle 
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: '#2184be',
+            color: 'white',
+            '& .MuiTypography-root': {
+              fontWeight: 'bold'
+            }
+          }}
+        >
+          Editar Usuario
           <IconButton onClick={handleCloseEditModal} sx={{ color: 'white' }}>
             <Close />
           </IconButton>
@@ -761,23 +922,23 @@ const Usuarios = () => {
 
               <FieldRow>
                 <ResponsiveField label="Personal" required>
-                  <FormControl fullWidth required error={!!errors.personalId} size="small">
+                  <FormControl fullWidth required error={!!errors.personalid} size="small">
                     <Select
-                      value={formData.personalId}
-                      onChange={(e) => handleInputChange('personalId', e.target.value)}
+                      value={editFormData.personalid}
+                      onChange={(e) => handleEditInputChange('personalid', e.target.value)}
                       displayEmpty
                       sx={{
                         '& .MuiSelect-select': {
-                          color: formData.personalId ? '#000' : '#999'
+                          color: editFormData.personalid ? '#000' : '#999'
                         }
                       }}
                     >
                       <MenuItem value="">Seleccionar personal</MenuItem>
-                      {personales.map((personal) => (
-                        <MenuItem key={personal.id} value={personal.id}>
-                          {personal.nombre} - {personal.cargo}
-                        </MenuItem>
-                      ))}
+                      {Array.isArray(PersonalD) && PersonalD.map(personal => (
+                          <MenuItem key={personal.id} value={personal.id}>
+                            {personal.nombres + ' ' + personal.apellidos || ''}
+                          </MenuItem>
+                        ))}
                     </Select>
                   </FormControl>
                   {errors.personalId && (
@@ -786,14 +947,17 @@ const Usuarios = () => {
                     </Typography>
                   )}
                 </ResponsiveField>
+              </FieldRow>
+              <FieldRow>
+                
 
                 <ResponsiveField label="Usuario" required>
                   <TextField
                     fullWidth
                     required
                     placeholder="Ingrese el nombre de usuario"
-                    value={formData.usuario}
-                    onChange={(e) => handleInputChange('usuario', e.target.value)}
+                    value={editFormData.usuario}
+                    onChange={(e) => handleEditInputChange('usuario', e.target.value)}
                     error={!!errors.usuario}
                     helperText={errors.usuario}
                     size="small"
@@ -807,10 +971,10 @@ const Usuarios = () => {
                     fullWidth
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Dejar vacío para mantener actual"
-                    value={formData.password}
-                    onChange={(e) => handleInputChange('password', e.target.value)}
-                    error={!!errors.password}
-                    helperText={errors.password}
+                    value={editFormData.contraseña}
+                    onChange={(e) => handleEditInputChange('contraseña', e.target.value)}
+                    error={!!errors.contraseña}
+                    helperText={errors.contraseña}
                     size="small"
                     InputProps={{
                       endAdornment: (
@@ -831,10 +995,10 @@ const Usuarios = () => {
                     fullWidth
                     type={showConfirmPassword ? 'text' : 'password'}
                     placeholder="Confirme la nueva contraseña"
-                    value={formData.confirmPassword}
-                    onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                    error={!!errors.confirmPassword}
-                    helperText={errors.confirmPassword}
+                    value={editFormData.contraseñaC}
+                    onChange={(e) => handleEditInputChange('contraseñaC', e.target.value)}
+                    error={!!errors.contraseñaC}
+                    helperText={errors.contraseñaC}
                     size="small"
                     InputProps={{
                       endAdornment: (
@@ -855,8 +1019,8 @@ const Usuarios = () => {
                 <ResponsiveField label="Estado" required>
                   <FormControl fullWidth required error={!!errors.estado} size="small">
                     <Select
-                      value={formData.estado}
-                      onChange={(e) => handleInputChange('estado', e.target.value)}
+                      value={editFormData.estado}
+                      onChange={(e) => handleEditInputChange('estado', e.target.value)}
                       displayEmpty
                       sx={{
                         '& .MuiSelect-select': {
@@ -865,8 +1029,11 @@ const Usuarios = () => {
                       }}
                     >
                       <MenuItem value="">Seleccionar estado</MenuItem>
-                      <MenuItem value="activo">Activo</MenuItem>
-                      <MenuItem value="inactivo">Inactivo</MenuItem>
+                      {Array.isArray(EstadoD) && EstadoD.map(estado => (
+                        <MenuItem key={estado.parameterid} value={estado.parameterid.toString()}>
+                          {estado.value1 || ''}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                   {errors.estado && (
@@ -879,21 +1046,21 @@ const Usuarios = () => {
                 <ResponsiveField label="Rol" required>
                   <FormControl fullWidth required error={!!errors.rolId} size="small">
                     <Select
-                      value={formData.rolId}
-                      onChange={(e) => handleInputChange('rolId', e.target.value)}
+                      value={editFormData.profiletypeid}
+                      onChange={(e) => handleEditInputChange('profiletypeid', e.target.value)}
                       displayEmpty
                       sx={{
                         '& .MuiSelect-select': {
-                          color: formData.rolId ? '#000' : '#999'
+                          color: editFormData.profiletypeid ? '#000' : '#999'
                         }
                       }}
                     >
                       <MenuItem value="">Seleccionar rol</MenuItem>
-                      {rolesDisponibles.map((rol) => (
-                        <MenuItem key={rol.id} value={rol.id}>
-                          {rol.nombre}
-                        </MenuItem>
-                      ))}
+                      {Array.isArray(RolesD) && RolesD.map(personal => (
+                          <MenuItem key={personal.id} value={personal.id}>
+                            {personal.nombre || ''}
+                          </MenuItem>
+                        ))}
                     </Select>
                   </FormControl>
                   {errors.rolId && (
@@ -939,14 +1106,19 @@ const Usuarios = () => {
           sx: { borderRadius: 2 }
         }}
       >
-        <DialogTitle sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          backgroundColor: '#2196f3',
-          color: 'white'
-        }}>
-          <Typography variant="h6" fontWeight="bold">Detalles del Usuario</Typography>
+        <DialogTitle 
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: '#2196f3',
+            color: 'white',
+            '& .MuiTypography-root': {
+              fontWeight: 'bold'
+            }
+          }}
+        >
+          Detalles del Usuario
           <IconButton onClick={handleCloseDetailsModal} sx={{ color: 'white' }}>
             <Close />
           </IconButton>
@@ -965,7 +1137,8 @@ const Usuarios = () => {
                       Personal Asignado:
                     </Typography>
                     <Typography variant="body1" sx={{ mb: 2 }}>
-                      {selectedUsuario.personalNombre}
+                      {selectedUsuario.nombrePersonal}
+                      [{selectedUsuario.profesionPer}]
                     </Typography>
                   </Grid>
                   <Grid item xs={12} md={6}>
@@ -981,8 +1154,8 @@ const Usuarios = () => {
                       Estado:
                     </Typography>
                     <Chip
-                      label={selectedUsuario.estado === 'activo' ? 'Activo' : 'Inactivo'}
-                      color={getEstadoColor(selectedUsuario.estado)}
+                      label={selectedUsuario.status === 'activo' ? 'Activo' : 'Inactivo'}
+                      color={getEstadoColor(selectedUsuario.status)}
                       size="small"
                       sx={{ mt: 0.5 }}
                     />
@@ -992,7 +1165,15 @@ const Usuarios = () => {
                       Rol Asignado:
                     </Typography>
                     <Typography variant="body1" sx={{ mb: 2 }}>
-                      {selectedUsuario.rolNombre}
+                      {selectedUsuario.nombreRol}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body2" color="text.secondary" fontWeight="bold">
+                      Contraseña:
+                    </Typography>
+                    <Typography variant="body1" sx={{ mb: 2 }}>
+                      {selectedUsuario.contraseña}
                     </Typography>
                   </Grid>
                 </Grid>
@@ -1008,11 +1189,19 @@ const Usuarios = () => {
                 <Grid container spacing={3}>
                   <Grid item xs={12} md={6}>
                     <Typography variant="body2" color="text.secondary" fontWeight="bold">
+                      Creado Por:
+                    </Typography>
+                    <Typography variant="body1" sx={{ mb: 2 }}>
+                      {selectedUsuario.createdBy || 'Sistema'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body2" color="text.secondary" fontWeight="bold">
                       Fecha de Creación:
                     </Typography>
                     <Typography variant="body1" sx={{ mb: 2 }}>
-                      {selectedUsuario.fechaCreacion ?
-                        new Date(selectedUsuario.fechaCreacion).toLocaleString('es-ES', {
+                      {selectedUsuario.createdAt ?
+                        new Date(selectedUsuario.createdAt).toLocaleString('es-ES', {
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric',
@@ -1022,6 +1211,33 @@ const Usuarios = () => {
                       }
                     </Typography>
                   </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body2" color="text.secondary" fontWeight="bold">
+                      Actualizado Por:
+                    </Typography>
+                    <Typography variant="body1" sx={{ mb: 2 }}>
+                      {selectedUsuario.updatedBy || 'Sistema'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body2" color="text.secondary" fontWeight="bold">
+                      Fecha de Actualización:
+                    </Typography>
+                    <Typography variant="body1" sx={{ mb: 2 }}>
+                      {selectedUsuario.updatedAt ?
+                        new Date(selectedUsuario.updatedAt).toLocaleString('es-ES', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        }) : 'No disponible'
+                      }
+                    </Typography>
+                  </Grid>
+                  
+                  {/*          
                   <Grid item xs={12} md={6}>
                     <Typography variant="body2" color="text.secondary" fontWeight="bold">
                       Último Acceso:
@@ -1038,14 +1254,7 @@ const Usuarios = () => {
                       }
                     </Typography>
                   </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body2" color="text.secondary" fontWeight="bold">
-                      Creado Por:
-                    </Typography>
-                    <Typography variant="body1" sx={{ mb: 2 }}>
-                      {selectedUsuario.creadoPor || 'Sistema'}
-                    </Typography>
-                  </Grid>
+                  
                   <Grid item xs={12} md={6}>
                     <Typography variant="body2" color="text.secondary" fontWeight="bold">
                       Intentos de Login Fallidos:
@@ -1053,11 +1262,11 @@ const Usuarios = () => {
                     <Typography variant="body1" sx={{ mb: 2 }}>
                       {selectedUsuario.intentosLogin || 0}
                     </Typography>
-                  </Grid>
+                  </Grid>*/}
                 </Grid>
               </Paper>
 
-              {/* Estadísticas Adicionales */}
+              {/* Estadísticas Adicionales 
               <Paper sx={{ p: 3, backgroundColor: '#fff3e0' }}>
                 <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#f57c00' }}>
                   Estadísticas de Uso
@@ -1097,7 +1306,7 @@ const Usuarios = () => {
                     </Box>
                   </Grid>
                 </Grid>
-              </Paper>
+              </Paper>*/}
             </Box>
           )}
         </DialogContent>
@@ -1127,12 +1336,17 @@ const Usuarios = () => {
           sx: { borderRadius: 2 }
         }}
       >
-        <DialogTitle sx={{
-          backgroundColor: '#f44336',
-          color: 'white',
-          textAlign: 'center'
-        }}>
-          <Typography variant="h6" fontWeight="bold">Confirmar Eliminación</Typography>
+        <DialogTitle 
+          sx={{
+            backgroundColor: '#f44336',
+            color: 'white',
+            textAlign: 'center',
+            '& .MuiTypography-root': {
+              fontWeight: 'bold'
+            }
+          }}
+        >
+          Confirmar Eliminación
         </DialogTitle>
         <DialogContent sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="body1">

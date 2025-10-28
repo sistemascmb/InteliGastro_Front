@@ -462,14 +462,19 @@ const Cie10 = () => {
           sx: { borderRadius: 2 }
         }}
       >
-        <DialogTitle sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          backgroundColor: '#2184be', 
-          color: 'white' 
-        }}>
-          <Typography variant="h6" fontWeight="bold">Agregar Nuevo Código CIE-10</Typography>
+        <DialogTitle 
+          sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            backgroundColor: '#2184be', 
+            color: 'white',
+            '& .MuiTypography-root': {
+              fontWeight: 'bold'
+            }
+          }}
+        >
+          Agregar Nuevo Código CIE-10
           <IconButton onClick={handleCloseAddModal} sx={{ color: 'white' }}>
             <Close />
           </IconButton>
@@ -648,12 +653,17 @@ const Cie10 = () => {
           sx: { borderRadius: 2 }
         }}
       >
-        <DialogTitle sx={{ 
-          backgroundColor: '#f44336', 
-          color: 'white',
-          textAlign: 'center'
-        }}>
-          <Typography variant="h6" fontWeight="bold">Confirmar Eliminación</Typography>
+        <DialogTitle 
+          sx={{ 
+            backgroundColor: '#f44336', 
+            color: 'white',
+            textAlign: 'center',
+            '& .MuiTypography-root': {
+              fontWeight: 'bold'
+            }
+          }}
+        >
+          Confirmar Eliminación
         </DialogTitle>
         <DialogContent sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="body1">

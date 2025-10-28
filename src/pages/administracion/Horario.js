@@ -634,10 +634,19 @@ const Horario = () => {
 
       {/* Modal para Agregar/Editar Horario */}
       <Dialog open={openHorarioModal} onClose={handleCloseModal} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ bgcolor: '#2184be', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6" fontWeight="bold">
-            {modalMode === 'add' ? 'Agregar Horario' : 'Editar Horario'}
-          </Typography>
+        <DialogTitle 
+          sx={{ 
+            bgcolor: '#2184be', 
+            color: 'white', 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            '& .MuiTypography-root': {
+              fontWeight: 'bold'
+            }
+          }}
+        >
+          {modalMode === 'add' ? 'Agregar Horario' : 'Editar Horario'}
         </DialogTitle>
         
         <DialogContent sx={{ p: 3, mt: 2 }}>
