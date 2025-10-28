@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, useCallback, memo, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -24,6 +24,8 @@ import {
   MenuItem,
   Tabs,
   Tab,
+  CircularProgress,
+  Alert,
   Chip
 } from '@mui/material';
 import {
@@ -36,6 +38,9 @@ import {
   Search,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { salasService } from '../../services/salasService';
+import { centrosService } from '../../services/centrosService';
+import examenesService from 'services/examenesService';
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
@@ -98,55 +103,56 @@ const Examenes = () => {
   const navigate = useNavigate();
 
   // Estado para la lista de exámenes
-  const [examenes, setExamenes] = useState([
-    {
-      id: 1,
-      descripcion: 'Hemoglobina glucosilada (HbA1c)',
-      abreviacion: 'HbA1c',
-      estado: 'activo',
-      tipo: 'laboratorio'
-    },
-    {
-      id: 2,
-      descripcion: 'Prueba de aliento para Helicobacter pylori',
-      abreviacion: 'H. pylori',
-      estado: 'activo',
-      tipo: 'adicional'
-    },
-    {
-      id: 3,
-      descripcion: 'Perfil hepático completo',
-      abreviacion: 'PH',
-      estado: 'activo',
-      tipo: 'laboratorio'
-    },
-    {
-      id: 4,
-      descripcion: 'Marcadores tumorales gastrointestinales',
-      abreviacion: 'MTG',
-      estado: 'inactivo',
-      tipo: 'laboratorio'
-    },
-    {
-      id: 5,
-      descripcion: 'Test de intolerancia a lactosa',
-      abreviacion: 'TIL',
-      estado: 'activo',
-      tipo: 'adicional'
-    }
-  ]);
+  const [examenes, setExamenes] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [EstadoD, setEstadoCargados] = useState([]);
+  const [TipoAtencionD, setTipoAtencionCargados] = useState([]);
 
   // Estados para modales (solo editar y eliminar)
   const [openEditModal, setOpenEditModal] = useState(false);
+  const [openDetailModal, setOpenDetailModal] = useState(false);
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
   const [selectedExamen, setSelectedExamen] = useState(null);
 
+  const cargarEstados = async () => {
+        try {
+          const responseSystemParameter = await centrosService.getAllSystemParameterId(10006);
+          console.log('✅ Respuesta de Géneros:', responseSystemParameter);
+          setEstadoCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                           responseSystemParameter?.data || []);
+        } catch (error) {
+          console.error('❌ Error al cargar estados:', error);
+          setError(`Error al cargar estados: ${error.message}`);
+        }
+      };
+  
+const cargarTipoAtencion = async () => {
+        try {
+          const responseSystemParameter = await centrosService.getAllSystemParameterId(10023);
+          console.log('✅ Respuesta de TipoCons:', responseSystemParameter);
+          setTipoAtencionCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                           responseSystemParameter?.data || []);
+        } catch (error) {
+          console.error('❌ Error al cargar TipoCons:', error);
+          setError(`Error al cargar TipoCons: ${error.message}`);
+        }
+      };
+  
+      
   // Estado para el formulario
   const [formData, setFormData] = useState({
-    descripcion: '',
-    abreviacion: '',
-    estado: '',
-    tipo: ''
+    description: '',
+    abbreviation: '',
+    status: '10007', // Valor por defecto para estado
+    type: '10024'    // Valor por defecto para tipo
+  });
+
+  const [editFormData, setEditFormData] = useState({
+    description: '',
+    abbreviation: '',
+    status: '10007', // Valor por defecto para estado
+    type: '10024'    // Valor por defecto para tipo
   });
 
   const [errors, setErrors] = useState({});
@@ -157,13 +163,54 @@ const Examenes = () => {
   // Estado para tabs
   const [activeTab, setActiveTab] = useState(0);
 
+  const loadExamenes = async () => {
+        try {
+          setLoading(true);
+          setError('');
+    
+          console.log('🔄 Cargando Examenes desde el backend...');
+          const response = await examenesService.getAll();
+    
+          console.log('✅ Examenes cargados:', response.data);
+          setExamenes(response.data || []);
+    
+        } catch (error) {
+          console.error('❌ Error al cargar Examenes:', error);
+          setError(`Error al cargar Examenes: ${error.message}`);
+    
+        } finally {
+          setLoading(false);
+        }
+      };
+
+useEffect(() => {
+        const cargarDatosIniciales = async () => {
+          setLoading(true);
+          cargarEstados();
+          cargarTipoAtencion();
+          try {
+            await Promise.all([
+              loadExamenes()
+            ]);
+          } catch (error) {
+            console.error('❌ Error al cargar datos iniciales:', error);
+            setError(`Error al cargar datos iniciales: ${error.message}`);
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        cargarDatosIniciales();
+      }, []);
+
+
   // Función para limpiar el formulario
   const clearForm = () => {
     setFormData({
-      descripcion: '',
-      abreviacion: '',
-      estado: '',
-      tipo: ''
+      description: '',
+      abbreviation: '',
+      status: '10007', // Mantener valor por defecto para estado
+      type: '10024'    // Mantener valor por defecto para tipo
     });
     setErrors({});
   };
@@ -171,6 +218,15 @@ const Examenes = () => {
   // Función genérica para manejar cambios en campos de texto (mismo patrón que NuevoPaciente)
   const handleInputChange = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    // Limpiar error si existe
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  }, [errors]);
+
+  // Función genérica para manejar cambios en campos de texto (formulario editar)
+  const handleEditInputChange = useCallback((field, value) => {
+    setEditFormData(prev => ({ ...prev, [field]: value }));
     // Limpiar error si existe
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -201,19 +257,27 @@ const Examenes = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.descripcion.trim()) {
+    if (!formData.description.trim()) {
       newErrors.descripcion = 'Descripción es obligatoria';
     }
-    if (!formData.abreviacion.trim()) {
+    if (!formData.abbreviation.trim()) {
       newErrors.abreviacion = 'Abreviación es obligatoria';
     }
-    if (!formData.estado) {
-      newErrors.estado = 'Estado es obligatorio';
-    }
-    if (!formData.tipo) {
-      newErrors.tipo = 'Tipo es obligatorio';
-    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
+  const validateEditForm = () => {
+    const newErrors = {};
+
+    if (!editFormData.description?.trim()) {
+      newErrors.description = 'Descripción es obligatoria';
+    }
+    if (!editFormData.abbreviation?.trim()) {
+      newErrors.abbreviation = 'Abreviación es obligatoria';
+    }
+        
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -221,12 +285,14 @@ const Examenes = () => {
   // Funciones para manejar modales
   const handleOpenEditModal = (examen) => {
     setSelectedExamen(examen);
-    setFormData({
-      descripcion: examen.descripcion,
-      abreviacion: examen.abreviacion,
-      estado: examen.estado,
-      tipo: examen.tipo
-    });
+    const initialFormData = {
+      description: examen.description || '',
+      abbreviation: examen.abbreviation || '',
+      status: examen.status || '',
+      type: examen.type || ''
+    };
+    setEditFormData(initialFormData);
+
     setOpenEditModal(true);
   };
 
@@ -247,77 +313,128 @@ const Examenes = () => {
   };
 
   // Función para crear examen
-  const handleCreateExamen = (e) => {
-    e.preventDefault();
-
-    if (validateForm()) {
-      const newExamen = {
-        id: Math.max(...examenes.map(e => e.id)) + 1,
-        descripcion: formData.descripcion.trim(),
-        abreviacion: formData.abreviacion.trim(),
-        estado: formData.estado,
-        tipo: formData.tipo
-      };
-
-      setExamenes(prev => [...prev, newExamen]);
-      clearForm();
-      // Cambiar automáticamente al tab de lista
-      setActiveTab(1);
-    }
-  };
+const handleCreateExamen = async (e) => {
+          e.preventDefault();
+      
+          if (validateForm()) {
+            try {
+              setLoading(true);
+              console.log('📤 Creando Examen...');
+      
+              // Asegurarse de que estado sea un ID numérico
+              const examenData = {
+                ...formData,
+                status: formData.status === 10007 ? true : false 
+              };
+      
+              const nuevoSala = await examenesService.create(examenData);
+              console.log('✅ Examen creado:', nuevoSala);
+      
+              // Recargar la lista de centros
+              await loadExamenes();
+      
+              clearForm();
+              // Cambiar automáticamente al tab de lista
+              setActiveTab(0);
+      
+            } catch (error) {
+              console.error('❌ Error al crear Examen:', error);
+              setError(`Error al crear Examen: ${error.message}`);
+            } finally {
+              setLoading(false);
+            }
+          }
+        };
 
   // Función para editar examen
-  const handleEditExamen = (e) => {
+  const handleEditExamen = async (e) => {
     e.preventDefault();
+    
+    if (validateEditForm()) {
+      try {
+        setLoading(true);
+        console.log('📤 Editando Examen...', editFormData);
 
-    if (validateForm()) {
-      setExamenes(prev => prev.map(e =>
-        e.id === selectedExamen.id
-          ? {
-              ...e,
-              descripcion: formData.descripcion.trim(),
-              abreviacion: formData.abreviacion.trim(),
-              estado: formData.estado,
-              tipo: formData.tipo
-            }
-          : e
-      ));
-      handleCloseEditModal();
+        // Preparar datos para enviar
+        const formDataToSend = {
+          description: editFormData.description,
+          abbreviation: editFormData.abbreviation,
+          status: editFormData.status === '10007', // Convertir a booleano basado en el valor del estado
+          type: editFormData.type
+        };
+
+        console.log('📤 Datos a enviar:', formDataToSend);
+        const examenActualizado = await examenesService.update(selectedExamen.id, formDataToSend);
+        console.log('✅ Examen actualizado:', examenActualizado);
+
+        // Recargar la lista de exámenes
+        await loadExamenes();
+
+        handleCloseEditModal();
+
+      } catch (error) {
+        console.error('❌ Error al editar Examen:', error);
+        setError(`Error al editar Examen: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   // Función para eliminar examen
-  const handleDeleteExamen = () => {
-    setExamenes(prev => prev.filter(e => e.id !== selectedExamen.id));
-    handleCloseDeleteConfirm();
-  };
+const handleDeleteExamen = async () => {
+        try {
+          setLoading(true);
+          console.log('📤 Eliminando Examen...');
+    
+          await examenesService.delete(selectedExamen.id);
+          console.log('✅ Examen eliminado');
+    
+          // Recargar la lista de Estudio
+          await loadExamenes();
+    
+          handleCloseDeleteConfirm();
+    
+        } catch (error) {
+          console.error('❌ Error al eliminar Examen:', error);
+          setError(`Error al eliminar Examen: ${error.message}`);
+        } finally {
+          setLoading(false);
+        }
+      };
+
 
   // Filtrar exámenes basado en la búsqueda
   const filteredExamenes = examenes.filter(examen =>
-    examen.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    examen.abreviacion.toLowerCase().includes(searchTerm.toLowerCase())
+    (examen.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (examen.abbreviation || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Función para obtener el color del estado
   const getEstadoColor = (estado) => {
+    if (!estado) return 'default';
     return estado === 'activo' ? 'success' : 'error';
   };
 
   // Función para obtener el color del tipo
   const getTipoColor = (tipo) => {
-    switch (tipo) {
-      case 'laboratorio': return 'primary';
-      case 'adicional': return 'secondary';
+    if (!tipo) return 'default';
+    const tipoNum = parseInt(tipo);
+    switch (tipoNum) {
+      case 10024: return 'primary';
+      case 10025: return 'secondary';
       default: return 'default';
     }
   };
 
   // Función para obtener el label del tipo
   const getTipoLabel = (tipo) => {
-    switch (tipo) {
-      case 'laboratorio': return 'Laboratorio';
-      case 'adicional': return 'Adicional';
-      default: return tipo;
+    if (!tipo) return 'No definido';
+    const tipoNum = parseInt(tipo);
+    switch (tipoNum) {
+      case 10024: return 'Laboratorio';
+      case 10025: return 'Adicional';
+      default: return 'Otro';
     }
   };
 
@@ -386,6 +503,19 @@ const Examenes = () => {
         {/* Contenido del Tab 1: Crear Examen */}
         {activeTab === 1 && (
           <Box sx={{ p: 4 }}>
+            {/* Mostrar errores */}
+              {error && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {error}
+                </Alert>
+              )}
+                                    
+              {/* Mostrar loading */}
+              {loading && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                <CircularProgress />
+              </Box>
+              )}
             <form onSubmit={handleCreateExamen}>
               {/* Sección: Información del Examen */}
               <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f8f9fa' }}>
@@ -400,29 +530,32 @@ const Examenes = () => {
                       fullWidth
                       required
                       placeholder="Ingrese la descripción del examen"
-                      value={formData.descripcion}
-                      onChange={(e) => handleInputChange('descripcion', e.target.value)}
-                      error={!!errors.descripcion}
-                      helperText={errors.descripcion}
+                      value={formData.description}
+                      onChange={(e) => handleInputChange('description', e.target.value)}
+                      error={!!errors.description}
+                      helperText={errors.description}
                       size="small"
                     />
                   </ResponsiveField>
 
                   <ResponsiveField label="Estado" required>
-                    <FormControl fullWidth required error={!!errors.estado} size="small">
+                    <FormControl fullWidth required error={!!errors.status} size="small">
                       <Select
-                        value={formData.estado}
-                        onChange={(e) => handleInputChange('estado', e.target.value)}
+                        value={formData.status}
+                        onChange={(e) => handleInputChange('status', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.estado ? '#000' : '#999'
+                            color: formData.status ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar estado</MenuItem>
-                        <MenuItem value="activo">Activo</MenuItem>
-                        <MenuItem value="inactivo">Inactivo</MenuItem>
+                        {Array.isArray(EstadoD) && EstadoD.map(estado => (
+                          <MenuItem key={estado.parameterid} value={estado.parameterid}>
+                            {estado.value1 || ''}
+                          </MenuItem>
+                        ))}
                       </Select>
                     </FormControl>
                   </ResponsiveField>
@@ -435,29 +568,32 @@ const Examenes = () => {
                       fullWidth
                       required
                       placeholder="Ingrese la abreviación"
-                      value={formData.abreviacion}
-                      onChange={(e) => handleInputChange('abreviacion', e.target.value)}
-                      error={!!errors.abreviacion}
-                      helperText={errors.abreviacion}
+                      value={formData.abbreviation}
+                      onChange={(e) => handleInputChange('abbreviation', e.target.value)}
+                      error={!!errors.abbreviation}
+                      helperText={errors.abbreviation}
                       size="small"
                     />
                   </ResponsiveField>
 
                   <ResponsiveField label="Tipo" required>
-                    <FormControl fullWidth required error={!!errors.tipo} size="small">
+                    <FormControl fullWidth required error={!!errors.type} size="small">
                       <Select
-                        value={formData.tipo}
-                        onChange={(e) => handleInputChange('tipo', e.target.value)}
+                        value={formData.type}
+                        onChange={(e) => handleInputChange('type', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.tipo ? '#000' : '#999'
+                            color: formData.type ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar tipo</MenuItem>
-                        <MenuItem value="laboratorio">Laboratorio</MenuItem>
-                        <MenuItem value="adicional">Adicional</MenuItem>
+                        {Array.isArray(TipoAtencionD) && TipoAtencionD.map(tipo => (
+                          <MenuItem key={tipo.parameterid} value={tipo.parameterid}>
+                            {tipo.value1 || ''}
+                          </MenuItem>
+                        ))}
                       </Select>
                     </FormControl>
                   </ResponsiveField>
@@ -551,18 +687,18 @@ const Examenes = () => {
                       <TableRow key={examen.id} hover>
                         <TableCell>
                           <Typography variant="body2">
-                            {examen.descripcion}
+                            {examen.description}
                           </Typography>
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2">
-                            {examen.abreviacion}
+                            {examen.abbreviation}
                           </Typography>
                         </TableCell>
                         <TableCell>
                           <Chip
-                            label={getTipoLabel(examen.tipo)}
-                            color={getTipoColor(examen.tipo)}
+                            label={getTipoLabel(examen.type)}
+                            color={getTipoColor(examen.type)}
                             size="small"
                           />
                         </TableCell>
@@ -638,29 +774,32 @@ const Examenes = () => {
                     fullWidth
                     required
                     placeholder="Ingrese la descripción del examen"
-                    value={formData.descripcion}
-                    onChange={(e) => handleInputChange('descripcion', e.target.value)}
-                    error={!!errors.descripcion}
-                    helperText={errors.descripcion}
+                    value={editFormData.description}
+                    onChange={(e) => handleEditInputChange('description', e.target.value)}
+                    error={!!errors.description}
+                    helperText={errors.description}
                     size="small"
                   />
                 </ResponsiveField>
 
                 <ResponsiveField label="Estado" required>
-                  <FormControl fullWidth required error={!!errors.estado} size="small">
+                  <FormControl fullWidth required error={!!errors.status} size="small">
                     <Select
-                      value={formData.estado}
-                      onChange={(e) => handleInputChange('estado', e.target.value)}
+                      value={editFormData.status}
+                      onChange={(e) => handleEditInputChange('status', e.target.value)}
                       displayEmpty
                       sx={{
                         '& .MuiSelect-select': {
-                          color: formData.estado ? '#000' : '#999'
+                          color: editFormData.status ? '#000' : '#999'
                         }
                       }}
                     >
                       <MenuItem value="">Seleccionar estado</MenuItem>
-                      <MenuItem value="activo">Activo</MenuItem>
-                      <MenuItem value="inactivo">Inactivo</MenuItem>
+                      {Array.isArray(EstadoD) && EstadoD.map(estado => (
+                        <MenuItem key={estado.parameterid} value={estado.parameterid.toString()}>
+                          {estado.value1 || ''}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 </ResponsiveField>
@@ -672,29 +811,32 @@ const Examenes = () => {
                     fullWidth
                     required
                     placeholder="Ingrese la abreviación"
-                    value={formData.abreviacion}
-                    onChange={(e) => handleInputChange('abreviacion', e.target.value)}
-                    error={!!errors.abreviacion}
-                    helperText={errors.abreviacion}
+                    value={editFormData.abbreviation}
+                    onChange={(e) => handleEditInputChange('abbreviation', e.target.value)}
+                    error={!!errors.abbreviation}
+                    helperText={errors.abbreviation}
                     size="small"
                   />
                 </ResponsiveField>
 
                 <ResponsiveField label="Tipo" required>
-                  <FormControl fullWidth required error={!!errors.tipo} size="small">
+                  <FormControl fullWidth required error={!!errors.type} size="small">
                     <Select
-                      value={formData.tipo}
-                      onChange={(e) => handleInputChange('tipo', e.target.value)}
+                      value={editFormData.type}
+                      onChange={(e) => handleEditInputChange('type', e.target.value)}
                       displayEmpty
                       sx={{
                         '& .MuiSelect-select': {
-                          color: formData.tipo ? '#000' : '#999'
+                          color: editFormData.type ? '#000' : '#999'
                         }
                       }}
                     >
                       <MenuItem value="">Seleccionar tipo</MenuItem>
-                      <MenuItem value="laboratorio">Laboratorio</MenuItem>
-                      <MenuItem value="adicional">Adicional</MenuItem>
+                      {Array.isArray(TipoAtencionD) && TipoAtencionD.map(tipo => (
+                        <MenuItem key={tipo.parameterid} value={tipo.parameterid}>
+                            {tipo.value1 || ''}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 </ResponsiveField>
