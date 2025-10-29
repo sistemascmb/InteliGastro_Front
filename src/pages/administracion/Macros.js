@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, useCallback, memo, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -24,6 +24,8 @@ import {
   MenuItem,
   Tabs,
   Tab,
+  CircularProgress,
+  Alert,
   Chip,
   Grid,
   Divider,
@@ -45,7 +47,9 @@ import {
   Visibility
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-
+import { staffService } from '../../services/staffService';
+import { centrosService } from '../../services/centrosService';
+import macrosService from 'services/macrosService';
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
   <Box
@@ -116,43 +120,50 @@ const Macros = () => {
   ]);
 
   // Estado para la lista de macros
-  const [macros, setMacros] = useState([
-    {
-      id: 1,
-      nombre: 'Saludo Inicial',
-      descripcion: 'Macro para saludo estándar de pacientes',
-      asignadoIds: [1, 2],
-      asignadoNombres: ['Dr. Juan Pérez', 'Dra. María García'],
-      macro: 'Buenos días {nombre_paciente}, bienvenido/a a nuestra clínica. ¿En qué podemos ayudarle hoy?',
-      fechaCreacion: '2024-01-10T08:30:00',
-      creadoPor: 'Sistema'
-    },
-    {
-      id: 2,
-      nombre: 'Instrucciones Pre-Examen',
-      descripcion: 'Instrucciones estándar antes de procedimientos',
-      asignadoIds: [1, 5],
-      asignadoNombres: ['Dr. Juan Pérez', 'Dr. Luis Fernández'],
-      macro: 'Antes del examen debe: 1) Ayuno de 12 horas, 2) No tomar medicamentos, 3) Traer exámenes previos',
-      fechaCreacion: '2024-02-05T14:15:00',
-      creadoPor: 'jperez'
-    }
-  ]);
+  const [macros, setMacros] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [PersonalD, setPersonalCargados] = useState([]);
+  const [filteredMacros, setFilteredMacros] = useState([]);
 
   // Estados para modales
   const [openEditModal, setOpenEditModal] = useState(false);
+  const [openDetailModal, setOpenDetailModal] = useState(false);
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
   const [openDetailsModal, setOpenDetailsModal] = useState(false);
   const [selectedMacro, setSelectedMacro] = useState(null);
 
+  const cargarPersonal = async () => {
+          try {
+            const responseSystemParameter = await staffService.getAll();
+            console.log('✅ Respuesta de Personal:', responseSystemParameter);
+            setPersonalCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                             responseSystemParameter?.data || []);
+          } catch (error) {
+            console.error('❌ Error al cargar Personal:', error);
+            setError(`Error al cargar Personal: ${error.message}`);
+          }
+        };
+
   // Estado para el formulario
   const [formData, setFormData] = useState({
-    nombre: '',
-    descripcion: '',
+    name: '',
+    description: '',
+    personalId: '',
     asignadoIds: [],
     macro: '',
+    selectAll: ''
   });
 
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    description: '',
+    personalId: '',
+    asignadoIds: [],
+    macro: '',
+    selectAll: ''
+  });
+  
   const [errors, setErrors] = useState({});
   const [selectAllPersonal, setSelectAllPersonal] = useState(false);
 
@@ -162,13 +173,87 @@ const Macros = () => {
   // Estado para tabs
   const [activeTab, setActiveTab] = useState(0);
 
+  const loadMacros = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      console.log('🔄 Cargando Macros desde el backend...');
+      const response = await macrosService.getAll();
+      
+      if (!response || !response.data) {
+        throw new Error('No se recibieron datos de macros válidos');
+      }
+
+      // Obtener los nombres de los centros para cada personal
+      const macrosListCarga = await Promise.all(
+        (response.data || []).map(async (macros) => {
+          try {
+            if (macros?.personalId && macros.personalId !== -1) {
+              const personalDatos = await staffService.getById(macros.personalId);
+              return {
+                ...macros,
+                nombrePersonal: personalDatos?.data?.nombres && personalDatos?.data?.apellidos
+                  ? `${personalDatos.data.nombres} ${personalDatos.data.apellidos}`
+                  : 'Sin asignar',
+              };
+            }
+            return {
+              ...macros,
+              nombrePersonal: macros.personalId === -1 ? 'Todos' : 'Sin asignar',
+            };
+          } catch (error) {
+            console.error(`Error al obtener personal ${macros?.personalId}:`, error);
+                            return {
+                               ...(macros || {}),
+                               nombrePersonal: 'Error al cargar personal'
+                            };
+                          }
+                        })
+                      );
+
+
+      setMacros(macrosListCarga);
+      setFilteredMacros(macrosListCarga);
+      console.log('✅ Macros cargados:', macrosListCarga);
+    } catch (error) {
+      console.error('❌ Error al cargar Macros:', error);
+      setError(`Error al cargar Macros: ${error.message}`);
+      setMacros([]);
+      setFilteredMacros([]);
+    } finally {
+      setLoading(false);
+    }
+        };
+  useEffect(() => {
+    const cargarDatosIniciales = async () => {
+      setLoading(true);
+      try {
+        await Promise.all([
+          loadMacros(),
+          cargarPersonal(),
+        ]);
+        
+      } catch (error) {
+        console.error('❌ Error al cargar datos iniciales:', error);
+        setError(`Error al cargar datos iniciales: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarDatosIniciales();
+  }, []);
+
   // Función para limpiar el formulario
   const clearForm = () => {
     setFormData({
-      nombre: '',
-      descripcion: '',
+      name: '',
+      description: '',
+      personalId: '',
       asignadoIds: [],
       macro: '',
+      selectAll: ''
     });
     setErrors({});
     setSelectAllPersonal(false);
@@ -182,6 +267,34 @@ const Macros = () => {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
   }, [errors]);
+
+  const handleEditInputChange = useCallback((field, value) => {
+          setEditFormData(prev => ({ ...prev, [field]: value }));
+          // Limpiar error si existe
+          if (errors[field]) {
+            setErrors(prev => ({ ...prev, [field]: '' }));
+          }
+  }, [errors]);
+
+  // 2. Memoiza los componentes de input
+    const MemoizedTextField = memo(({
+      value,
+      onChange,
+      error,
+      helperText,
+      ...props
+    }) => (
+      <TextField
+        {...props}
+        value={value}
+        onChange={onChange}
+        error={error}
+        helperText={helperText}
+        size="small"
+      />
+    ));
+
+    MemoizedTextField.displayName = 'MemoizedTextField';
 
   // Función para manejar selección múltiple de personal
   const handlePersonalChange = (event) => {
@@ -203,9 +316,19 @@ const Macros = () => {
     setSelectAllPersonal(checked);
 
     if (checked) {
-      setFormData(prev => ({ ...prev, asignadoIds: personales.map(p => p.id) }));
+      // Si se marca "Seleccionar todos", limpiamos la selección de personal y establecemos selectAll en true
+      setFormData(prev => ({
+        ...prev,
+        asignadoIds: [],
+        personalId: '',
+        selectAll: true
+      }));
     } else {
-      setFormData(prev => ({ ...prev, asignadoIds: [] }));
+      // Si se desmarca, solo reseteamos selectAll
+      setFormData(prev => ({
+        ...prev,
+        selectAll: false
+      }));
     }
 
     // Limpiar error si existe
@@ -218,15 +341,13 @@ const Macros = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.nombre.trim()) {
-      newErrors.nombre = 'Nombre es obligatorio';
+    if (!formData.name.trim()) {
+      newErrors.name = 'Nombre es obligatorio';
     }
-    if (!formData.descripcion.trim()) {
-      newErrors.descripcion = 'Descripción es obligatoria';
+    if (!formData.description.trim()) {
+      newErrors.description = 'Descripción es obligatoria';
     }
-    if (formData.asignadoIds.length === 0) {
-      newErrors.asignadoIds = 'Debe asignar al menos un personal';
-    }
+  
     if (!formData.macro.trim()) {
       newErrors.macro = 'Macro es obligatorio';
     }
@@ -235,7 +356,40 @@ const Macros = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const validateEditForm = () => {
+    const newErrors = {};
+
+    if (!editFormData.name.trim()) {
+      newErrors.name = 'Nombre es obligatorio';
+    }
+    if (!editFormData.description.trim()) {
+      newErrors.description = 'Descripción es obligatoria';
+    }
+  
+    if (!editFormData.macro.trim()) {
+      newErrors.macro = 'Macro es obligatorio';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   // Funciones para manejar modales
+  const handleOpenEditModal = (macro) => {
+    setSelectedMacro(macro);
+    const isSelectAll = macro.personalId === -1;
+    const initialFormData = {
+      name: macro.name,
+      description: macro.description,
+      personalId: isSelectAll ? '' : macro.personalId,
+      macro: macro.macro,
+      selectAll: isSelectAll
+    };
+    setEditFormData(initialFormData);
+    setSelectAllPersonal(isSelectAll);
+    setOpenEditModal(true);
+  };
+{/** 
   const handleOpenEditModal = (macro) => {
     setSelectedMacro(macro);
     setFormData({
@@ -247,11 +401,19 @@ const Macros = () => {
     setSelectAllPersonal(macro.asignadoIds.length === personales.length);
     setOpenEditModal(true);
   };
-
+*/}
   const handleCloseEditModal = () => {
     setOpenEditModal(false);
     setSelectedMacro(null);
-    clearForm();
+    setSelectAllPersonal(false);
+    setEditFormData({
+      name: '',
+      description: '',
+      personalId: '',
+      macro: '',
+      selectAll: false
+    });
+    setErrors({});
   };
 
   const handleOpenDeleteConfirm = (macro) => {
@@ -275,6 +437,39 @@ const Macros = () => {
   };
 
   // Función para crear macro
+const handleCreateMacro = async (e) => {
+          e.preventDefault();
+      
+          if (validateForm()) {
+            try {
+              setLoading(true);
+              console.log('📤 Creando Macro...');
+      
+              // Asegurarse de que estado sea un ID numérico
+              const macroData = {
+                ...formData,
+                personalId: formData.selectAll === true ? -1 : formData.personalId 
+              };
+      
+              const nuevoMacro = await macrosService.create(macroData);
+              console.log('✅ Macro creado:', nuevoMacro);
+      
+              // Recargar la lista de Macro
+              await loadMacros();
+      
+              clearForm();
+              // Cambiar automáticamente al tab de lista
+              setActiveTab(0);
+      
+            } catch (error) {
+              console.error('❌ Error al crear Macro:', error);
+              setError(`Error al crear Macro: ${error.message}`);
+            } finally {
+              setLoading(false);
+            }
+          }
+        };
+{/* 
   const handleCreateMacro = (e) => {
     e.preventDefault();
 
@@ -299,9 +494,39 @@ const Macros = () => {
       // Cambiar automáticamente al tab de lista
       setActiveTab(1);
     }
-  };
+  };*/}
 
   // Función para editar macro
+  const handleEditMacro = async (e) => {
+          e.preventDefault();
+      
+          if (validateEditForm()) {
+            try {
+              setLoading(true);
+              console.log('📤 Editando Macro...');
+      
+              // Asegurarse de que estado sea un booleano
+              const formDataToSend = {
+                ...editFormData,
+                personalId: editFormData.selectAll === true ? -1 : editFormData.personalId 
+              };
+              const salaActualizado = await macrosService.update(selectedMacro.id, formDataToSend);
+              console.log('✅ Macro actualizado:', salaActualizado);
+      
+              // Recargar la lista de Macro
+              await loadMacros();
+      
+              handleCloseEditModal();
+      
+            } catch (error) {
+              console.error('❌ Error al editar Macro:', error);
+              setError(`Error al editar Macro: ${error.message}`);
+            } finally {
+              setLoading(false);
+            }
+          }
+        };
+  {/* 
   const handleEditMacro = (e) => {
     e.preventDefault();
 
@@ -325,24 +550,48 @@ const Macros = () => {
       handleCloseEditModal();
     }
   };
-
+*/}
   // Función para eliminar macro
+  const handleDeleteMacro = async () => {
+          try {
+            setLoading(true);
+            console.log('📤 Eliminando Macro...');
+      
+            await macrosService.delete(selectedMacro.id);
+            console.log('✅ Macro eliminado');
+      
+            // Recargar la lista de Macro
+            await loadMacros();
+      
+            handleCloseDeleteConfirm();
+      
+          } catch (error) {
+            console.error('❌ Error al eliminar Macro:', error);
+            setError(`Error al eliminar Macro: ${error.message}`);
+          } finally {
+            setLoading(false);
+          }
+        };
+  {/* 
   const handleDeleteMacro = () => {
     setMacros(prev => prev.filter(m => m.id !== selectedMacro.id));
     handleCloseDeleteConfirm();
   };
 
   // Filtrar macros basado en la búsqueda
-  const filteredMacros = macros.filter(macro =>
-    macro.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    macro.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    macro.asignadoNombres.some(nombre => nombre.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  useEffect(() => {
+    const filtered = macros.filter(macro =>
+      macro.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      macro.description.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredMacros(filtered);
+  }, [macros, searchTerm]);*/}
 
   // Función para cambiar tab
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
   };
+  const [check1, setCheck1] = useState(false);
 
   return (
     <Container maxWidth="lg" sx={{ py: 1, px: 2, maxWidth: '100% !important' }}>
@@ -403,6 +652,20 @@ const Macros = () => {
         {/* Contenido del Tab 1: Crear Macro */}
         {activeTab === 1 && (
           <Box sx={{ p: 4 }}>
+            {/* Mostrar errores */}
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {error}
+              </Alert>
+            )}
+                                    
+            {/* Mostrar loading */}
+            {loading && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                <CircularProgress />
+              </Box>
+            )}
+
             <form onSubmit={handleCreateMacro}>
               {/* Sección: Información de la Macro*/}
               <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f8f9fa' }}>
@@ -417,10 +680,10 @@ const Macros = () => {
                       fullWidth
                       required
                       placeholder="Ingrese el nombre de la macro"
-                      value={formData.nombre}
-                      onChange={(e) => handleInputChange('nombre', e.target.value)}
-                      error={!!errors.nombre}
-                      helperText={errors.nombre}
+                      value={formData.name}
+                      onChange={(e) => handleInputChange('name', e.target.value)}
+                      error={!!errors.name}
+                      helperText={errors.name}
                       size="small"
                     />
                   </ResponsiveField>
@@ -430,10 +693,10 @@ const Macros = () => {
                       fullWidth
                       required
                       placeholder="Ingrese la descripción de la macro"
-                      value={formData.descripcion}
-                      onChange={(e) => handleInputChange('descripcion', e.target.value)}
-                      error={!!errors.descripcion}
-                      helperText={errors.descripcion}
+                      value={formData.description}
+                      onChange={(e) => handleInputChange('description', e.target.value)}
+                      error={!!errors.description}
+                      helperText={errors.description}
                       size="small"
                     />
                   </ResponsiveField>
@@ -446,21 +709,46 @@ const Macros = () => {
                       <FormControlLabel
                         control={
                           <Checkbox
+                            value={formData.selectAll}
                             checked={selectAllPersonal}
                             onChange={handleSelectAllPersonal}
+                            
                             color="primary"
                           />
                         }
                         label="Seleccionar todos"
                       />
                     </Box>
+
+                    <FormControl fullWidth required error={!!errors.personalId} size="small">
+                      <Select
+                        value={formData.personalId}
+                        onChange={(e) => handleInputChange('personalId', e.target.value)}
+                        disabled={selectAllPersonal}
+                        displayEmpty
+                        sx={{
+                          '& .MuiSelect-select': {
+                          color: formData.personalId ? '#000' : '#999'
+                          }
+                        }}
+                      >
+                      <MenuItem value="">Seleccionar personal</MenuItem>
+                      {Array.isArray(PersonalD) && PersonalD.map(personal => (
+                        <MenuItem key={personal.id} value={personal.id}>
+                          {personal.nombres + ' ' + personal.apellidos || ''}
+                        </MenuItem>
+                      ))}
+                      </Select>
+                    </FormControl>
+                     {/* 
                     <FormControl fullWidth required error={!!errors.asignadoIds} size="small">
                       <InputLabel>Personal asignado</InputLabel>
                       <Select
                         multiple
                         value={formData.asignadoIds}
                         onChange={handlePersonalChange}
-                        input={<OutlinedInput label="Personal asignado" />}
+                        input={<OutlinedInput label="Listado de Personal" />}
+                        disabled={selectAllPersonal}
                         renderValue={(selected) => (
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                             {selected.map((value) => {
@@ -485,7 +773,7 @@ const Macros = () => {
                           </MenuItem>
                         ))}
                       </Select>
-                    </FormControl>
+                    </FormControl>*/}
                     {errors.asignadoIds && (
                       <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
                         {errors.asignadoIds}
@@ -567,7 +855,7 @@ const Macros = () => {
               />
               {searchTerm && (
                 <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                  {filteredMacros.length} resultado(s) de {macros.length} macros
+                  {(filteredMacros || []).length} resultado(s) de {(macros || []).length} macros
                 </Typography>
               )}
             </Box>
@@ -587,7 +875,7 @@ const Macros = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {filteredMacros.length === 0 ? (
+                    {(filteredMacros || []).length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
                           <Typography variant="body1" color="text.secondary">
@@ -596,37 +884,35 @@ const Macros = () => {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredMacros.map((macro) => (
-                      <TableRow key={macro.id} hover>
+                      (filteredMacros || []).map((macro) => (
+                      <TableRow key={macro?.id || Math.random()} hover>
                         <TableCell>
                           <Typography variant="body2">
-                            {macro.nombre}
+                            {macro?.name || ''}
                           </Typography>
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2">
-                            {macro.descripcion.length > 50
-                              ? `${macro.descripcion.substring(0, 50)}...`
-                              : macro.descripcion
+                            {(macro?.description || '').length > 50
+                              ? `${macro.description.substring(0, 50)}...`
+                              : macro?.description || ''
                             }
                           </Typography>
                         </TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                            {macro.asignadoNombres.slice(0, 2).map((nombre, index) => (
+                            {macro?.personalId === -1 ? (
                               <Chip
-                                key={index}
-                                label={nombre.split(' ')[0]}
+                                label="Todos"
                                 size="small"
                                 color="primary"
                                 variant="outlined"
                               />
-                            ))}
-                            {macro.asignadoNombres.length > 2 && (
+                            ) : (
                               <Chip
-                                label={`+${macro.asignadoNombres.length - 2}`}
+                                label={macro?.nombrePersonal || 'Sin asignar'} 
                                 size="small"
-                                color="default"
+                                color="primary"
                                 variant="outlined"
                               />
                             )}
@@ -634,9 +920,9 @@ const Macros = () => {
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
-                            {macro.macro.length > 40
+                            {(macro?.macro || '').length > 40
                               ? `${macro.macro.substring(0, 40)}...`
-                              : macro.macro
+                              : macro?.macro || ''
                             }
                           </Typography>
                         </TableCell>
@@ -714,10 +1000,10 @@ const Macros = () => {
                     fullWidth
                     required
                     placeholder="Ingrese el nombre de la macro"
-                    value={formData.nombre}
-                    onChange={(e) => handleInputChange('nombre', e.target.value)}
-                    error={!!errors.nombre}
-                    helperText={errors.nombre}
+                    value={editFormData.name}
+                    onChange={(e) => handleEditInputChange('name', e.target.value)}
+                    error={!!errors.name}
+                    helperText={errors.name}
                     size="small"
                   />
                 </ResponsiveField>
@@ -727,15 +1013,65 @@ const Macros = () => {
                     fullWidth
                     required
                     placeholder="Ingrese la descripción de la macro"
-                    value={formData.descripcion}
-                    onChange={(e) => handleInputChange('descripcion', e.target.value)}
-                    error={!!errors.descripcion}
-                    helperText={errors.descripcion}
+                    value={editFormData.description}
+                    onChange={(e) => handleEditInputChange('description', e.target.value)}
+                    error={!!errors.description}
+                    helperText={errors.description}
                     size="small"
                   />
                 </ResponsiveField>
               </FieldRow>
+              <FieldRow>
+                  <ResponsiveField label="Asignar a Personal" required sx={{ flex: 1 }}>
+                    <Box sx={{ mb: 1 }}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={editFormData.selectAll || false}
+                            onChange={(e) => {
+                              setEditFormData({
+                                ...editFormData,
+                                selectAll: e.target.checked,
+                                personalId: e.target.checked ? '' : editFormData.personalId
+                              });
+                              setSelectAllPersonal(e.target.checked);
+                            }}
+                            color="primary"
+                          />
+                        }
+                        label="Seleccionar todos"
+                      />
+                    </Box>
 
+                    <FormControl fullWidth required error={!!errors.personalId} size="small">
+                      <Select
+                        value={editFormData.personalId}
+                        onChange={(e) => handleEditInputChange('personalId', e.target.value)}
+                        disabled={selectAllPersonal}
+                        displayEmpty
+                        sx={{
+                          '& .MuiSelect-select': {
+                          color: editFormData.personalId ? '#000' : '#999'
+                          }
+                        }}
+                      >
+                      <MenuItem value="">Seleccionar personal</MenuItem>
+                      {Array.isArray(PersonalD) && PersonalD.map(personal => (
+                        <MenuItem key={personal.id} value={personal.id}>
+                          {personal.nombres + ' ' + personal.apellidos || ''}
+                        </MenuItem>
+                      ))}
+                      </Select>
+                    </FormControl>
+
+                    {errors.asignadoIds && (
+                      <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
+                        {errors.asignadoIds}
+                      </Typography>
+                    )}
+                  </ResponsiveField>
+                </FieldRow>
+              {/* 
               <FieldRow>
                 <ResponsiveField label="Asignar a Personal" required sx={{ flex: 1 }}>
                   <Box sx={{ mb: 1 }}>
@@ -789,6 +1125,8 @@ const Macros = () => {
                   )}
                 </ResponsiveField>
               </FieldRow>
+              */}
+
 
               <FieldRow>
                 <ResponsiveField label="Contenido de la Macro" required sx={{ flex: 1 }}>
@@ -798,8 +1136,8 @@ const Macros = () => {
                     multiline
                     rows={4}
                     placeholder="Escriba el contenido de la macro. Puede usar variables como {nombre_paciente}, {fecha}, etc."
-                    value={formData.macro}
-                    onChange={(e) => handleInputChange('macro', e.target.value)}
+                    value={editFormData.macro}
+                    onChange={(e) => handleEditInputChange('macro', e.target.value)}
                     error={!!errors.macro}
                     helperText={errors.macro || "Tip: Use {variable} para contenido dinámico"}
                     size="small"
@@ -873,16 +1211,26 @@ const Macros = () => {
                       Nombre:
                     </Typography>
                     <Typography variant="body1" sx={{ mb: 2 }}>
-                      {selectedMacro.nombre}
+                      {selectedMacro.name || 'Sin nombre'}
                     </Typography>
                   </Grid>
+                  
+                  <Grid item xs={12}>
+                    <Typography variant="body2" color="text.secondary" fontWeight="bold">
+                      Descripción:
+                    </Typography>
+                    <Typography variant="body1" sx={{ mb: 2 }}>
+                      {selectedMacro.description || 'Sin descripción'}
+                    </Typography>
+                  </Grid>
+
                   <Grid item xs={12} md={6}>
                     <Typography variant="body2" color="text.secondary" fontWeight="bold">
                       Fecha de Creación:
                     </Typography>
                     <Typography variant="body1" sx={{ mb: 2 }}>
-                      {selectedMacro.fechaCreacion ?
-                        new Date(selectedMacro.fechaCreacion).toLocaleString('es-ES', {
+                      {selectedMacro.createdAt ?
+                        new Date(selectedMacro.createdAt).toLocaleString('es-ES', {
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric',
@@ -892,14 +1240,17 @@ const Macros = () => {
                       }
                     </Typography>
                   </Grid>
-                  <Grid item xs={12}>
+
+                  <Grid item xs={12} md={6}>
                     <Typography variant="body2" color="text.secondary" fontWeight="bold">
-                      Descripción:
+                      Creado por:
                     </Typography>
                     <Typography variant="body1" sx={{ mb: 2 }}>
-                      {selectedMacro.descripcion}
+                      {selectedMacro.createdBy || 'Sin nombre'}
                     </Typography>
                   </Grid>
+
+
                 </Grid>
               </Paper>
 
@@ -908,18 +1259,18 @@ const Macros = () => {
               {/* Personal Asignado */}
               <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f0f7ff' }}>
                 <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2196f3' }}>
-                  Personal Asignado ({selectedMacro.asignadoNombres.length})
+                  Personal Asignado
                 </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                  {selectedMacro.asignadoNombres.map((nombre, index) => (
-                    <Chip
-                      key={index}
-                      label={nombre}
-                      color="primary"
-                      variant="outlined"
-                      sx={{ mb: 1 }}
-                    />
-                  ))}
+                  {selectedMacro.personalId === -1 ? (
+                    <Typography variant="body1">
+                      Asignado a todo el personal
+                    </Typography>
+                  ) : (
+                    <Typography variant="body1">
+                      {selectedMacro.nombrePersonal || 'Sin asignar'}
+                    </Typography>
+                  )}
                 </Box>
               </Paper>
 
@@ -944,7 +1295,7 @@ const Macros = () => {
                       lineHeight: 1.6
                     }}
                   >
-                    {selectedMacro.macro}
+                    {selectedMacro.macro || ''}
                   </Typography>
                 </Box>
                 <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
@@ -961,7 +1312,7 @@ const Macros = () => {
                   <Grid item xs={12} md={4}>
                     <Box sx={{ textAlign: 'center' }}>
                       <Typography variant="h4" fontWeight="bold" color="success.main">
-                        {Math.floor((new Date() - new Date(selectedMacro.fechaCreacion)) / (1000 * 60 * 60 * 24))}
+                        {Math.floor((new Date() - new Date(selectedMacro.createdAt || new Date())) / (1000 * 60 * 60 * 24))}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Días desde creación
@@ -971,7 +1322,7 @@ const Macros = () => {
                   <Grid item xs={12} md={4}>
                     <Box sx={{ textAlign: 'center' }}>
                       <Typography variant="h4" fontWeight="bold" color="primary">
-                        {selectedMacro.asignadoNombres.length}
+                        {selectedMacro.personalId === -1 ? 'Todos' : '1'}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Personal asignado
@@ -981,7 +1332,7 @@ const Macros = () => {
                   <Grid item xs={12} md={4}>
                     <Box sx={{ textAlign: 'center' }}>
                       <Typography variant="h4" fontWeight="bold" color="info.main">
-                        {selectedMacro.macro.length}
+                        {(selectedMacro.macro || '').length}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Caracteres en macro
@@ -1029,7 +1380,7 @@ const Macros = () => {
         <DialogContent sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="body1">
             ¿Está seguro de que desea eliminar la macro{' '}
-            <strong>"{selectedMacro?.nombre}"</strong>?
+            <strong>"{selectedMacro?.name || 'Sin nombre'}"</strong>?
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
             Esta acción no se puede deshacer.
