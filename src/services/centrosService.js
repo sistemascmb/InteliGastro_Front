@@ -374,8 +374,11 @@ export const centrosService = {
   ,
   getAllSystemParameterId: async (idGroup) => {
     try {
+      console.log('🌐 Obteniendo SystemParameter por grupo ID:', idGroup);
 
       const url = `${process.env.REACT_APP_API_URL}/SystemParameter/group/${idGroup}`;
+      console.log('🔗 URL:', url);
+
       const response = await fetch(url);
 
       if(!response.ok){
@@ -391,7 +394,7 @@ export const centrosService = {
       
       // Filtrar solo los parámetros no eliminados
       const systemparameterActivos = dataArray.filter(param => !param.isDeleted);
-      console.log('Parámetros activos:', systemparameterActivos);
+      console.log('✅ Parámetros activos:', systemparameterActivos);
       
       // Mapeamos los campos del backend a los campos del frontend
       const mappedData = systemparameterActivos.map(systemparameter => ({

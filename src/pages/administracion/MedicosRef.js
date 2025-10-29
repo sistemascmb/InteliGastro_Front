@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, useCallback, memo, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -25,8 +25,12 @@ import {
   Tabs,
   Tab,
   Chip,
-  Grid
+  Grid,
+  CircularProgress,
+  Alert
 } from '@mui/material';
+import medicosRefService from '../../services/medicosRefService';
+import centrosService from '../../services/centrosService';
 import {
   NavigateNext,
   Add,
@@ -100,47 +104,88 @@ const MedicosRef = () => {
   const navigate = useNavigate();
 
   // Estado para la lista de médicos referentes
-  const [medicosRef, setMedicosRef] = useState([
-    {
-      id: 1,
-      altId: 'MR001',
-      nombres: 'Juan Carlos',
-      apellidos: 'Pérez González',
-      sexo: 'masculino',
-      fechaNacimiento: '1975-03-15',
-      grado: 'Especialista en Gastroenterología',
-      estado: 'activo',
-      telefono: '+57 310 123 4567',
-      fechaCreacion: '2024-01-15T10:30:00',
-      creadoPor: 'Sistema'
-    },
-    {
-      id: 2,
-      altId: 'MR002',
-      nombres: 'María Elena',
-      apellidos: 'García Rodríguez',
-      sexo: 'femenino',
-      fechaNacimiento: '1980-07-22',
-      grado: 'Médico General',
-      estado: 'activo',
-      telefono: '+57 320 987 6543',
-      fechaCreacion: '2024-02-10T14:20:00',
-      creadoPor: 'Sistema'
-    },
-    {
-      id: 3,
-      altId: 'MR003',
-      nombres: 'Carlos Alberto',
-      apellidos: 'Martínez López',
-      sexo: 'masculino',
-      fechaNacimiento: '1972-11-08',
-      grado: 'Especialista en Medicina Interna',
-      estado: 'inactivo',
-      telefono: '+57 315 456 7890',
-      fechaCreacion: '2024-01-20T16:45:00',
-      creadoPor: 'admin'
+  const [medicosRef, setMedicosRef] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [generosCargados, setGenerosCargados] = useState([]);
+  const [estadosCargados, setEstadosCargados] = useState([]);
+
+  // Función para cargar los géneros desde SystemParameter
+  const cargarGeneros = async () => {
+    try {
+      const responseSystemParameter = await centrosService.getAllSystemParameterId(10000);
+      console.log('✅ Respuesta de Géneros:', responseSystemParameter);
+      if (responseSystemParameter.status === 'success') {
+        setGenerosCargados(responseSystemParameter.data);
+      } else {
+        setGenerosCargados([]);
+        setError('Error al cargar los géneros: Respuesta inválida del servidor');
+      }
+    } catch (error) {
+      console.error('❌ Error al cargar géneros:', error);
+      setError(`Error al cargar géneros: ${error.message}`);
+      setGenerosCargados([]);
     }
-  ]);
+  };
+
+  // Función para cargar los estados desde SystemParameter
+  const cargarEstados = async () => {
+    try {
+      const responseSystemParameter = await centrosService.getAllSystemParameterId(10006);
+      console.log('✅ Respuesta de Estados:', responseSystemParameter);
+      if (responseSystemParameter.status === 'success') {
+        setEstadosCargados(responseSystemParameter.data);
+      } else {
+        setEstadosCargados([]);
+        setError('Error al cargar los estados: Respuesta inválida del servidor');
+      }
+    } catch (error) {
+      console.error('❌ Error al cargar estados:', error);
+      setError(`Error al cargar estados: ${error.message}`);
+      setEstadosCargados([]);
+    }
+  };
+
+  // Efecto para cargar los médicos referentes y géneros al montar el componente
+  useEffect(() => {
+    const loadMedicosRef = async () => {
+      try {
+        setLoading(true);
+        const response = await medicosRefService.getAll();
+        if (response.status === 'success') {
+          const mappedMedicos = response.data.map(medico => {
+            // Formatear la fecha a YYYY-MM-DD para el input type="date"
+            const fechaNacimiento = medico.date_of_birth ? new Date(medico.date_of_birth).toISOString().split('T')[0] : '';
+            
+            return {
+              id: medico.id,
+              altId: `MR${medico.id.toString().padStart(3, '0')}`,
+              nombres: medico.names,
+              apellidos: medico.surnames,
+              sexo: medico.gender.toString(), // Convertir a string
+              fechaNacimiento: fechaNacimiento,
+              grado: medico.profession,
+              estado: medico.status ? '10007' : '10008', // Convertir booleano a ID
+              telefono: medico.phoneNumber,
+              fechaCreacion: medico.createdAt,
+              creadoPor: medico.createdBy
+            };
+          });
+          setMedicosRef(mappedMedicos);
+          setError(null);
+        }
+      } catch (err) {
+        console.error('Error al cargar médicos referentes:', err);
+        setError('Error al cargar la lista de médicos referentes');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadMedicosRef();
+    cargarGeneros();
+    cargarEstados();
+  }, []);
 
   // Estados para modales
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -196,9 +241,6 @@ const MedicosRef = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.altId.trim()) {
-      newErrors.altId = 'AltId es obligatorio';
-    }
     if (!formData.nombres.trim()) {
       newErrors.nombres = 'Nombres es obligatorio';
     }
@@ -230,12 +272,15 @@ const MedicosRef = () => {
   // Funciones para manejar modales
   const handleOpenEditModal = (medico) => {
     setSelectedMedico(medico);
+    // Asegurarse de que la fecha esté en formato YYYY-MM-DD
+    const fechaNacimiento = medico.fechaNacimiento ? new Date(medico.fechaNacimiento).toISOString().split('T')[0] : '';
+    
     setFormData({
       altId: medico.altId,
       nombres: medico.nombres,
       apellidos: medico.apellidos,
       sexo: medico.sexo,
-      fechaNacimiento: medico.fechaNacimiento,
+      fechaNacimiento: fechaNacimiento,
       grado: medico.grado,
       estado: medico.estado,
       telefono: medico.telefono,
@@ -270,59 +315,129 @@ const MedicosRef = () => {
   };
 
   // Función para crear médico referente
-  const handleCreateMedico = (e) => {
+  const handleCreateMedico = async (e) => {
     e.preventDefault();
 
     if (validateForm()) {
-      const newMedico = {
-        id: Math.max(...medicosRef.map(m => m.id)) + 1,
-        altId: formData.altId.trim(),
-        nombres: formData.nombres.trim(),
-        apellidos: formData.apellidos.trim(),
-        sexo: formData.sexo,
-        fechaNacimiento: formData.fechaNacimiento,
-        grado: formData.grado.trim(),
-        estado: formData.estado,
-        telefono: formData.telefono.trim(),
-        fechaCreacion: new Date().toISOString(),
-        creadoPor: 'Sistema'
-      };
+      try {
+        setLoading(true);
+        // Mapear los campos del formulario a los nombres esperados por el servicio
+        // En la función handleCreateMedico
+        const serviceData = {
+          names: formData.nombres,
+          surnames: formData.apellidos,
+          gender: parseInt(formData.sexo), // Convertir el ID de género a número
+          date_of_birth: formData.fechaNacimiento,
+          profession: formData.grado,
+          status: formData.estado === '10007', // Convierte a booleano: true si es activo (10006), false si es inactivo
+          phoneNumber: formData.telefono
+        };
+        
+        const response = await medicosRefService.create(serviceData);
+        
+        if (response.status === 'success') {
+          const newMedico = {
+            id: response.data.referraldoctorsd,
+            altId: `MR${response.data.referraldoctorsd.toString().padStart(3, '0')}`,
+            nombres: response.data.names,
+            apellidos: response.data.surnames,
+            sexo: response.data.gender.toString(), // Convertir a string
+            fechaNacimiento: response.data.date_of_birth,
+            grado: response.data.profession,
+            estado: response.data.status ? '10007' : '10008', // Convertir booleano a ID
+            telefono: response.data.phoneNumber,
+            fechaCreacion: response.data.createdAt,
+            creadoPor: response.data.createdBy
+          };
 
-      setMedicosRef(prev => [...prev, newMedico]);
-      clearForm();
-      // Cambiar automáticamente al tab de lista
-      setActiveTab(1);
+          setMedicosRef(prev => [...prev, newMedico]);
+          setError(null);
+          clearForm();
+          // Cambiar automáticamente al tab de lista
+          setActiveTab(0);
+        }
+      } catch (err) {
+        console.error('Error al crear médico referente:', err);
+        setError('Error al crear el médico referente');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   // Función para editar médico referente
-  const handleEditMedico = (e) => {
+  const handleEditMedico = async (e) => {
     e.preventDefault();
 
     if (validateForm()) {
-      setMedicosRef(prev => prev.map(m =>
-        m.id === selectedMedico.id
-          ? {
-              ...m,
-              altId: formData.altId.trim(),
-              nombres: formData.nombres.trim(),
-              apellidos: formData.apellidos.trim(),
-              sexo: formData.sexo,
-              fechaNacimiento: formData.fechaNacimiento,
-              grado: formData.grado.trim(),
-              estado: formData.estado,
-              telefono: formData.telefono.trim(),
-            }
-          : m
-      ));
-      handleCloseEditModal();
+      try {
+        setLoading(true);
+        // En la función handleEditMedico
+        const serviceData = {
+          names: formData.nombres,
+          surnames: formData.apellidos,
+          gender: parseInt(formData.sexo), // Convertir el ID de género a número
+          date_of_birth: formData.fechaNacimiento,
+          profession: formData.grado,
+          status: formData.estado === '10007', // Convierte a booleano: true si es activo (10006), false si es inactivo
+          phoneNumber: formData.telefono
+        };
+        
+        console.log('Estado enviado:', formData.estado, 'convertido a:', serviceData.status);
+        const response = await medicosRefService.update(selectedMedico.id, serviceData);
+        console.log('Respuesta del servidor:', response.data);
+        
+        if (response.status === 'success') {
+          // Asegurarse de que el estado se convierta correctamente de booleano a ID
+          const estadoActualizado = response.data.status ? '10007' : '10008';
+          console.log('Estado recibido:', response.data.status, 'convertido a:', estadoActualizado);
+          
+          const updatedMedico = {
+            id: response.data.referraldoctorsd,
+            altId: `MR${response.data.referraldoctorsd.toString().padStart(3, '0')}`,
+            nombres: response.data.names,
+            apellidos: response.data.surnames,
+            sexo: response.data.gender.toString(), // Convertir a string
+            fechaNacimiento: response.data.date_of_birth,
+            grado: response.data.profession,
+            estado: estadoActualizado, // Usar el estado convertido
+            telefono: response.data.phoneNumber,
+            fechaCreacion: response.data.createdAt,
+            creadoPor: response.data.createdBy
+          };
+
+          setMedicosRef(prev => prev.map(m =>
+            m.id === selectedMedico.id ? updatedMedico : m
+          ));
+          setError(null);
+          handleCloseEditModal();
+        }
+      } catch (err) {
+        console.error('Error al actualizar médico referente:', err);
+        setError('Error al actualizar el médico referente');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   // Función para eliminar médico referente
-  const handleDeleteMedico = () => {
-    setMedicosRef(prev => prev.filter(m => m.id !== selectedMedico.id));
-    handleCloseDeleteConfirm();
+  const handleDeleteMedico = async () => {
+    try {
+      setLoading(true);
+      const response = await medicosRefService.delete(selectedMedico.id);
+      
+      if (response.status === 'success') {
+        setMedicosRef(prev => prev.filter(m => m.id !== selectedMedico.id));
+        setError(null);
+        handleCloseDeleteConfirm();
+      }
+    } catch (err) {
+      console.error('Error al eliminar médico referente:', err);
+      setError('Error al eliminar el médico referente');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Filtrar médicos referentes basado en la búsqueda
@@ -336,12 +451,14 @@ const MedicosRef = () => {
 
   // Función para obtener el color del estado
   const getEstadoColor = (estado) => {
-    return estado === 'activo' ? 'success' : 'error';
+    // ID 10006 es activo y 10007 es inactivo en el SystemParameter
+    return estado === '10007' ? 'success' : 'error';
   };
 
   // Función para obtener el color del sexo
   const getSexoColor = (sexo) => {
-    return sexo === 'masculino' ? 'primary' : 'secondary';
+    // Asumiendo que el ID 10001 es masculino y 10002 es femenino en el SystemParameter
+    return sexo === '10001' ? 'primary' : 'secondary';
   };
 
   // Función para formatear fecha
@@ -495,8 +612,11 @@ const MedicosRef = () => {
                         }}
                       >
                         <MenuItem value="">Seleccionar sexo</MenuItem>
-                        <MenuItem value="masculino">Masculino</MenuItem>
-                        <MenuItem value="femenino">Femenino</MenuItem>
+                        {generosCargados.map((genero) => (
+                          <MenuItem key={genero.parameterid} value={genero.parameterid.toString()}>
+                            {genero.value1}
+                          </MenuItem>
+                        ))}
                       </Select>
                     </FormControl>
                     {errors.sexo && (
@@ -510,7 +630,7 @@ const MedicosRef = () => {
                     <TextField
                       fullWidth
                       required
-                      placeholder="Ej: +57 310 123 4567"
+                      placeholder="Ej: 3101234567"
                       value={formData.telefono}
                       onChange={(e) => handleInputChange('telefono', e.target.value)}
                       error={!!errors.telefono}
@@ -564,8 +684,11 @@ const MedicosRef = () => {
                         }}
                       >
                         <MenuItem value="">Seleccionar estado</MenuItem>
-                        <MenuItem value="activo">Activo</MenuItem>
-                        <MenuItem value="inactivo">Inactivo</MenuItem>
+                        {estadosCargados.map((estado) => (
+                          <MenuItem key={estado.parameterid} value={estado.parameterid.toString()}>
+                            {estado.value1}
+                          </MenuItem>
+                        ))}
                       </Select>
                     </FormControl>
                     {errors.estado && (
@@ -639,6 +762,11 @@ const MedicosRef = () => {
             {/* Tabla de Médicos Referentes */}
             <Paper sx={{ boxShadow: 1 }}>
               <SectionHeader title="Lista de Médicos Referentes" />
+              {error && (
+                <Box sx={{ p: 2 }}>
+                  <Alert severity="error">{error}</Alert>
+                </Box>
+              )}
               <TableContainer>
                 <Table>
                   <TableHead>
@@ -651,7 +779,16 @@ const MedicosRef = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {filteredMedicosRef.length === 0 ? (
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                          <CircularProgress size={40} />
+                          <Typography variant="body2" sx={{ mt: 2 }}>
+                            Cargando médicos referentes...
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredMedicosRef.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
                           <Typography variant="body1" color="text.secondary">
@@ -673,7 +810,7 @@ const MedicosRef = () => {
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
                             <Chip
-                              label={medico.sexo === 'masculino' ? 'M' : 'F'}
+                              label={medico.sexo === '10001' ? 'M' : 'F'}
                               size="small"
                               color={getSexoColor(medico.sexo)}
                               variant="outlined"
@@ -691,7 +828,7 @@ const MedicosRef = () => {
                         </TableCell>
                         <TableCell>
                           <Chip
-                            label={medico.estado === 'activo' ? 'Activo' : 'Inactivo'}
+                            label={estadosCargados.find(e => e.parameterid.toString() === medico.estado)?.value1 || ''}
                             color={getEstadoColor(medico.estado)}
                             size="small"
                           />
@@ -815,8 +952,11 @@ const MedicosRef = () => {
                       displayEmpty
                     >
                       <MenuItem value="">Seleccionar sexo</MenuItem>
-                      <MenuItem value="masculino">Masculino</MenuItem>
-                      <MenuItem value="femenino">Femenino</MenuItem>
+                      {generosCargados.map((genero) => (
+                        <MenuItem key={genero.parameterid} value={genero.parameterid.toString()}>
+                          {genero.value1}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                   {errors.sexo && (
@@ -881,8 +1021,11 @@ const MedicosRef = () => {
                       displayEmpty
                     >
                       <MenuItem value="">Seleccionar estado</MenuItem>
-                      <MenuItem value="activo">Activo</MenuItem>
-                      <MenuItem value="inactivo">Inactivo</MenuItem>
+                      {estadosCargados.map((estado) => (
+                        <MenuItem key={estado.parameterid} value={estado.parameterid.toString()}>
+                          {estado.value1}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                   {errors.estado && (
@@ -963,8 +1106,15 @@ const MedicosRef = () => {
                   </Typography>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <Typography variant="body1">
-                    <strong>Sexo:</strong> {selectedMedico.sexo === 'masculino' ? 'Masculino' : 'Femenino'}
+                  <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <strong>Sexo:</strong>
+                    <Chip
+                      label={selectedMedico.sexo === '10001' ? 'M' : 'F'}
+                      size="small"
+                      color={getSexoColor(selectedMedico.sexo)}
+                      variant="outlined"
+                      sx={{ fontSize: '0.7rem', height: '18px' }}
+                    />
                   </Typography>
                 </Grid>
                 <Grid item xs={12} md={6}>
@@ -978,8 +1128,13 @@ const MedicosRef = () => {
                   </Typography>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <Typography variant="body1">
-                    <strong>Estado:</strong> {selectedMedico.estado === 'activo' ? 'Activo' : 'Inactivo'}
+                  <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <strong>Estado:</strong>
+                    <Chip
+                      label={estadosCargados.find(e => e.parameterid.toString() === selectedMedico.estado)?.value1 || ''}
+                      color={getEstadoColor(selectedMedico.estado)}
+                      size="small"
+                    />
                   </Typography>
                 </Grid>
                 <Grid item xs={12} md={6}>
