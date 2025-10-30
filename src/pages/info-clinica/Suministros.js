@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -18,7 +18,10 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  CircularProgress,
+  Alert,
+  Snackbar
 } from '@mui/material';
 import {
   NavigateNext,
@@ -31,6 +34,7 @@ import {
   Search
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { suministrosService } from '../../services/suministrosService';
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
@@ -52,30 +56,46 @@ const SectionHeader = ({ title }) => (
 const Suministros = () => {
   const navigate = useNavigate();
 
-  // Estado para la lista de suministros
-  const [suministros, setSuministros] = useState([
-    {
-      id: 1,
-      nombre: 'Guantes de Látex',
-      importe: 25.50,
-      comentarios: 'Caja de 100 unidades, talla M',
-      cargo: 'Enfermera'
-    },
-    {
-      id: 2,
-      nombre: 'Jeringas Desechables 10ml',
-      importe: 45.00,
-      comentarios: 'Paquete de 50 unidades estériles',
-      cargo: 'Procedimientos'
-    },
-    {
-      id: 3,
-      nombre: 'Mascarillas Quirúrgicas',
-      importe: 35.75,
-      comentarios: 'Caja de 50 unidades, 3 capas',
-      cargo: 'General'
+  // Estados para la lista de suministros y carga
+  const [suministros, setSuministros] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
+
+  // Función para cargar los suministros
+  const loadSuministros = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await suministrosService.getAll();
+      if (response.status === 'success') {
+        // Mapear los datos del servicio al formato de la interfaz
+        const mappedData = response.data.map(suministro => ({
+          id: suministro.id,
+          nombre: suministro.name,
+          importe: suministro.price,
+          comentarios: suministro.comments,
+          cargo: suministro.quantity,
+          estado: suministro.estado
+        }));
+        setSuministros(mappedData);
+      }
+    } catch (err) {
+      console.error('Error al cargar suministros:', err);
+      setError('Error al cargar los suministros. Por favor, intente nuevamente.');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  // Cargar suministros al montar el componente
+  useEffect(() => {
+    loadSuministros();
+  }, []);
 
   // Estados para modales
   const [openAddModal, setOpenAddModal] = useState(false);
@@ -88,7 +108,8 @@ const Suministros = () => {
     nombre: '',
     importe: '',
     comentarios: '',
-    cargo: ''
+    cargo: '',
+    estado: '10007' // Por defecto inactivo
   });
 
   const [errors, setErrors] = useState({});
@@ -102,7 +123,8 @@ const Suministros = () => {
       nombre: '',
       importe: '',
       comentarios: '',
-      cargo: ''
+      cargo: '',
+      estado: '10007'
     });
     setErrors({});
   };
@@ -123,11 +145,14 @@ const Suministros = () => {
     if (!formData.nombre.trim()) {
       newErrors.nombre = 'Nombre es obligatorio';
     }
-    if (!formData.importe || formData.importe <= 0) {
+    if (!formData.importe || parseFloat(formData.importe) <= 0) {
       newErrors.importe = 'Importe debe ser mayor a 0';
     }
-    if (!formData.cargo.trim()) {
-      newErrors.cargo = 'Cargo es obligatorio';
+    if (!formData.cargo || parseInt(formData.cargo) <= 0) {
+      newErrors.cargo = 'Cantidad debe ser mayor a 0';
+    }
+    if (!formData.estado) {
+      newErrors.estado = 'Estado es obligatorio';
     }
 
     setErrors(newErrors);
@@ -150,8 +175,9 @@ const Suministros = () => {
     setFormData({
       nombre: suministro.nombre,
       importe: suministro.importe.toString(),
-      comentarios: suministro.comentarios,
-      cargo: suministro.cargo
+      comentarios: suministro.comentarios || '',
+      cargo: suministro.cargo.toString(),
+      estado: suministro.estado
     });
     setOpenEditModal(true);
   };
@@ -174,55 +200,124 @@ const Suministros = () => {
   };
 
   // Función para agregar suministro
-  const handleAddSuministro = (e) => {
+  const handleAddSuministro = async (e) => {
     e.preventDefault();
     
     if (validateForm()) {
-      const newSuministro = {
-        id: Math.max(...suministros.map(s => s.id)) + 1,
-        nombre: formData.nombre.trim(),
-        importe: parseFloat(formData.importe),
-        comentarios: formData.comentarios.trim(),
-        cargo: formData.cargo.trim()
-      };
-      
-      setSuministros(prev => [...prev, newSuministro]);
-      handleCloseAddModal();
+      try {
+        // Preparar datos para el servicio
+        const suministroData = {
+          name: formData.nombre.trim(),
+          price: parseFloat(formData.importe),
+          comments: formData.comentarios ? formData.comentarios.trim() : '',
+          quantity: parseInt(formData.cargo),
+          status: formData.estado === '10006' // true para activo (10006), false para inactivo (10007)
+        };
+
+        const response = await suministrosService.create(suministroData);
+        
+        if (response.status === 'success') {
+          // Actualizar la lista de suministros
+          await loadSuministros();
+          
+          // Mostrar mensaje de éxito
+          setSnackbar({
+            open: true,
+            message: 'Suministro creado exitosamente',
+            severity: 'success'
+          });
+          
+          handleCloseAddModal();
+        }
+      } catch (error) {
+        console.error('Error al crear suministro:', error);
+        setSnackbar({
+          open: true,
+          message: 'Error al crear el suministro. Por favor, intente nuevamente.',
+          severity: 'error'
+        });
+      }
     }
   };
 
   // Función para editar suministro
-  const handleEditSuministro = (e) => {
+  const handleEditSuministro = async (e) => {
     e.preventDefault();
     
     if (validateForm()) {
-      setSuministros(prev => prev.map(s => 
-        s.id === selectedSuministro.id 
-          ? {
-              ...s,
-              nombre: formData.nombre.trim(),
-              importe: parseFloat(formData.importe),
-              comentarios: formData.comentarios.trim(),
-              cargo: formData.cargo.trim()
-            }
-          : s
-      ));
-      handleCloseEditModal();
+      try {
+        // Preparar datos para el servicio
+        const suministroData = {
+          name: formData.nombre.trim(),
+          price: parseFloat(formData.importe),
+          comments: formData.comentarios ? formData.comentarios.trim() : '',
+          quantity: parseInt(formData.cargo),
+          status: formData.estado === '10006' // true para activo (10006), false para inactivo (10007)
+        };
+
+        const response = await suministrosService.update(selectedSuministro.id, suministroData);
+        
+        if (response.status === 'success') {
+          // Actualizar la lista de suministros
+          await loadSuministros();
+          
+          // Mostrar mensaje de éxito
+          setSnackbar({
+            open: true,
+            message: 'Suministro actualizado exitosamente',
+            severity: 'success'
+          });
+          
+          handleCloseEditModal();
+        }
+      } catch (error) {
+        console.error('Error al actualizar suministro:', error);
+        setSnackbar({
+          open: true,
+          message: 'Error al actualizar el suministro. Por favor, intente nuevamente.',
+          severity: 'error'
+        });
+      }
     }
   };
 
   // Función para eliminar suministro
-  const handleDeleteSuministro = () => {
-    setSuministros(prev => prev.filter(s => s.id !== selectedSuministro.id));
-    handleCloseDeleteConfirm();
+  const handleDeleteSuministro = async () => {
+    try {
+      const response = await suministrosService.delete(selectedSuministro.id);
+      
+      if (response.status === 'success') {
+        // Actualizar la lista de suministros
+        await loadSuministros();
+        
+        // Mostrar mensaje de éxito
+        setSnackbar({
+          open: true,
+          message: 'Suministro eliminado exitosamente',
+          severity: 'success'
+        });
+        
+        handleCloseDeleteConfirm();
+      }
+    } catch (error) {
+      console.error('Error al eliminar suministro:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error al eliminar el suministro. Por favor, intente nuevamente.',
+        severity: 'error'
+      });
+    }
   };
 
   // Filtrar suministros basado en la búsqueda
-  const filteredSuministros = suministros.filter(suministro => 
-    suministro.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    suministro.comentarios.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    suministro.cargo.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredSuministros = suministros.filter(suministro => {
+    const searchTermLower = searchTerm.toLowerCase();
+    return (
+      suministro.nombre.toLowerCase().includes(searchTermLower) ||
+      (suministro.comentarios && suministro.comentarios.toLowerCase().includes(searchTermLower)) ||
+      suministro.cargo.toString().includes(searchTerm)
+    );
+  });
 
   return (
     <Container maxWidth="lg" sx={{ py: 1, px: 2, maxWidth: '100% !important' }}>
@@ -308,7 +403,7 @@ const Suministros = () => {
                 <TableCell><strong>Nombre</strong></TableCell>
                 <TableCell><strong>Importe</strong></TableCell>
                 <TableCell><strong>Comentarios</strong></TableCell>
-                <TableCell><strong>Cargo</strong></TableCell>
+                <TableCell><strong>Cantidad</strong></TableCell>
                 <TableCell align="center"><strong>Acciones</strong></TableCell>
               </TableRow>
             </TableHead>
@@ -423,11 +518,11 @@ const Suministros = () => {
                 onChange={(e) => handleInputChange('comentarios', e.target.value)}
               />
 
-              {/* Cargo */}
+              {/* Cantidad */}
               <TextField
                 fullWidth
                 required
-                label="Cargo"
+                label="Cantidad"
                 placeholder="Ingrese el cargo o departamento"
                 value={formData.cargo}
                 onChange={(e) => handleInputChange('cargo', e.target.value)}
@@ -529,11 +624,11 @@ const Suministros = () => {
                 onChange={(e) => handleInputChange('comentarios', e.target.value)}
               />
 
-              {/* Cargo */}
+              {/* Cantidad */}
               <TextField
                 fullWidth
                 required
-                label="Cargo"
+                label="Cantidad"
                 placeholder="Ingrese el cargo o departamento"
                 value={formData.cargo}
                 onChange={(e) => handleInputChange('cargo', e.target.value)}
@@ -611,6 +706,50 @@ const Suministros = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Snackbar para mensajes de estado */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+
+      {/* Indicador de carga */}
+      {loading && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'rgba(255, 255, 255, 0.7)',
+            zIndex: 9999,
+          }}
+        >
+          <CircularProgress />
+        </Box>
+      )}
+
+      {/* Mensaje de error */}
+      {error && (
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {error}
+        </Alert>
+      )}
     </Container>
   );
 };
