@@ -41,6 +41,84 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { patientsService } from '../../services/patientsService';
+import { centrosService } from '../../services/centrosService';
+import { ubigeoService } from '../../services/ubigeoService';
+
+// Componente para mostrar el valor de un parámetro
+const ParametroTexto = ({ id }) => {
+  const [valor, setValor] = useState('');
+
+  useEffect(() => {
+    const cargarParametro = async () => {
+      if (!id) {
+        setValor('');
+        return;
+      }
+
+      try {
+        // Si id es un número, lo usamos directamente
+        if (id && !isNaN(id)) {
+          try {
+            const response = await centrosService.getSystemParameterId(id);
+            if (response?.data?.value1) {
+              setValor(response.data.value1);
+              return;
+            }
+          } catch (error) {
+            console.error(`Error al obtener parámetro con ID ${id}:`, error);
+          }
+        }
+
+        // Si id es texto, intentamos obtener el ID numérico correspondiente
+        const parametrosMap = {
+          estado: 10006,    // Estados (activo/inactivo)
+          genero: 10000,    // Géneros
+          titulo: 10009,    // Títulos
+          tipoTrabajo: 10003, // Tipos de trabajo
+          pais: 1,         // Países
+          departamento: 2,  // Departamentos
+        };
+
+        // Intentamos cargar todos los parámetros del tipo correspondiente
+        for (const [tipo, parametroId] of Object.entries(parametrosMap)) {
+          try {
+            let response;
+            if (tipo === 'departamento') {
+              response = await centrosService.getAllSystemParameterIdRest(parametroId);
+            } else {
+              response = await centrosService.getAllSystemParameterId(parametroId);
+            }
+
+            const parametros = response.data || [];
+            const parametro = parametros.find(p => {
+              if (!p || !p.value1) return false;
+              const matchValue = p.value1.toLowerCase() === (id || '').toLowerCase();
+              const matchId = p.id && id ? p.id.toString() === id.toString() : false;
+              return matchValue || matchId;
+            });
+
+            if (parametro) {
+              setValor(parametro.value1);
+              return;
+            }
+          } catch (innerError) {
+            console.error(`Error al cargar parámetros de tipo ${tipo}:`, innerError);
+          }
+        }
+
+        // Si no encontramos el parámetro en ninguna lista, mostramos el valor original
+        setValor(id);
+      } catch (error) {
+        console.error('Error al obtener parámetro:', error);
+        setValor(id); // En caso de error, mostramos el valor original
+      }
+    };
+
+    cargarParametro();
+  }, [id]);
+
+  return valor || 'No especificado';
+};
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
@@ -58,6 +136,7 @@ const SectionHeader = ({ title }) => (
     </Typography>
   </Box>
 );
+
 
 // Componente ResponsiveField memoizado
 const ResponsiveField = memo(({ label, children, required = false, sx = {} }) => (
@@ -106,41 +185,229 @@ const Pacientes = () => {
   const [pacientes, setPacientes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
+  const [sexosD, setGenerosCargados] = useState([]);
+  const [centrosD, setCentrosCargados] = useState([]);
+  const [EstadoD, setEstadoCargados] = useState([]);
+  const [EstadoMaritalD, setEstadoMaritalCargados] = useState([]);
+  const [TipoDocumentoD, setTipoDocumentoCargados] = useState([]);
+  const [paisesD, setPaisesCargados] = useState([]);
+  const [departamentosD, setDepartamentosCargados] = useState([]);
+  const [provinciasD, setProvinciasCargados] = useState([]);
+  const [distritosD, setDistritosCargados] = useState([]);
+  const [distritosDisponibles, setDistritosDisponibles] = useState([]);
+  const [provinciasDisponibles, setProvinciasDisponibles] = useState([]);
+  const [provinciasEditDisponibles, setProvinciasEditDisponibles] = useState([]);
+  const [distritosEditDisponibles, setDistritosEditDisponibles] = useState([]);
+   
   // Estados para modales (solo editar, detallar y eliminar)
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDetailModal, setOpenDetailModal] = useState(false);
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
   const [selectedPaciente, setselectedPaciente] = useState(null);
 
+  const cargarGeneros = async () => {
+      try {
+        const responseSystemParameter = await centrosService.getAllSystemParameterId(10000);
+        console.log('✅ Respuesta de Géneros:', responseSystemParameter);
+        setGenerosCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                         responseSystemParameter?.data || []);
+      } catch (error) {
+        console.error('❌ Error al cargar géneros:', error);
+        setError(`Error al cargar géneros: ${error.message}`);
+      }
+    };
+  
+    const cargarCentros = async () => {
+      try {
+        const responseSystemParameter = await centrosService.getAll();
+        console.log('✅ Respuesta de Centros:', responseSystemParameter);
+        setCentrosCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                         responseSystemParameter?.data || []);
+      } catch (error) {
+        console.error('❌ Error al cargar Centros:', error);
+        setError(`Error al cargar Centros: ${error.message}`);
+      }
+    };
+  
+    const cargarEstados = async () => {
+      try {
+        const responseSystemParameter = await centrosService.getAllSystemParameterId(10006);
+        console.log('✅ Respuesta de Estados:', responseSystemParameter);
+        const estados = Array.isArray(responseSystemParameter) ? responseSystemParameter : responseSystemParameter?.data || [];
+        // Asegurarse de que los estados incluyan los IDs 10007 y 10008
+        const estadosNecesarios = estados.filter(estado => estado.parameterid === '10007' || estado.parameterid === '10008');
+        if (estadosNecesarios.length < 2) {
+          console.warn('⚠️ No se encontraron todos los estados necesarios (10007 y 10008)');
+        }
+        setEstadoCargados(estados);
+      } catch (error) {
+        console.error('❌ Error al cargar estados:', error);
+        setError(`Error al cargar estados: ${error.message}`);
+      }
+    };
+
+    const cargarEstadoMarital = async () => {
+        try {
+          const responseSystemParameter = await centrosService.getAllSystemParameterId(10031);
+          console.log('✅ Respuesta de EstadoMarital:', responseSystemParameter);
+          setEstadoMaritalCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                           responseSystemParameter?.data || []);
+        } catch (error) {
+          console.error('❌ Error al cargar EstadoMarital:', error);
+          setError(`Error al cargar EstadoMarital: ${error.message}`);
+        }
+      };
+  const cargartipoDocumento = async () => {
+        try {
+          const responseSystemParameter = await centrosService.getAllSystemParameterId(10026);
+          console.log('✅ Respuesta de tipoDocumento:', responseSystemParameter);
+          setTipoDocumentoCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                           responseSystemParameter?.data || []);
+        } catch (error) {
+          console.error('❌ Error al cargar tipoDocumento:', error);
+          setError(`Error al cargar tipoDocumento: ${error.message}`);
+        }
+      };
+
+    const cargarPaises = async () => {
+        try {
+          const responseSystemParameter = await centrosService.getAllSystemParameterId(1);
+          console.log('✅ Respuesta de países:', responseSystemParameter);
+          setPaisesCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                           responseSystemParameter?.data || []);
+        } catch (error) {
+          console.error('❌ Error al cargar países:', error);
+          setError(`Error al cargar países: ${error.message}`);
+        }
+      };
+
+    const cargarDepartamentos = async () => {
+        try {
+          const responseSystemParameter = await centrosService.getAllSystemParameterIdRest(2);
+          console.log('✅ Respuesta de Departamentos:', responseSystemParameter);
+          setDepartamentosCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                           responseSystemParameter?.data || []);
+        } catch (error) {
+          console.error('❌ Error al cargar Departamentos:', error);
+          setError(`Error al cargar Departamentos: ${error.message}`);
+        }
+      };
+    
+    const cargarProvincias = async (departamentoId) => {
+          if (!departamentoId) {
+            console.log('No hay departamento seleccionado para cargar provincias');
+            setProvinciasCargados([]);
+            return;
+          }
+      
+          try {
+            console.log('🔄 Cargando provincias para departamento:', departamentoId);
+            const responseSystemParameter = await centrosService.getAllSystemParameterIdParent(2, departamentoId);
+            
+            if (!responseSystemParameter) {
+              console.error('❌ No se recibió respuesta del servidor');
+              setError('Error al cargar provincias: No se recibió respuesta del servidor');
+              setProvinciasCargados([]);
+              return;
+            }
+      
+            const provinciasData = Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                                 responseSystemParameter?.data || [];
+            
+            console.log('✅ Provincias cargadas:', provinciasData);
+            setProvinciasCargados(provinciasData);
+            
+            // Limpiar error si existe
+            if (error && error.includes('Error al cargar provincias')) {
+              setError('');
+            }
+          } catch (error) {
+            console.error('❌ Error al cargar provincias:', error);
+            setError(`Error al cargar provincias: ${error.message}`);
+            setProvinciasCargados([]);
+          }
+        };
+
+      const cargarDistritos = async (provinciaId) => {
+              if (!provinciaId) {
+                console.log('No hay provincia seleccionado para cargar distrito');
+                setDistritosCargados([]);
+                return;
+              }
+          
+              try {
+                console.log('🔄 Cargando distritos para provincia:', provinciaId);
+                const responseSystemParameter = await centrosService.getAllSystemParameterIdParent(2, provinciaId);
+                
+                if (!responseSystemParameter) {
+                  console.error('❌ No se recibió respuesta del servidor');
+                  setError('Error al cargar distritos: No se recibió respuesta del servidor');
+                  setDistritosCargados([]);
+                  return;
+                }
+          
+                const distritosData = Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                                     responseSystemParameter?.data || [];
+                
+                console.log('✅ Distritos cargadas:', distritosData);
+                setDistritosCargados(distritosData);
+                
+                // Limpiar error si existe
+                if (error && error.includes('Error al cargar distritos')) {
+                  setError('');
+                }
+              } catch (error) {
+                console.error('❌ Error al cargar distritos:', error);
+                setError(`Error al cargar distritos: ${error.message}`);
+                setDistritosCargados([]);
+              }
+            };
+
+
+
   // Estado para el formulario
   const [formData, setFormData] = useState({
     // Información Básica
-    estado: '',
-    tipoDocumento: '',
-    documento: '',
-    nombres: '',
-    apellidos: '',
-    fechaNacimiento: null,
-    genero: '',
-    estadoMarital: '',
-    nacionalidad: '',
-    
-    // Centro
-    nombreCentro: '',
-    
-    // Información de Residencia
-    calle: '',
-    codPostal: '',
+    typeDoc: '',
+    documentNumber: '',
+    names: '',
+    lastNames: '',
+    birthdate: '',
+    gender: '',
+    statusMarital: '',
+    nationality: '',
+    centroId: '',
+    address: '',
     pais: '',
-    departamento: '',
-    provincia: '',
-    distrito: '',
-    
-    // Información de Contacto
-    telefono: '',
-    celular: '',
-    correo: ''
+    department: '',
+    province: '',
+    district: '',
+    phoneNumber: '',
+    email: '',
+    status: '',
+    medicalHistory: '',
+  });
+
+  const [editFormData, setEditFormData] = useState({
+    // Información Básica
+    typeDoc: '',
+    documentNumber: '',
+    names: '',
+    lastNames: '',
+    birthdate: '',
+    gender: '',
+    statusMarital: '',
+    nationality: '',
+    centroId: '',
+    address: '',
+    pais: '',
+    department: '',
+    province: '',
+    district: '',
+    phoneNumber: '',
+    email: '',
+    status: '',
+    medicalHistory: '',
   });
 
   const [errors, setErrors] = useState({});
@@ -160,11 +427,48 @@ const Pacientes = () => {
       console.log('🔄 Cargando pacientes desde el backend...');
       const response = await patientsService.getAll();
 
-      console.log('✅ Pacientes cargados:', response.data);
-      console.log('📊 Número de pacientes recibidos:', response.data?.length || 0);
-      console.log('🔍 Primer paciente:', response.data?.[0]);
+      // Obtener los nombres de los centros para cada paciente
+            const listasPacient = await Promise.all(
+              response.data.map(async (persona) => {
+                try {
+                  const centroDatos = await centrosService.getById(persona.centroId);
+                  const tipoDoc = await centrosService.getSystemParameterId(persona.typeDoc);
+                  const sexoTrabj = await centrosService.getSystemParameterId(persona.gender);
+                  const statusMarital = await centrosService.getSystemParameterId(persona.statusMarital);
 
-      setPacientes(response.data || []);
+                  // Transformar el estado a ID numérico, manejando tanto booleano como texto
+                  const estadoNumerico = (persona.status === true || persona.status === 'activo') ? '10007' : '10008';
+                  
+                  return {
+                    ...persona,
+                    nombreCentro: centroDatos.data.nombre,
+                    tipoDocumento: tipoDoc.data.value1,
+                    sexo: sexoTrabj.data.value1,
+                    estado: estadoNumerico, // Usar el ID numérico en lugar del texto
+                    status: estadoNumerico, // Asegurar que ambos campos tengan el mismo valor
+                    estadoCivil: statusMarital.data.value1,
+
+                  };
+                } catch (error) {
+                  console.error(`Error al obtener centro ${persona.centroId}:`, error);
+                  return {
+                    ...persona,
+                    nombreCentro: 'Centro no encontrado',
+                    tipoDocumento: 'Tipo Doc no especificado',
+                    sexo: 'No especificado',
+                    estado: '10007', // Por defecto activo si hay error
+                    estadoCivil: 'Estado Civil no encontrado.'
+                  };
+                }
+              })
+            );
+
+
+      console.log('✅ Pacientes cargados:', listasPacient);
+      console.log('📊 Número de pacientes recibidos:', listasPacient?.length || 0);
+      console.log('🔍 Primer paciente:', listasPacient[0]);
+
+      setPacientes(listasPacient || []);
 
       // Log después de setear
       console.log('🎯 Estado de pacientes actualizado. Longitud:', response.data?.length || 0);
@@ -210,6 +514,13 @@ const Pacientes = () => {
   // Cargar pacientes al montar el componente
   useEffect(() => {
     loadPacientes();
+    cargarGeneros();
+    cargarCentros();
+    cargarEstados();
+    cargarEstadoMarital();
+    cargartipoDocumento();
+    cargarPaises();
+    cargarDepartamentos();
   }, []);
 
   // Datos para cascading dropdowns
@@ -234,25 +545,48 @@ const Pacientes = () => {
   // Función para limpiar el formulario
   const clearForm = () => {
     setFormData({
-      estado: '',
-      tipoDocumento: '',
-      documento: '',
-      nombres: '',
-      apellidos: '',
-      fechaNacimiento: null,
-      genero: '',
-      estadoMarital: '',
-      nacionalidad: '',
-      nombreCentro: '',
-      calle: '',
-      codPostal: '',
+      typeDoc: '',
+      documentNumber: '',
+      names: '',
+      lastNames: '',
+      birthdate: '',
+      gender: '',
+      statusMarital: '',
+      nationality: '',
+      centroId: '',
+      address: '',
       pais: '',
-      departamento: '',
-      provincia: '',
-      distrito: '',
-      telefono: '',
-      celular: '',
-      correo: ''
+      department: '',
+      province: '',
+      district: '',
+      phoneNumber: '',
+      email: '',
+      status: '10007',
+      medicalHistory: '',
+    });
+    setErrors({});
+  };
+
+  const clearEditForm = () => {
+    setEditFormData({
+      typeDoc: '',
+      documentNumber: '',
+      names: '',
+      lastNames: '',
+      birthdate: '',
+      gender: '',
+      statusMarital: '',
+      nationality: '',
+      centroId: '',
+      address: '',
+      pais: '',
+      department: '',
+      province: '',
+      district: '',
+      phoneNumber: '',
+      email: '',
+      status: '10007',
+      medicalHistory: '',
     });
     setErrors({});
   };
@@ -266,45 +600,138 @@ const Pacientes = () => {
     }
   }, [errors]);
 
+// Función genérica para manejar cambios en campos de texto (formulario editar)
+    const handleEditInputChange = useCallback((field, value) => {
+      setEditFormData(prev => ({ ...prev, [field]: value }));
+      // Limpiar error si existe
+      if (errors[field]) {
+        setErrors(prev => ({ ...prev, [field]: '' }));
+      }
+    }, [errors]);
+
   // Función para manejar cambios en selects con lógica de cascada
   const handleSelectChangeWithCascade = useCallback((field, value) => {
-    // Lógica especial para cascading dropdowns
-    if (field === 'pais') {
-      setFormData(prev => ({
-        ...prev,
-        [field]: value,
-        departamento: '',
-        provincia: '',
-        distrito: ''
-      }));
-    } else if (field === 'departamento') {
-      setFormData(prev => ({
-        ...prev,
-        [field]: value,
-        provincia: '',
-        distrito: ''
-      }));
-    } else if (field === 'provincia') {
-      setFormData(prev => ({
-        ...prev,
-        [field]: value,
-        distrito: ''
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [field]: value
-      }));
-    }
+        // Lógica especial para cascading dropdowns UBIGEO
+        if (field === 'pais') {
+          setFormData(prev => ({
+            ...prev,
+            [field]: value,
+            department: '',
+            province: '',
+            district: ''
+          }));
+          setProvinciasDisponibles([]);
+          setDistritosDisponibles([]);
+        } 
+        
+        if (field === 'department') {
+          setFormData(prev => ({
+            ...prev,
+            [field]: value,
+            province: '',
+            district: ''
+          }));
+          
+          if (value) {
+            cargarProvincias(value);
+          } else {
+            setProvinciasCargados([]);
+          }
+          setDistritosDisponibles([]);
+        } else if (field === 'province') {
+          setFormData(prev => ({
+            ...prev,
+            [field]: value,
+            district: ''
+          }));
+          if (value) {
+            cargarDistritos(value);
+          } else {
+            setDistritosCargados([]);
+          }
+          setDistritosDisponibles([]);
+        } else {
+          setFormData(prev => ({
+            ...prev,
+            [field]: value
+          }));
+        }
     
-    // Limpiar error si existe
-    if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: ''
-      }));
-    }
-  }, [errors]);
+        // Limpiar error si existe
+        if (errors[field]) {
+          setErrors(prev => ({
+            ...prev,
+            [field]: ''
+          }));
+        }
+      }, [errors]);
+
+  
+  const handleEditSelectChangeWithCascade = useCallback(async (field, value) => {
+          try {
+            // Lógica especial para cascading dropdowns UBIGEO
+            if (field === 'pais') {
+              setEditFormData(prev => ({
+                ...prev,
+                [field]: value,
+                department: '',
+                province: '',
+                district: ''
+              }));
+              setProvinciasEditDisponibles([]);
+              setDistritosEditDisponibles([]);
+            } else if (field === 'department') {
+              setEditFormData(prev => ({
+                ...prev,
+                [field]: value?.toString() || '',
+                province: '',
+                district: ''
+              }));
+      
+              // Cargar provincias del departamento seleccionado usando centrosService
+              if (value) {
+                const responseProvincias = await centrosService.getAllSystemParameterIdParent(2, value);
+                const provinciasData = Array.isArray(responseProvincias) ? responseProvincias : responseProvincias?.data || [];
+                setProvinciasEditDisponibles(provinciasData);
+              } else {
+                setProvinciasEditDisponibles([]);
+              }
+              setDistritosEditDisponibles([]);
+            } else if (field === 'province') {
+              setEditFormData(prev => ({
+                ...prev,
+                [field]: value,
+                district: ''
+              }));
+      
+              // Cargar distritos de la provincia seleccionada usando centrosService
+              if (value) {
+                const responseDistritos = await centrosService.getAllSystemParameterIdParent(2, value);
+                const distritosData = Array.isArray(responseDistritos) ? responseDistritos : responseDistritos?.data || [];
+                setDistritosEditDisponibles(distritosData);
+              } else {
+                setDistritosEditDisponibles([]);
+              }
+            } else {
+              setEditFormData(prev => ({
+                ...prev,
+                [field]: value
+              }));
+            }
+      
+            // Limpiar error si existe
+            if (errors[field]) {
+              setErrors(prev => ({
+                ...prev,
+                [field]: ''
+              }));
+            }
+          } catch (error) {
+            console.error('Error al cargar datos de ubicación:', error);
+            setError('Error al cargar datos de ubicación');
+          }
+        }, [errors]);
+
 
   // 2. Memoiza los componentes de input
   const MemoizedTextField = memo(({ 
@@ -332,37 +759,78 @@ const Pacientes = () => {
     const newErrors = {};
 
     // Información del Paciente
-    if (!formData.estado) {
-      newErrors.estado = 'El estado es obligatorio';
+    if (!formData.status) {
+      newErrors.status = 'El estado es obligatorio';
     }
 
-    if (!formData.tipoDocumento) {
-      newErrors.tipoDocumento = 'El tipo de documento es obligatorio';
+    if (!formData.typeDoc) {
+      newErrors.typeDoc = 'El tipo de documento es obligatorio';
     }
 
-    if (!formData.documento.trim()) {
-      newErrors.documento = 'El número de documento es obligatorio';
+    if (!formData.documentNumber.trim()) {
+      newErrors.documentNumber = 'El número de documento es obligatorio';
     }
 
-    if (!formData.nombres.trim()) {
-      newErrors.nombres = 'Los nombres son obligatorios';
+    if (!formData.names.trim()) {
+      newErrors.names = 'Los nombres son obligatorios';
     }
 
-    if (!formData.apellidos.trim()) {
-      newErrors.apellidos = 'Los apellidos son obligatorios';
+    if (!formData.lastNames.trim()) {
+      newErrors.lastNames = 'Los apellidos son obligatorios';
     }
 
-    if (!formData.fechaNacimiento) {
-      newErrors.fechaNacimiento = 'La fecha de nacimiento es obligatoria';
+    if (!formData.birthdate) {
+      newErrors.birthdate = 'La fecha de nacimiento es obligatoria';
     }
 
-    if (!formData.genero) {
-      newErrors.genero = 'El género es obligatorio';
+    if (!formData.gender) {
+      newErrors.gender = 'El género es obligatorio';
     }
 
     // Centro
-    if (!formData.nombreCentro.trim()) {
-      newErrors.nombreCentro = 'El nombre del centro es obligatorio';
+    if (!formData.centroId) {
+      newErrors.centroId = 'El nombre del centro es obligatorio';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validateEditForm = () => {
+    const newErrors = {};
+
+    // Información del Paciente
+    if (!editFormData.status) {
+      newErrors.status = 'El estado es obligatorio';
+    }
+
+    if (!editFormData.typeDoc) {
+      newErrors.typeDoc = 'El tipo de documento es obligatorio';
+    }
+
+    if (!editFormData.documentNumber.trim()) {
+      newErrors.documentNumber = 'El número de documento es obligatorio';
+    }
+
+    if (!editFormData.names.trim()) {
+      newErrors.names = 'Los nombres son obligatorios';
+    }
+
+    if (!editFormData.lastNames.trim()) {
+      newErrors.lastNames = 'Los apellidos son obligatorios';
+    }
+
+    if (!editFormData.birthdate) {
+      newErrors.birthdate = 'La fecha de nacimiento es obligatoria';
+    }
+
+    if (!editFormData.gender) {
+      newErrors.gender = 'El género es obligatorio';
+    }
+
+    // Centro
+    if (!editFormData.centroId) {
+      newErrors.centroId = 'El nombre del centro es obligatorio';
     }
     
     setErrors(newErrors);
@@ -370,31 +838,123 @@ const Pacientes = () => {
   };
 
   // Funciones para manejar modales
-  const handleOpenEditModal = (paciente) => {
-    setselectedPaciente(paciente);
-    setFormData({
-      estado: paciente.estado,
-      tipoDocumento: paciente.tipoDocumento,
-      documento: paciente.documento,
-      nombres: paciente.nombres,
-      apellidos: paciente.apellidos,
-      fechaNacimiento: paciente.fechaNacimiento,
-      genero: paciente.genero,
-      estadoMarital: paciente.estadoMarital,
-      nacionalidad: paciente.nacionalidad,
-      nombreCentro: paciente.nombreCentro,
-      calle: paciente.calle,
-      codPostal: paciente.codPostal,
-      pais: paciente.pais,
-      departamento: paciente.departamento,
-      provincia: paciente.provincia,
-      distrito: paciente.distrito,
-      telefono: paciente.telefono,
-      celular: paciente.celular,
-      correo: paciente.correo
-    });
+  const handleOpenEditModal = async (paciente) => {
+      setselectedPaciente(paciente);
+  
+      try {
+            // Inicializar editFormData con los valores del centro
+            const initialFormData = {
+              typeDoc: paciente.typeDoc || paciente.tipoDocumento,
+              centroId: paciente.centroId,
+              documentNumber: paciente.documentNumber,
+              names: paciente.names,
+              lastNames: paciente.lastNames,
+              birthdate: paciente.birthdate ? new Date(paciente.birthdate.split('T')[0]).toISOString().split('T')[0] : '',
+              gender: paciente.gender,
+              statusMarital : paciente.statusMarital,
+              nationality: paciente.nationality,
+              centroId: paciente.centroId,
+              address: paciente.address,
+              pais: paciente.pais || '',
+              department: '',  // Se establecerá después de la validación
+              province: '',     // Se establecerá después de cargar las provincias
+              district: '',      // Se establecerá después de cargar los distritos
+              phoneNumber: paciente.phoneNumber,
+              email: paciente.email,
+              status: paciente.status == '10007' ? 10007: 10008, // Usar el ID numérico del estado
+              medicalHistory: paciente.medicalHistory,
+            };
+            setEditFormData(initialFormData);
+      
+            // Verificar si el departamento existe en departamentosD y obtener el ID correcto
+            let departamentoId = '';
+            if (paciente.department) {
+              const departamentoStr = paciente.department.toString();
+              const departamentoEncontrado = departamentosD.find(dep => 
+                dep.parameterid?.toString() === departamentoStr
+              );
+      
+              if (departamentoEncontrado) {
+                departamentoId = departamentoEncontrado.parameterid?.toString();
+                console.log('Departamento encontrado:', departamentoEncontrado);
+                initialFormData.department = departamentoId;
+      
+                // Cargar provincias
+                const responseProvincias = await centrosService.getAllSystemParameterIdParent(2, departamentoId);
+                const provinciasData = Array.isArray(responseProvincias) ? responseProvincias : responseProvincias?.data || [];
+                setProvinciasEditDisponibles(provinciasData);
+      
+                if (paciente.province) {
+                  const provinciaStr = paciente.province.toString();
+                  const provinciaEncontrada = provinciasData.find(prov => 
+                    prov.parameterid?.toString() === provinciaStr
+                  );
+      
+                  if (provinciaEncontrada) {
+                    initialFormData.province = provinciaEncontrada.parameterid;
+      
+                    // Cargar distritos
+                    const responseDistritos = await centrosService.getAllSystemParameterIdParent(2, provinciaEncontrada.parameterid);
+                    const distritosData = Array.isArray(responseDistritos) ? responseDistritos : responseDistritos?.data || [];
+                    setDistritosEditDisponibles(distritosData);
+      
+                    if (paciente.district) {
+                      const distritoStr = paciente.district.toString();
+                      const distritoEncontrado = distritosData.find(dist => 
+                        dist.parameterid?.toString() === distritoStr
+                      );
+      
+                      if (distritoEncontrado) {
+                        initialFormData.district = distritoEncontrado.parameterid;
+                      } else {
+                        console.warn('Distrito no encontrado:', {
+                          distrito: paciente.district,
+                          distritoStr,
+                          opcionesDisponibles: distritosData.map(d => d.parameterid)
+                        });
+                      }
+                    }
+                  } else {
+                    console.warn('Provincia no encontrada:', {
+                      provincia: paciente.province,
+                      provinciaStr,
+                      opcionesDisponibles: provinciasData.map(p => p.parameterid)
+                    });
+                    setDistritosEditDisponibles([]);
+                  }
+                } else {
+                  setDistritosEditDisponibles([]);
+                }
+              } else {
+                console.warn('Departamento no encontrado:', {
+                  departamento: paciente.department,
+                  departamentoStr,
+                  opcionesDisponibles: departamentosD.map(d => d.parameterid)
+                });
+                setProvinciasEditDisponibles([]);
+                setDistritosEditDisponibles([]);
+              }
+            } else {
+              setProvinciasEditDisponibles([]);
+              setDistritosEditDisponibles([]);
+            }
+      
+            // Asegurarnos de que el estado se mantenga como ID numérico
+      // Manejar tanto el caso booleano como el caso de texto
+      //initialFormData.status = (paciente.status === true || paciente.status === 'activo') ? '10007' : '10008';
+
+      // Actualizar el formulario con todos los valores validados
+      setEditFormData(initialFormData);
+    } catch (error) {
+      console.error('Error al cargar datos de ubicación:', error);
+      setError('Error al cargar datos de ubicación');
+      setProvinciasEditDisponibles([]);
+      setDistritosEditDisponibles([]);
+    }
     setOpenEditModal(true);
-  };
+    };
+
+  
 
   const handleCloseEditModal = () => {
     setOpenEditModal(false);
@@ -423,104 +983,170 @@ const Pacientes = () => {
   };
 
   // Función para crear paciente
-  const handleCreatePaciente = async (e) => {
-    e.preventDefault();
+const handleCreatePaciente = async (e) => {
+      e.preventDefault();
+  
+      if (validateForm()) {
+        try {
+          setLoading(true);
+          console.log('📤 Creando paciente...');
+  
+          // Asegurarse de que estado sea un ID numérico
+          const pacientData = {
+            ...formData,
+            status: formData.status === 10007 ? true : false 
+          };
+  
+          const nuevoPaciente = await patientsService.create(pacientData);
+          console.log('✅ Personal creado:', nuevoPaciente);
+  
+          // Recargar la lista de centros
+          await loadPacientes();
+  
+          clearForm();
+          // Cambiar automáticamente al tab de lista
+          setActiveTab(0);
+  
+        } catch (error) {
+          console.error('❌ Error al crear Personal:', error);
+          setError(`Error al crear Personal: ${error.message}`);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
 
-    if (validateForm()) {
+  // Función para editar paciente
+  const handleEditPaciente = async (e) => {
+      e.preventDefault();
+  
+      if (validateEditForm()) {
+        try {
+          setLoading(true);
+          console.log('📤 Editando paciente...');
+  
+          // Asegurarse de que estado sea un booleano (true para activo, false para inactivo)
+          const formDataToSend = {
+            ...editFormData,
+            status: editFormData.status === 10007 ? true : false 
+          };
+          const pacienteActualizado = await patientsService.update(selectedPaciente.id, formDataToSend);
+          console.log('✅ Paciente actualizado:', pacienteActualizado);
+  
+          // Recargar la lista de paciente
+          await loadPacientes();
+  
+          handleCloseEditModal();
+  
+        } catch (error) {
+          console.error('❌ Error al editar paciente:', error);
+          setError(`Error al editar paciente: ${error.message}`);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+  
+
+  // Función para eliminar paciente
+  const handleDeletePaciente = async () => {
       try {
         setLoading(true);
-        console.log('📤 Creando paciente...');
-
-        const nuevoPaciente = await patientsService.create(formData);
-        console.log('✅ Paciente creado:', nuevoPaciente);
-
-        // Recargar la lista de pacientes
+        console.log('📤 Eliminando paciente...');
+  
+        await patientsService.delete(selectedPaciente.id);
+        console.log('✅ Paciente eliminado');
+  
+        // Recargar la lista de paciente
         await loadPacientes();
-
-        clearForm();
-        // Cambiar automáticamente al tab de lista
-        setActiveTab(0);
-
+  
+        handleCloseDeleteConfirm();
+  
       } catch (error) {
-        console.error('❌ Error al crear paciente:', error);
-        setError(`Error al crear paciente: ${error.message}`);
+        console.error('❌ Error al eliminar Paciente:', error);
+        setError(`Error al eliminar Paciente: ${error.message}`);
       } finally {
         setLoading(false);
       }
-    }
-  };
+    };
 
-  // Función para editar paciente
-  const handleEditPaciente = (e) => {
-    e.preventDefault();
-    
-    if (validateForm()) {
-      setPacientes(prev => prev.map(p => 
-        p.id === selectedPaciente.id 
-          ? {
-              ...p,
-              estado: formData.estado,
-              tipoDocumento: formData.tipoDocumento,
-              documento: formData.documento.trim(),
-              nombres: formData.nombres.trim(),
-              apellidos: formData.apellidos.trim(),
-              fechaNacimiento: formData.fechaNacimiento,
-              genero: formData.genero,
-              estadoMarital: formData.estadoMarital,
-              nacionalidad: formData.nacionalidad,
-              nombreCentro: formData.nombreCentro.trim(),
-              calle: formData.calle.trim(),
-              codPostal: formData.codPostal.trim(),
-              pais: formData.pais,
-              departamento: formData.departamento,
-              provincia: formData.provincia,
-              distrito: formData.distrito,
-              telefono: formData.telefono.trim(),
-              celular: formData.celular.trim(),
-              correo: formData.correo.trim()
-            }
-          : p
-      ));
-      handleCloseEditModal();
-    }
-  };
-
-  // Función para eliminar paciente
-  const handleDeletePaciente = () => {
-    setPacientes(prev => prev.filter(c => c.id !== selectedPaciente.id));
-    handleCloseDeleteConfirm();
-  };
+  
 
   // Filtrar pacientes basado en la búsqueda
   console.log('🔍 DEBUG - Estado pacientes antes del filtro:', pacientes.length, pacientes);
   console.log('🔍 DEBUG - searchTerm:', searchTerm);
 
-  const filteredPacientes = pacientes.filter(paciente => {
-    const nombres = paciente.nombres || paciente.names || '';
-    const apellidos = paciente.apellidos || paciente.lastNames || '';
-    const documento = paciente.documento || paciente.documentNumber || '';
-    const correo = paciente.correo || paciente.email || '';
-
-    return nombres.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           apellidos.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           documento.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           correo.toLowerCase().includes(searchTerm.toLowerCase());
-  });
+  const filteredPacientes = pacientes.filter(person => 
+    (person?.names || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (person?.lastNames || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (person?.documentNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) 
+  );
 
   console.log('🔍 DEBUG - Pacientes después del filtro:', filteredPacientes.length, filteredPacientes);
 
   // Función para obtener el nombre legible de ubicación
-  const getUbicacionTexto = (paciente) => {
-    const provinciaObj = provincias.cajamarca?.find(p => p.value === paciente.provincia);
-    const distritoObj = distritos[paciente.provincia]?.find(d => d.value === paciente.distrito);
-    
-    return `${distritoObj?.label || ''}, ${provinciaObj?.label || ''}, Cajamarca`;
-  };
+const getUbicacionTexto = (paciente) => {
+      return ubigeoService.formatUbicacionCompleta(
+        paciente.pais,
+        paciente.department,
+        paciente.province,
+        paciente.district
+      );
+    };
 
+const [parametrosCache, setParametrosCache] = useState({});
+
+     const getParametroTexto = (id) => {
+       const [valor, setValor] = useState('');
+
+       useEffect(() => {
+         const cargarParametro = async () => {
+           try {
+             if (!id) return;
+             
+             // Si ya tenemos el valor en cache, lo usamos
+             if (parametrosCache[id]) {
+               setValor(parametrosCache[id]);
+               return;
+             }
+
+             const response = await centrosService.getSystemParameterId(id);
+             const nuevoValor = response.data.value1;
+             
+             // Actualizamos el cache
+             setParametrosCache(prev => ({
+               ...prev,
+               [id]: nuevoValor
+             }));
+             
+             setValor(nuevoValor);
+           } catch (error) {
+             console.error('Error al obtener parámetro:', error);
+             setValor('No especificado');
+           }
+         };
+
+         cargarParametro();
+       }, [id]);
+
+       return valor;
+     };
   // Función para cambiar tab
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
   };
+
+  const getEstadoColor = (estado) => {
+    return estado === '10007' ? 'success' : 'error';
+  };
+
+ 
+  const getSexoColor = (sexo) => {
+    // Asumiendo que el ID 10001 es masculino y 10002 es femenino en el SystemParameter
+    return sexo === 10001 ? 'primary' : 'secondary';
+  };
+
 
   return (
     <Container maxWidth="lg" sx={{ py: 1, px: 2, maxWidth: '100% !important' }}>
@@ -597,10 +1223,10 @@ const Pacientes = () => {
                       fullWidth
                       required
                       placeholder="Ingrese los nombres del paciente"
-                      value={formData.nombres}
-                      onChange={(e) => handleInputChange('nombres', e.target.value)}
-                      error={!!errors.nombres}
-                      helperText={errors.nombres}
+                      value={formData.names}
+                      onChange={(e) => handleInputChange('names', e.target.value)}
+                      error={!!errors.names}
+                      helperText={errors.names}
                       size="small"
                     />
                   </ResponsiveField>
@@ -610,32 +1236,34 @@ const Pacientes = () => {
                       fullWidth
                       required
                       placeholder="Ingrese los apellidos del paciente"
-                      value={formData.apellidos}
-                      onChange={(e) => handleInputChange('apellidos', e.target.value)}
-                      error={!!errors.apellidos}
-                      helperText={errors.apellidos}
+                      value={formData.lastNames}
+                      onChange={(e) => handleInputChange('lastNames', e.target.value)}
+                      error={!!errors.lastNames}
+                      helperText={errors.lastNames}
                       size="small"
                     />
                   </ResponsiveField>
 
                   <ResponsiveField label="Género" required>
-                    <FormControl fullWidth required error={!!errors.genero} size="small">
+                    <FormControl fullWidth required error={!!errors.gender} size="small">
                       <Select
-                        value={formData.genero}
-                        onChange={(e) => handleSelectChangeWithCascade('genero', e.target.value)} 
+                        value={formData.gender}
+                        onChange={(e) => handleInputChange('gender', e.target.value)} 
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.genero ? '#000' : '#999'
+                            color: formData.gender ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar género</MenuItem>
-                        <MenuItem value="masculino">Masculino</MenuItem>
-                        <MenuItem value="femenino">Femenino</MenuItem>
-                        <MenuItem value="otro">Otro</MenuItem>
+                        {Array.isArray(sexosD) && sexosD.map(sexo => (
+                          <MenuItem key={sexo.parameterid} value={sexo.parameterid}>
+                            {sexo.value1 || ''}
+                          </MenuItem>
+                        ))}
                       </Select>
-                      {errors.genero && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.genero}</Typography>}
+                      {errors.gender && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.gender}</Typography>}
                     </FormControl>
                   </ResponsiveField>  
                 </FieldRow>
@@ -643,24 +1271,25 @@ const Pacientes = () => {
                 {/* Fila 2: Tipo documento, Documento, Fecha nacimiento */}
                 <FieldRow>
                   <ResponsiveField label="Tipo de Documento" required>
-                    <FormControl fullWidth required error={!!errors.tipoDocumento} size="small">
+                    <FormControl fullWidth required error={!!errors.typeDoc} size="small">
                       <Select
-                        value={formData.tipoDocumento}
-                        onChange={(e) => handleSelectChangeWithCascade('tipoDocumento', e.target.value)}
+                        value={formData.typeDoc}
+                        onChange={(e) => handleInputChange('typeDoc', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.tipoDocumento ? '#000' : '#999'
+                            color: formData.typeDoc ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar tipo</MenuItem>
-                        <MenuItem value="DNI">DNI</MenuItem>
-                        <MenuItem value="Carnet de Extranjería">Carnet de Extranjería</MenuItem>
-                        <MenuItem value="Pasaporte">Pasaporte</MenuItem>
-                        <MenuItem value="Otro">Otro</MenuItem>
+                        {Array.isArray(TipoDocumentoD) && TipoDocumentoD.map(sexo => (
+                          <MenuItem key={sexo.parameterid} value={sexo.parameterid}>
+                            {sexo.value1 || ''}
+                          </MenuItem>
+                        ))}
                       </Select>
-                      {errors.tipoDocumento && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.tipoDocumento}</Typography>}
+                      {errors.typeDoc && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.typeDoc}</Typography>}
                     </FormControl>
                   </ResponsiveField>
 
@@ -669,10 +1298,10 @@ const Pacientes = () => {
                       fullWidth
                       required
                       placeholder="Ingrese el número de documento"
-                      value={formData.documento}
-                      onChange={(e) => handleInputChange('documento', e.target.value)}
-                      error={!!errors.documento}
-                      helperText={errors.documento}
+                      value={formData.documentNumber}
+                      onChange={(e) => handleInputChange('documentNumber', e.target.value)}
+                      error={!!errors.documentNumber}
+                      helperText={errors.documentNumber}
                       size="small"
                     />
                   </ResponsiveField>
@@ -682,10 +1311,10 @@ const Pacientes = () => {
                       fullWidth
                       required
                       type="date"
-                      value={formData.fechaNacimiento || ''}
-                      onChange={(e) => handleInputChange('fechaNacimiento', e.target.value)}
-                      error={!!errors.fechaNacimiento}
-                      helperText={errors.fechaNacimiento}
+                      value={formData.birthdate || ''}
+                      onChange={(e) => handleEditInputChange('birthdate', e.target.value)}
+                      error={!!errors.birthdate}
+                      helperText={errors.birthdate}
                       size="small"
                       InputLabelProps={{ shrink: true }}
                     />
@@ -698,47 +1327,52 @@ const Pacientes = () => {
                     <TextField
                       fullWidth
                       placeholder="Ingrese la nacionalidad"
-                      value={formData.nacionalidad}
-                      onChange={(e) => handleInputChange('nacionalidad', e.target.value)}
+                      value={formData.nationality}
+                      onChange={(e) => handleInputChange('nationality', e.target.value)}
+                      error={!!errors.nationality}
+                      helperText={errors.nationality}
                       size="small"
                     />
                   </ResponsiveField>
                   <ResponsiveField label="Estado Marital">
                     <FormControl fullWidth size="small">
                       <Select
-                        value={formData.estadoMarital}
-                        onChange={(e) => handleSelectChangeWithCascade('estadoMarital', e.target.value)}
+                        value={formData.statusMarital}
+                        onChange={(e) => handleInputChange('statusMarital', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.estadoMarital ? '#000' : '#999'
+                            color: formData.statusMarital ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar estado</MenuItem>
-                        <MenuItem value="soltero">Soltero(a)</MenuItem>
-                        <MenuItem value="casado">Casado(a)</MenuItem>
-                        <MenuItem value="divorciado">Divorciado(a)</MenuItem>
-                        <MenuItem value="viudo">Viudo(a)</MenuItem>
-                        <MenuItem value="otro">Otro</MenuItem>
+                        {Array.isArray(EstadoMaritalD) && EstadoMaritalD.map(sexo => (
+                          <MenuItem key={sexo.parameterid} value={sexo.parameterid}>
+                            {sexo.value1 || ''}
+                          </MenuItem>
+                        ))}
                       </Select>
                     </FormControl>
                   </ResponsiveField>
                   <ResponsiveField label="Estado" required>
-                    <FormControl fullWidth required error={!!errors.estado} size="small">
+                    <FormControl fullWidth required error={!!errors.status} size="small">
                       <Select
-                        value={formData.estado}
-                        onChange={(e) => handleSelectChangeWithCascade('estado', e.target.value)}
+                        value={formData.status}
+                        onChange={(e) => handleInputChange('status', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.estado ? '#000' : '#999'
+                            color: formData.status ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar estado</MenuItem>
-                        <MenuItem value="activo">Activo</MenuItem>
-                        <MenuItem value="inactivo">Inactivo</MenuItem>
+                        {Array.isArray(EstadoD) && EstadoD.map(estado => (
+                          <MenuItem key={estado.parameterid} value={estado.parameterid}>
+                            {estado.value1 || ''}
+                          </MenuItem>
+                        ))}
                       </Select>
                       {errors.estado && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.estado}</Typography>}
                     </FormControl>
@@ -751,25 +1385,34 @@ const Pacientes = () => {
                 <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
                   2. Centro
                 </Typography>
-                <FieldRow>
-                  <ResponsiveField label="Nombre del Centro" required>
-                    <TextField
-
-                      fullWidth
-                      required
-                      placeholder="Ingrese el nombre del centro"
-                      value={formData.nombreCentro}
-                      onChange={(e) => handleInputChange('nombreCentro', e.target.value)}
-                      error={!!errors.nombreCentro}
-                      helperText={errors.nombreCentro}
-                      size="small"
-                    />
-                  </ResponsiveField>
-                  <ResponsiveField>
-                    {/* Espacio vacío para alinear con la fila superior */}
-                  </ResponsiveField>
-                </FieldRow>
-              </Paper>
+              
+                    <FieldRow>
+                      <ResponsiveField label="Seleccione el Centro" required>
+                        <FormControl fullWidth required error={!!errors.centroId} size="small">
+                          <Select
+                            value={formData.centroId}
+                            onChange={(e) => handleInputChange('centroId', e.target.value)}
+                            displayEmpty
+                            defaultValue="1"
+                            sx={{
+                                '& .MuiSelect-select': {
+                                color: formData.centroId ? '#000' : '#999'
+                              }
+                            }}
+                          >
+                          <MenuItem value="">Seleccionar centro</MenuItem>
+                            {Array.isArray(centrosD) && centrosD.map(centro => (
+                              <MenuItem key={centro.id} value={centro.id}>
+                                {centro.nombre || ''}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                      </FormControl>
+                    </ResponsiveField>
+                  </FieldRow>
+                </Paper>
+                            
+                            
               {/* Sección 3: Información de Residencia */}
               <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f8f9fa' }}>
                 <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
@@ -778,16 +1421,7 @@ const Pacientes = () => {
 
                 {/*Calle, Pais, Departamento*/}
                 <FieldRow>
-                  <ResponsiveField label="Calle">
-                    <TextField
-                      fullWidth
-                      placeholder="Ingrese la calle o avenida"
-                      value={formData.calle}
-                      onChange={(e) => handleInputChange('calle', e.target.value)}
-                      size="small"
-                    />
-                  </ResponsiveField>
-
+                  
                   <ResponsiveField label="País" required>
                     <FormControl fullWidth required error={!!errors.pais} size="small">
                       <Select
@@ -801,29 +1435,35 @@ const Pacientes = () => {
                         }}
                       >
                         <MenuItem value="">Seleccionar país</MenuItem>
-                        <MenuItem value="peru">Perú</MenuItem>
+                        {Array.isArray(paisesD) && paisesD.map(pais => (
+                          <MenuItem key={pais.parameterid} value={pais.parameterid}>
+                            {pais.value1 || ''}
+                          </MenuItem>
+                        ))}
                       </Select>
                     </FormControl>
                   </ResponsiveField>
 
                   <ResponsiveField label="Departamento" required>
-                    <FormControl fullWidth required disabled={formData.pais !== 'peru'} error={!!errors.departamento} size="small">
+                    <FormControl fullWidth required error={!!errors.department} size="small">
                       <Select
-                        value={formData.departamento}
-                        onChange={(e) => handleSelectChangeWithCascade('departamento', e.target.value)}
+                        value={formData.department}
+                        onChange={(e) => handleSelectChangeWithCascade('department', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.departamento ? '#000' : '#999'
+                            color: formData.department ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar departamento</MenuItem>
-                        {formData.pais === 'peru' && (
-                          <MenuItem value="cajamarca">Cajamarca</MenuItem>
-                        )}
+                        {Array.isArray(departamentosD) && departamentosD.map(departamento => (
+                          <MenuItem key={departamento.parameterid} value={departamento.parameterid?.toString()}>
+                            {departamento.value1 || ''}
+                          </MenuItem>
+                        ))}
                       </Select>
-                      {errors.departamento && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.departamento}</Typography>}
+                      {errors.department && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.department}</Typography>}
                     </FormControl>
                   </ResponsiveField>
                   
@@ -831,67 +1471,104 @@ const Pacientes = () => {
                 {/* Provincia, Distrito, Codigo postal*/}
                 <FieldRow>
                   <ResponsiveField label="Provincia" required>
-                    <FormControl fullWidth required disabled={formData.departamento !== 'cajamarca'} error={!!errors.provincia} size="small">
+                    <FormControl fullWidth required error={!!errors.province} size="small">
                       <Select
-                        value={formData.provincia}
-                        onChange={(e) => handleSelectChangeWithCascade('provincia', e.target.value)}
+                        value={formData.province}
+                        onChange={(e) => handleSelectChangeWithCascade('province', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.provincia ? '#000' : '#999'
+                            color: formData.province ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar provincia</MenuItem>
-                        {formData.departamento === 'cajamarca' &&
-                          provincias.cajamarca.map(provincia => (
-                            <MenuItem key={provincia.value} value={provincia.value}>
-                              {provincia.label}
-                            </MenuItem>
-                          ))
-                        }
+                          {Array.isArray(provinciasD) && provinciasD.map(provincia => (
+                            <MenuItem key={provincia.parameterid} value={provincia.parameterid}>
+                          {provincia.value1 || ''}
+                        </MenuItem>
+                        ))}
                       </Select>
-                      {errors.provincia && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.provincia}</Typography>}
+                      {errors.province && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.province}</Typography>}
                     </FormControl>
                   </ResponsiveField>
 
                   <ResponsiveField label="Distrito" required>
-                    <FormControl fullWidth required disabled={!formData.provincia || !distritos[formData.provincia]} error={!!errors.distrito} size="small">
+                    <FormControl fullWidth required disabled={!formData.province} error={!!errors.district} size="small">
                       <Select
-                        value={formData.distrito}
-                        onChange={(e) => handleSelectChangeWithCascade('distrito', e.target.value)}
+                        value={formData.district}
+                        onChange={(e) => handleSelectChangeWithCascade('district', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.distrito ? '#000' : '#999'
+                            color: formData.district ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar distrito</MenuItem>
-                        {formData.provincia && distritos[formData.provincia] &&
-                          distritos[formData.provincia].map(distrito => (
-                            <MenuItem key={distrito.value} value={distrito.value}>
-                              {distrito.label}
+                          {Array.isArray(distritosD) && distritosD.map(distrito => (
+                            <MenuItem key={distrito.parameterid} value={distrito.parameterid}>
+                              {distrito.value1}
                             </MenuItem>
-                          ))
-                        }
-                      </Select>
-                      {errors.distrito && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.distrito}</Typography>}
+                          ))}
+                        </Select>
+                        {errors.district && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.district}</Typography>}
                     </FormControl>
                   </ResponsiveField>
 
-                  <ResponsiveField label="Código Postal">
+                  
+                </FieldRow>
+                <FieldRow>
+                  <ResponsiveField label="Direccion">
                     <TextField
                       fullWidth
-                      placeholder="Ingrese el código postal"
-                      value={formData.codPostal}
-                      onChange={(e) => handleInputChange('codPostal', e.target.value)}
+                      placeholder="Ingrese la Dirección "
+                      value={formData.address}
+                      onChange={(e) => handleInputChange('address', e.target.value)}
+                      error={!!errors.address}
+                      helperText={errors.address}
                       size="small"
                     />
                   </ResponsiveField>
-                </FieldRow>
 
+                </FieldRow>
               </Paper>
+
+              {/* Sección 4: Centro */}
+              <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f8f9fa' }}>
+                <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
+                  4. Adicionales
+                </Typography>
+              
+              <FieldRow>
+                    <ResponsiveField label="Celular">
+                      <TextField
+                        fullWidth
+                        placeholder="Ingrese número de celular/teléfono."
+                        value={formData.phoneNumber}
+                        onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
+                        error={!!errors.phoneNumber}
+                        helperText={errors.phoneNumber}
+                        size="small"
+                      />
+                    </ResponsiveField>
+
+                
+                    <ResponsiveField label="E-mail">
+                      <TextField
+                        fullWidth
+                        placeholder="Ingrese correo Electrónico "
+                        value={formData.email}
+                        onChange={(e) => handleInputChange('email', e.target.value)}
+                        error={!!errors.email}
+                        helperText={errors.email}
+                        size="small"
+                      />
+                    </ResponsiveField>
+
+                </FieldRow>
+              </Paper>
+                          
 
               {/* Botón de Crear */}
               <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
@@ -974,9 +1651,9 @@ const Pacientes = () => {
                   <TableHead>
                     <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                       <TableCell><strong>Nombres</strong></TableCell>
-                      <TableCell><strong>Apellidos</strong></TableCell>
-                      <TableCell><strong>Tipo de documento</strong></TableCell>
-                      <TableCell><strong>Documento</strong></TableCell>
+                      <TableCell><strong>Sexo</strong></TableCell>
+                      <TableCell><strong>T. Documento</strong></TableCell>
+                      <TableCell><strong># Documento</strong></TableCell>
                       <TableCell><strong>Celular</strong></TableCell>
                       <TableCell><strong>Estado</strong></TableCell>
                       <TableCell align="center"><strong>Acciones</strong></TableCell>
@@ -994,15 +1671,29 @@ const Pacientes = () => {
                     ) : (
                       filteredPacientes.map((paciente) => (
                       <TableRow key={paciente.pacientid} hover>
-                        <TableCell>{paciente.nombres || paciente.names || 'N/A'}</TableCell>
-                        <TableCell>{paciente.apellidos || paciente.lastNames || 'N/A'}</TableCell>
-                        <TableCell>{paciente.tipoDocumento || (paciente.typeDoc === 1 ? 'DNI' : 'Otro')}</TableCell>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight="bold">
+                            {paciente.names} {paciente.lastNames}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="caption" color="text.secondary">
+                                <Chip
+                                  label={paciente.gender === 10001 ? 'M' : 'F'}
+                                  size="small"
+                                  color={getSexoColor(paciente.gender)}
+                                  variant="outlined"
+                                  sx={{ fontSize: '0.7rem', height: '18px' }}
+                                />
+                              </Typography>
+                            </TableCell>
+                        <TableCell>{paciente.tipoDocumento}</TableCell>
                         <TableCell>{paciente.documento || paciente.documentNumber || 'N/A'}</TableCell>
                         <TableCell>{paciente.telefono || paciente.phoneNumber || 'N/A'}</TableCell>
                         <TableCell>
                           <Chip
-                            label={paciente.estado === 'activo' || paciente.status ? 'Activo' : 'Inactivo'}
-                            color={paciente.estado === 'activo' || paciente.status ? 'success' : 'default'}
+                            label={paciente.estado === '10007' ? 'Activo' : 'Inactivo'}
+                            color={paciente.estado === '10007' ? 'success' : 'default'}
                             size="small"
                             sx={{ fontWeight: 'bold' }}
                           />
@@ -1082,10 +1773,10 @@ const Pacientes = () => {
                       fullWidth
                       required
                       placeholder="Ingrese los nombres del paciente"
-                      value={formData.nombres}
-                      onChange={(e) => handleInputChange('nombres', e.target.value)}
-                      error={!!errors.nombres}
-                      helperText={errors.nombres}
+                      value={editFormData.names}
+                      onChange={(e) => handleEditInputChange('names', e.target.value)}
+                      error={!!errors.names}
+                      helperText={errors.names}
                       size="small"
                     />
                   </ResponsiveField>
@@ -1095,32 +1786,34 @@ const Pacientes = () => {
                       fullWidth
                       required
                       placeholder="Ingrese los apellidos del paciente"
-                      value={formData.apellidos}
-                      onChange={(e) => handleInputChange('apellidos', e.target.value)}
-                      error={!!errors.apellidos}
-                      helperText={errors.apellidos}
+                      value={editFormData.lastNames}
+                      onChange={(e) => handleEditInputChange('lastNames', e.target.value)}
+                      error={!!errors.lastNames}
+                      helperText={errors.lastNames}
                       size="small"
                     />
                   </ResponsiveField>
 
                   <ResponsiveField label="Género" required>
-                    <FormControl fullWidth required error={!!errors.genero} size="small">
+                    <FormControl fullWidth required error={!!errors.gender} size="small">
                       <Select
-                        value={formData.genero}
-                        onChange={(e) => handleSelectChangeWithCascade('genero', e.target.value)} 
+                        value={editFormData.gender}
+                        onChange={(e) => handleEditSelectChangeWithCascade('gender', e.target.value)} 
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.genero ? '#000' : '#999'
+                            color: editFormData.gender ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar género</MenuItem>
-                        <MenuItem value="masculino">Masculino</MenuItem>
-                        <MenuItem value="femenino">Femenino</MenuItem>
-                        <MenuItem value="otro">Otro</MenuItem>
+                        {Array.isArray(sexosD) && sexosD.map(sexo => (
+                            <MenuItem key={sexo.parameterid} value={sexo.parameterid}>
+                              {sexo.value1 || ''}
+                          </MenuItem>
+                        ))}
                       </Select>
-                      {errors.genero && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.genero}</Typography>}
+                      {errors.gender && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.gender}</Typography>}
                     </FormControl>
                   </ResponsiveField>  
                 </FieldRow>
@@ -1128,36 +1821,37 @@ const Pacientes = () => {
                 {/* Fila 2: Tipo documento, Documento, Fecha nacimiento */}
                 <FieldRow>
                   <ResponsiveField label="Tipo de Documento" required>
-                    <FormControl fullWidth required error={!!errors.tipoDocumento} size="small">
+                    <FormControl fullWidth required error={!!errors.typeDoc} size="small">
                       <Select
-                        value={formData.tipoDocumento}
-                        onChange={(e) => handleSelectChangeWithCascade('tipoDocumento', e.target.value)}
+                        value={editFormData.typeDoc}
+                        onChange={(e) => handleEditSelectChangeWithCascade('typeDoc', e.target.value)} 
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.tipoDocumento ? '#000' : '#999'
+                            color: editFormData.typeDoc ? '#000' : '#999'
                           }
                         }}
                       >
                         <MenuItem value="">Seleccionar tipo</MenuItem>
-                        <MenuItem value="DNI">DNI</MenuItem>
-                        <MenuItem value="Carnet de Extranjería">Carnet de Extranjería</MenuItem>
-                        <MenuItem value="Pasaporte">Pasaporte</MenuItem>
-                        <MenuItem value="Otro">Otro</MenuItem>
+                        {Array.isArray(TipoDocumentoD) && TipoDocumentoD.map(sexo => (
+                          <MenuItem key={sexo.parameterid} value={sexo.parameterid}>
+                            {sexo.value1 || ''}
+                          </MenuItem>
+                        ))}
                       </Select>
-                      {errors.tipoDocumento && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.tipoDocumento}</Typography>}
+                      {errors.gender && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.gender}</Typography>}
                     </FormControl>
-                  </ResponsiveField>
+                  </ResponsiveField>  
 
                   <ResponsiveField label="Número de Documento" required>
                     <TextField
                       fullWidth
                       required
                       placeholder="Ingrese el número de documento"
-                      value={formData.documento}
-                      onChange={(e) => handleInputChange('documento', e.target.value)}
-                      error={!!errors.documento}
-                      helperText={errors.documento}
+                      value={editFormData.documentNumber}
+                      onChange={(e) => handleEditInputChange('documentNumber', e.target.value)}
+                      error={!!errors.documentNumber}
+                      helperText={errors.documentNumber}
                       size="small"
                     />
                   </ResponsiveField>
@@ -1167,10 +1861,10 @@ const Pacientes = () => {
                       fullWidth
                       required
                       type="date"
-                      value={formData.fechaNacimiento || ''}
-                      onChange={(e) => handleInputChange('fechaNacimiento', e.target.value)}
-                      error={!!errors.fechaNacimiento}
-                      helperText={errors.fechaNacimiento}
+                      value={editFormData.birthdate || ''}
+                      onChange={(e) => handleEditInputChange('birthdate', e.target.value)}
+                      error={!!errors.birthdate}
+                      helperText={errors.birthdate}
                       size="small"
                       InputLabelProps={{ shrink: true }}
                     />
@@ -1183,51 +1877,57 @@ const Pacientes = () => {
                     <TextField
                       fullWidth
                       placeholder="Ingrese la nacionalidad"
-                      value={formData.nacionalidad}
-                      onChange={(e) => handleInputChange('nacionalidad', e.target.value)}
+                      value={editFormData.nationality}
+                      onChange={(e) => handleInputChange('nationality', e.target.value)}
                       size="small"
                     />
                   </ResponsiveField>
-                  <ResponsiveField label="Estado Marital">
-                    <FormControl fullWidth size="small">
+
+                  <ResponsiveField label="Tipo de Documento" required>
+                    <FormControl fullWidth required error={!!errors.statusMarital} size="small">
                       <Select
-                        value={formData.estadoMarital}
-                        onChange={(e) => handleSelectChangeWithCascade('estadoMarital', e.target.value)}
+                        value={editFormData.statusMarital}
+                        onChange={(e) => handleEditSelectChangeWithCascade('statusMarital', e.target.value)} 
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.estadoMarital ? '#000' : '#999'
+                            color: editFormData.statusMarital ? '#000' : '#999'
                           }
                         }}
                       >
-                        <MenuItem value="">Seleccionar estado</MenuItem>
-                        <MenuItem value="soltero">Soltero(a)</MenuItem>
-                        <MenuItem value="casado">Casado(a)</MenuItem>
-                        <MenuItem value="divorciado">Divorciado(a)</MenuItem>
-                        <MenuItem value="viudo">Viudo(a)</MenuItem>
-                        <MenuItem value="otro">Otro</MenuItem>
+                        <MenuItem value="">Seleccionar tipo</MenuItem>
+                        {Array.isArray(EstadoMaritalD) && EstadoMaritalD.map(sexo => (
+                          <MenuItem key={sexo.parameterid} value={sexo.parameterid}>
+                            {sexo.value1 || ''}
+                          </MenuItem>
+                        ))}
                       </Select>
+                      {errors.gender && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.gender}</Typography>}
                     </FormControl>
-                  </ResponsiveField>
-                  <ResponsiveField label="Estado" required>
-                    <FormControl fullWidth required error={!!errors.estado} size="small">
-                      <Select
-                        value={formData.estado}
-                        onChange={(e) => handleSelectChangeWithCascade('estado', e.target.value)}
-                        displayEmpty
-                        sx={{
-                          '& .MuiSelect-select': {
-                            color: formData.estado ? '#000' : '#999'
-                          }
-                        }}
-                      >
-                        <MenuItem value="">Seleccionar estado</MenuItem>
-                        <MenuItem value="activo">Activo</MenuItem>
-                        <MenuItem value="inactivo">Inactivo</MenuItem>
-                      </Select>
-                      {errors.estado && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.estado}</Typography>}
-                    </FormControl>
-                  </ResponsiveField>
+                  </ResponsiveField> 
+
+                  <ResponsiveField label="Estatus" required>
+                                      <FormControl fullWidth required error={!!errors.status}>
+                                        <Select
+                                          value={editFormData.status}
+                                          onChange={(e) => handleEditSelectChangeWithCascade('status', e.target.value)}
+                                          displayEmpty
+                                          sx={{
+                                            '& .MuiSelect-select': {
+                                              color: editFormData.status ? '#000' : '#999'
+                                            }
+                                          }}
+                                        >
+                                          <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                                          {Array.isArray(EstadoD) && EstadoD.map(estado => (
+                                          <MenuItem key={estado.parameterid} value={estado.parameterid}>
+                                                {estado.value1 || ''}
+                                            </MenuItem>
+                                          ))}
+                                          
+                                        </Select>
+                                      </FormControl>
+                                    </ResponsiveField>
                 </FieldRow>
             </Paper>
 
@@ -1237,19 +1937,28 @@ const Pacientes = () => {
                 2. Centro
               </Typography>
               <FieldRow>
-                  <ResponsiveField label="Nombre del Centro" required>
-                    <TextField
-
-                      fullWidth
-                      required
-                      placeholder="Ingrese el nombre del centro"
-                      value={formData.nombreCentro}
-                      onChange={(e) => handleInputChange('nombreCentro', e.target.value)}
-                      error={!!errors.nombreCentro}
-                      helperText={errors.nombreCentro}
-                      size="small"
-                    />
-                  </ResponsiveField>
+                  <ResponsiveField label="Nombre" required>
+                                      <FormControl fullWidth required error={!!errors.CentroId}>
+                                        <Select
+                                          value={editFormData.centroId}
+                                          onChange={(e) => handleEditSelectChangeWithCascade('centroId', e.target.value)}
+                                          displayEmpty
+                                          sx={{
+                                            '& .MuiSelect-select': {
+                                              color: editFormData.centroId ? '#000' : '#999'
+                                            }
+                                          }}
+                                        >
+                                          <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                                          {Array.isArray(centrosD) && centrosD.map(centro => (
+                                          <MenuItem key={centro.id} value={centro.id}>
+                                                {centro.nombre || ''}
+                                            </MenuItem>
+                                          ))}
+                  
+                                        </Select>
+                                      </FormControl>
+                                    </ResponsiveField>
                   <ResponsiveField>
                     {/* Espacio vacío para alinear con la fila superior */}
                   </ResponsiveField>
@@ -1263,118 +1972,153 @@ const Pacientes = () => {
 
               {/*Calle, Pais, Departamento*/}
               <FieldRow>
-                  <ResponsiveField label="Calle">
-                    <TextField
-                      fullWidth
-                      placeholder="Ingrese la calle o avenida"
-                      value={formData.calle}
-                      onChange={(e) => handleInputChange('calle', e.target.value)}
-                      size="small"
-                    />
-                  </ResponsiveField>
-
                   <ResponsiveField label="País" required>
                     <FormControl fullWidth required error={!!errors.pais} size="small">
                       <Select
-                        value={formData.pais}
-                        onChange={(e) => handleSelectChangeWithCascade('pais', e.target.value)}
+                        value={editFormData.pais}
+                        onChange={(e) => handleEditSelectChangeWithCascade('pais', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.pais ? '#000' : '#999'
+                            color: editFormData.pais ? '#000' : '#999'
                           }
                         }}
                       >
-                        <MenuItem value="">Seleccionar país</MenuItem>
-                        <MenuItem value="peru">Perú</MenuItem>
+                        <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                                                {Array.isArray(paisesD) && paisesD.map(pais => (
+                                                  <MenuItem key={pais.parameterid} value={pais.parameterid}>
+                                                    {pais.value1}
+                                                  </MenuItem>
+                                                ))}
                       </Select>
                     </FormControl>
                   </ResponsiveField>
 
                   <ResponsiveField label="Departamento" required>
-                    <FormControl fullWidth required disabled={formData.pais !== 'peru'} error={!!errors.departamento} size="small">
+                    <FormControl fullWidth required error={!!errors.department} size="small">
                       <Select
-                        value={formData.departamento}
-                        onChange={(e) => handleSelectChangeWithCascade('departamento', e.target.value)}
+                        value={editFormData.department}
+                        onChange={(e) => handleEditSelectChangeWithCascade('department', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.departamento ? '#000' : '#999'
+                            color: editFormData.department ? '#000' : '#999'
                           }
                         }}
                       >
-                        <MenuItem value="">Seleccionar departamento</MenuItem>
-                        {formData.pais === 'peru' && (
-                          <MenuItem value="cajamarca">Cajamarca</MenuItem>
-                        )}
+                        <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                                                {Array.isArray(departamentosD) && departamentosD.map(departamento => (
+                                                  <MenuItem key={departamento.parameterid} value={departamento.parameterid?.toString()}>
+                                                    {departamento.value1}
+                                                  </MenuItem>
+                                                ))}
                       </Select>
-                      {errors.departamento && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.departamento}</Typography>}
+                      {errors.department && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.department}</Typography>}
                     </FormControl>
                   </ResponsiveField>
                 </FieldRow>
+                
                 {/* Departamento, Provincia, Distrito */}
                 <FieldRow>
                   <ResponsiveField label="Provincia" required>
-                    <FormControl fullWidth required disabled={formData.departamento !== 'cajamarca'} error={!!errors.provincia} size="small">
+                    <FormControl fullWidth required error={!!errors.province} size="small">
                       <Select
-                        value={formData.provincia}
-                        onChange={(e) => handleSelectChangeWithCascade('provincia', e.target.value)}
+                        value={editFormData.province}
+                        onChange={(e) => handleEditSelectChangeWithCascade('province', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.provincia ? '#000' : '#999'
+                            color: formData.province ? '#000' : '#999'
                           }
                         }}
                       >
-                        <MenuItem value="">Seleccionar provincia</MenuItem>
-                        {formData.departamento === 'cajamarca' &&
-                          provincias.cajamarca.map(provincia => (
-                            <MenuItem key={provincia.value} value={provincia.value}>
-                              {provincia.label}
-                            </MenuItem>
-                          ))
-                        }
+                        <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                                                {Array.isArray(provinciasEditDisponibles) && provinciasEditDisponibles.map(provincia => (
+                                                  <MenuItem key={provincia.parameterid} value={provincia.parameterid}>
+                                                    {provincia.value1}
+                                                  </MenuItem>
+                                                ))}
                       </Select>
-                      {errors.provincia && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.provincia}</Typography>}
+                      {errors.province && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.province}</Typography>}
                     </FormControl>
                   </ResponsiveField>
 
                   <ResponsiveField label="Distrito" required>
-                    <FormControl fullWidth required disabled={!formData.provincia || !distritos[formData.provincia]} error={!!errors.distrito} size="small">
+                    <FormControl fullWidth required error={!!errors.district} size="small">
                       <Select
-                        value={formData.distrito}
-                        onChange={(e) => handleSelectChangeWithCascade('distrito', e.target.value)}
+                        value={editFormData.district}
+                        onChange={(e) => handleEditSelectChangeWithCascade('district', e.target.value)}
                         displayEmpty
                         sx={{
                           '& .MuiSelect-select': {
-                            color: formData.distrito ? '#000' : '#999'
+                            color: editFormData.district ? '#000' : '#999'
                           }
                         }}
                       >
-                        <MenuItem value="">Seleccionar distrito</MenuItem>
-                        {formData.provincia && distritos[formData.provincia] &&
-                          distritos[formData.provincia].map(distrito => (
-                            <MenuItem key={distrito.value} value={distrito.value}>
-                              {distrito.label}
-                            </MenuItem>
-                          ))
-                        }
+                        <MenuItem value="" sx={{ color: '#000' }}>Por favor seleccione</MenuItem>
+                                                {Array.isArray(distritosEditDisponibles) && distritosEditDisponibles.map(distrito => (
+                                                  <MenuItem key={distrito.parameterid} value={distrito.parameterid}>
+                                                      {distrito.value1}
+                                                  </MenuItem>
+                                                ))}
                       </Select>
-                      {errors.distrito && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.distrito}</Typography>}
+                      {errors.district && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{errors.district}</Typography>}
                     </FormControl>
                   </ResponsiveField>
 
-                  <ResponsiveField label="Código Postal">
+                  
+                </FieldRow>
+                <FieldRow>
+                  <ResponsiveField label="Calle">
                     <TextField
                       fullWidth
-                      placeholder="Ingrese el código postal"
-                      value={formData.codPostal}
-                      onChange={(e) => handleInputChange('codPostal', e.target.value)}
+                      placeholder="Ingrese la calle o avenida"
+                      value={editFormData.address}
+                      onChange={(e) => handleInputChange('address', e.target.value)}
                       size="small"
                     />
                   </ResponsiveField>
+                </FieldRow>
+                </Paper>
+
+                <Paper>
+                
+
+                {/* Sección 4: Info */}
+              <Paper sx={{ p: 3, mt: 3, backgroundColor: '#f8f9fa' }}>
+              <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
+                4. Información de Adicionales
+              </Typography>
+
+                  <FieldRow>
+                    <ResponsiveField label="Celular">
+                      <TextField
+                        fullWidth
+                        placeholder="Ingrese número de celular/teléfono."
+                        value={editFormData.phoneNumber}
+                        onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
+                        error={!!errors.phoneNumber}
+                        helperText={errors.phoneNumber}
+                        size="small"
+                      />
+                    </ResponsiveField>
+
+                
+                    <ResponsiveField label="E-mail">
+                      <TextField
+                        fullWidth
+                        placeholder="Ingrese correo Electrónico "
+                        value={editFormData.email}
+                        onChange={(e) => handleInputChange('email', e.target.value)}
+                        error={!!errors.email}
+                        helperText={errors.email}
+                        size="small"
+                      />
+                    </ResponsiveField>
 
                 </FieldRow>
+              </Paper>
+                          
             </Paper>
           </DialogContent>
           <DialogActions sx={{ p: 3, gap: 2 }}>
@@ -1431,59 +2175,59 @@ const Pacientes = () => {
                 <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
                   1. Información del Paciente
                 </Typography>
-                {/* Fila 1: Nombre, Abreviatura, Horarios .Con grid espacions proporcionables*/}
-                <Grid container spacing={17} sx={{ mb: 3 }}> {/* Increased spacing between grid items and bottom margin */}
+                {/* Fila 1: Nombres, Apellidos, Género */}
+                <Grid container spacing={3} sx={{ mb: 3 }}>
                   <Grid item xs={12} sm={4}>
-                    <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Nombres</Typography> {/* Made title bold and added margin bottom */}
-                    <Typography variant="subtitle1">{selectedPaciente.nombres || 'N/A'}</Typography>
+                    <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Nombres</Typography>
+                    <Typography variant="body1">{selectedPaciente.names || 'N/A'}</Typography>
                   </Grid>
                   <Grid item xs={12} sm={4}>
                     <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Apellidos</Typography>
-                    <Typography variant="subtitle1">{selectedPaciente.apellidos || 'N/A'}</Typography>
+                    <Typography variant="body1">{selectedPaciente.lastNames || 'N/A'}</Typography>
                   </Grid>
                   <Grid item xs={12} sm={4}>
                     <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Género</Typography>
-                    <Typography variant="subtitle1">
-                      {selectedPaciente.genero ? selectedPaciente.genero.charAt(0).toUpperCase() + selectedPaciente.genero.slice(1) : 'N/A'}
+                    <Typography variant="body1">
+                      <ParametroTexto id={selectedPaciente.gender} />
                     </Typography>
-                  </Grid>
-                </Grid>
-
-                {/* Fila 2: Tipo documento, Documento, Fecha nacimiento. Con grid espacions proporcionables*/}
-
-                <Grid container spacing={10} sx={{ mb: 3 }}>
-                  <Grid item xs={12} sm={4}>
-                    <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Tipo de Documento</Typography>
-                    <Typography variant="subtitle1"> {selectedPaciente.tipoDocumento || 'N/A'}</Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Número de Documento</Typography>
-                    <Typography variant="subtitle1"> {selectedPaciente.documento || 'N/A'}</Typography>
                   </Grid>
                   <Grid item xs={12} sm={4}>
                     <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Fecha de Nacimiento</Typography>
-                    <Typography variant="subtitle1">
-                      {selectedPaciente.fechaNacimiento ? new Date(selectedPaciente.fechaNacimiento).toLocaleDateString() : 'N/A'}
+                    <Typography variant="body1">
+                      {selectedPaciente.birthdate ? new Date(selectedPaciente.birthdate).toLocaleDateString() : 'N/A'}
                     </Typography>
-                  </Grid>
-                </Grid>
-                {/* Fila 3: Nacionalidad, Estado marital, Estado. Con grid espacions proporcionables*/}
-                <Grid container spacing={16} sx={{ mb: 3 }}>
-                  <Grid item xs={12} sm={4}>
-                    <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Nacionalidad</Typography>
-                     <Typography variant="subtitle1">{selectedPaciente.nacionalidad ? selectedPaciente.nacionalidad.charAt(0).toUpperCase() + selectedPaciente.nacionalidad.slice(1) : 'N/A'}</Typography>
                   </Grid>
                   <Grid item xs={12} sm={4}>
                     <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Estado Marital</Typography>
-                    <Typography variant="subtitle1">
-                      {selectedPaciente.estadoMarital ? selectedPaciente.estadoMarital.charAt(0).toUpperCase() + selectedPaciente.estadoMarital.slice(1) : 'N/A'}
+                    <Typography variant="body1">
+                      <ParametroTexto id={selectedPaciente.statusMarital} />
+                    </Typography>
+                  </Grid>
+                </Grid>
+
+                {/* Fila 2: Tipo documento, Documento, Fecha nacimiento */}
+                <Grid container spacing={3} sx={{ mb: 3 }}>
+                  <Grid item xs={12} sm={4}>
+                    <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Tipo de Documento</Typography>
+                    <Typography variant="body1">
+                      <ParametroTexto id={selectedPaciente.typeDoc} />
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={4}>
+                    <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Número de Documento</Typography>
+                    <Typography variant="body1">{selectedPaciente.documentNumber || 'N/A'}</Typography>
+                  </Grid>
+
+                  <Grid item xs={12} sm={4}>
+                    <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Nacionalidad</Typography>
+                    <Typography variant="body1">{selectedPaciente.nationality || 'N/A'}</Typography>
+                  </Grid>
+                  
+                  <Grid item xs={12} sm={4}>
                     <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Estado</Typography>
                     <Chip
-                      label={selectedPaciente.estado === 'activo' ? 'Activo' : 'Inactivo'}
-                      color={selectedPaciente.estado === 'activo' ? 'success' : 'default'}
+                      label={selectedPaciente.status ? 'Activo' : 'Inactivo'}
+                      color={selectedPaciente.status ? 'success' : 'default'}
                       size="small"
                       sx={{ fontWeight: 'bold' }}
                     />
@@ -1491,53 +2235,84 @@ const Pacientes = () => {
                 </Grid>
               </Paper>
 
-              {/* Sección 2: Nombre del centro */}
-              <Paper sx={{ p: 3, mb:3, backgroundColor: '#f8f9fa' }}>
+              {/* Sección 2: Centro */}
+              <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f8f9fa' }}>
                 <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
                   2. Centro
                 </Typography>
-                <Grid container spacing={15} sx={{ mb: 3 }}>
+                <Grid container spacing={3} sx={{ mb: 3 }}>
                   <Grid item xs={12} sm={6}>
-                    <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Nombre del Centro</Typography>
-                    <Typography variant="subtitle1">{selectedPaciente.nombreCentro || 'N/A'}</Typography>
+                    <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Centro Médico</Typography>
+                    <Typography variant="body1">
+                      {selectedPaciente.centroId ? (
+                        centrosD.find(centro => centro.id === selectedPaciente.centroId)?.nombre || 'N/A'
+                      ) : 'N/A'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Historia Clínica</Typography>
+                    <Typography variant="body1">{selectedPaciente.medicalHistory || 'N/A'}</Typography>
                   </Grid>
                 </Grid>
               </Paper>
 
-              {/* Seccion 3: Calle, cod postal, pais, departamento, distrito, provincia */}
+              {/* Sección 3: Información de Residencia */}
               <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f8f9fa' }}>
                 <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
-                  3. Dirección del Paciente
+                  3. Información de Residencia
                 </Typography>
                 
-                {/*Calle, Codigo postal, Pais. Con grid espacions proporcionables*/}
-                <Grid container spacing={15} sx={{ mb: 2 }}>
-                  <Grid item xs={12} sm={4}>
-                    <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Calle</Typography>
-                    <Typography variant='subtitle1'>{selectedPaciente.calle || 'N/A'}</Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Código Postal</Typography>
-                    <Typography variant="subtitle1">{selectedPaciente.codPostal || 'N/A'}</Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
+                {/* Fila 1: País, Departamento */}
+                <Grid container spacing={3} sx={{ mb: 3 }}>
+                  <Grid item xs={12} sm={6}>
                     <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>País</Typography>
-                     <Typography variant="subtitle1">{typeof selectedPaciente.pais === 'string' ? selectedPaciente.pais.charAt(0).toUpperCase() + selectedPaciente.pais.slice(1) : selectedPaciente.pais || 'N/A'}</Typography>
+                    <Typography variant="body1">
+                      <ParametroTexto id={selectedPaciente.pais} />
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Departamento</Typography>
+                    <Typography variant="body1">
+                      <ParametroTexto id={selectedPaciente.department} />
+                    </Typography>
+                  </Grid>
+
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Provincia</Typography>
+                    <Typography variant="body1">
+                      <ParametroTexto id={selectedPaciente.province} />
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Distrito</Typography>
+                    <Typography variant="body1">
+                      <ParametroTexto id={selectedPaciente.district} />
+                    </Typography>
                   </Grid>
                 </Grid>
-                {/* Departamento, Provincia, Distrito. Con grid espacions proporcionables*/}
-                <Grid container spacing={20} sx={{ mb: 2 }}>
-                  <Grid item xs={12} sm={4}>
-                    <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Departamento</Typography>
-                     <Typography variant="subtitle1">{selectedPaciente.departamento ? selectedPaciente.departamento.charAt(0).toUpperCase() + selectedPaciente.departamento.slice(1) : 'N/A'}</Typography>
+
+                {/* Fila 2: Dirección */}
+                <Grid container spacing={3}>
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Dirección</Typography>
+                    <Typography variant="body1">{selectedPaciente.address || 'N/A'}</Typography>
                   </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Provincia</Typography>
-                     <Typography variant="subtitle1">{selectedPaciente.provincia ? selectedPaciente.provincia.charAt(0).toUpperCase() + selectedPaciente.provincia.slice(1) : 'N/A'}</Typography>
+                </Grid>
+              </Paper>
+
+              {/* Sección 4: Información de Contacto */}
+              <Paper sx={{ p: 3, backgroundColor: '#f8f9fa' }}>
+                <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
+                  4. Información de Contacto
+                </Typography>
+                <Grid container spacing={3}>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Teléfono/Celular</Typography>
+                    <Typography variant="body1">{selectedPaciente.phoneNumber || 'N/A'}</Typography>
                   </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Distrito</Typography>
-                     <Typography variant="subtitle1">{selectedPaciente.distrito ? selectedPaciente.distrito.split('_')[0].charAt(0).toUpperCase() + selectedPaciente.distrito.split('_')[0].slice(1) : 'N/A'}</Typography>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 'bold', mb: 1 }}>Correo Electrónico</Typography>
+                    <Typography variant="body1">{selectedPaciente.email || 'N/A'}</Typography>
                   </Grid>
                 </Grid>
               </Paper>
