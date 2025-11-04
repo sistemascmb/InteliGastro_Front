@@ -1652,8 +1652,8 @@ const [parametrosCache, setParametrosCache] = useState({});
                     <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                       <TableCell><strong>Nombres</strong></TableCell>
                       <TableCell><strong>Sexo</strong></TableCell>
-                      <TableCell><strong>T. Documento</strong></TableCell>
-                      <TableCell><strong># Documento</strong></TableCell>
+                      <TableCell><strong>Tipo de documento</strong></TableCell>
+                      <TableCell><strong>Documento</strong></TableCell>
                       <TableCell><strong>Celular</strong></TableCell>
                       <TableCell><strong>Estado</strong></TableCell>
                       <TableCell align="center"><strong>Acciones</strong></TableCell>

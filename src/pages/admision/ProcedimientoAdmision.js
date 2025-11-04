@@ -1,4 +1,4 @@
-import React, { useState, memo } from 'react';
+import React, { useState, memo, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -43,6 +43,16 @@ import {
   LocationOn
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { patientsService } from '../../services/patientsService';
+import { centrosService } from '../../services/centrosService';
+import { staffService } from '../../services/staffService';
+import { segurosService } from '../../services/segurosService';
+import { appointmentsService } from '../../services/appointmentsService';
+import { toast } from 'react-toastify';
+import { medicosRefService } from 'services/medicosRefService';
+import { salasService } from 'services/salasService';
+import { recursosService } from 'services/recursosService';
+import { estudiosService } from 'services/estudiosService';
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
@@ -106,13 +116,154 @@ const ProcedimientoAdmision = () => {
   const [activeStep, setActiveStep] = useState(0);
   const steps = ['Paciente', 'Médico Ref./Seguros', 'Procedimiento'];
 
+  const [centrosD, setCentrosCargados] = useState([]);
+  const [medicosD, setMedicosCargados] = useState([]);
+  const [seguroD, setSeguroCargados] = useState([]);
+  const [tipopacD, setSTipoPacienteCargados] = useState([]);
+  const [procedenciaD, setProcedenciaCargados] = useState([]);
+  const [cartagarantiaD, setCartaGarantiaCargados] = useState([]);
+  const [medicosRefD, setMedicosRefCargados] = useState([]);
+  const [salaD, setSalaCargados] = useState([]);
+  const [recursoD, setRecursoCargados] = useState([]);
+  const [estudioD, seEstudioCargados] = useState([]);
+
+  const cargarCentros = async () => {
+          try {
+            const responseSystemParameter = await centrosService.getAll();
+            console.log('✅ Respuesta de Centros:', responseSystemParameter);
+            setCentrosCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                             responseSystemParameter?.data || []);
+          } catch (error) {
+            console.error('❌ Error al cargar Centros:', error);
+            setError(`Error al cargar Centros: ${error.message}`);
+          }
+        };
+    const cargarMedicos = async () => {
+          try {
+            const responseSystemParameter = await staffService.getAll();
+            console.log('✅ Respuesta de Medicos:', responseSystemParameter);
+            setMedicosCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                             responseSystemParameter?.data || []);
+          } catch (error) {
+            console.error('❌ Error al cargar Medicos:', error);
+            setError(`Error al cargar Centros: ${error.message}`);
+          }
+        };    
+    const cargarSeguros = async () => {
+          try {
+            const responseSystemParameter = await segurosService.getAll();
+            console.log('✅ Respuesta de Seguros:', responseSystemParameter);
+            setSeguroCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                             responseSystemParameter?.data || []);
+          } catch (error) {
+            console.error('❌ Error al cargar Seguros:', error);
+            setError(`Error al cargar Seguros: ${error.message}`);
+          }
+        };  
+  
+    const cargarTipoPaciente = async () => {
+            try {
+              const responseSystemParameter = await centrosService.getAllSystemParameterId(10049);
+              console.log('✅ Respuesta de TipoPaciente:', responseSystemParameter);
+              setSTipoPacienteCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                               responseSystemParameter?.data || []);
+            } catch (error) {
+              console.error('❌ Error al cargar TipoPaciente:', error);
+              setError(`Error al cargar TipoPaciente: ${error.message}`);
+            }
+          };
+  
+   const cargarCartaGarancia = async () => {
+            try {
+              const responseSystemParameter = await centrosService.getAllSystemParameterId(10041);
+              console.log('✅ Respuesta de Procedencia Seguros:', responseSystemParameter);
+              setProcedenciaCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                               responseSystemParameter?.data || []);
+            } catch (error) {
+              console.error('❌ Error al cargar Procedencia Seguros:', error);
+              setError(`Error al cargar Procedencia Seguros: ${error.message}`);
+            }
+          };
+    
+    const cargarProcedenciaSeguros = async () => {
+            try {
+              const responseSystemParameter = await centrosService.getAllSystemParameterId(10044);
+              console.log('✅ Respuesta de Procedencia Seguros:', responseSystemParameter);
+              setCartaGarantiaCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                               responseSystemParameter?.data || []);
+            } catch (error) {
+              console.error('❌ Error al cargar Carta Garantia:', error);
+              setError(`Error al cargar Carta Garantia: ${error.message}`);
+            }
+          };
+  const cargarMedicosRef = async () => {
+          try {
+            const responseSystemParameter = await medicosRefService.getAll();
+            console.log('✅ Respuesta de Medicos Referencia:', responseSystemParameter);
+            setMedicosRefCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                             responseSystemParameter?.data || []);
+          } catch (error) {
+            console.error('❌ Error al cargar Medicos Referencia:', error);
+            setError(`Error al cargar Centros Referencia: ${error.message}`);
+          }
+        };   
+  const cargarSalas = async () => {
+          try {
+            const responseSystemParameter = await salasService.getAll();
+            console.log('✅ Respuesta de Salas:', responseSystemParameter);
+            setSalaCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                             responseSystemParameter?.data || []);
+          } catch (error) {
+            console.error('❌ Error al cargar Salas:', error);
+            setError(`Error al cargar Salas: ${error.message}`);
+          }
+        };
+  
+  const cargarRecursos = async () => {
+          try {
+            const responseSystemParameter = await recursosService.getAll();
+            console.log('✅ Respuesta de Recursos:', responseSystemParameter);
+            setRecursoCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                             responseSystemParameter?.data || []);
+          } catch (error) {
+            console.error('❌ Error al cargar Recursos:', error);
+            setError(`Error al cargar Recursos: ${error.message}`);
+          }
+        }; 
+
+  const cargarEstudios = async () => {
+          try {
+            const responseSystemParameter = await estudiosService.getAll();
+            console.log('✅ Respuesta de Estudios:', responseSystemParameter);
+            seEstudioCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                             responseSystemParameter?.data || []);
+          } catch (error) {
+            console.error('❌ Error al cargar Estudios:', error);
+            setError(`Error al cargar Estudios: ${error.message}`);
+          }
+        }; 
   // Estados para búsqueda de paciente
   const [searchTerm, setSearchTerm] = useState('');
   const [pacienteSeleccionado, setPacienteSeleccionado] = useState(null);
   const [busquedaRealizada, setBusquedaRealizada] = useState(false);
 
+  // Cargar datos iniciales
+    useEffect(() => {
+      cargarCentros();
+      cargarMedicos();
+      cargarSeguros();
+      cargarTipoPaciente();
+      cargarCartaGarancia();
+      cargarProcedenciaSeguros();
+      cargarMedicosRef();
+      cargarSalas();
+      cargarRecursos();
+      cargarEstudios();
+    }, []);
+
+    {/*
   // Estados para Fase 2: Médico Ref./Seguros
-  const [medicoSeguros, setMedicoSeguros] = useState({
+  const [procedimientoDate, setMedicoSeguros] = useState({
     tipoPaciente: '',
     medicoReferente: '',
     centro: '',
@@ -122,7 +273,7 @@ const ProcedimientoAdmision = () => {
   });
 
   // Estados para Fase 3: Procedimiento
-  const [procedimiento, setProcedimiento] = useState({
+  const [procedimientoDate, setProcedimiento] = useState({
     centro: '',
     sala: '',
     recurso: '',
@@ -131,7 +282,40 @@ const ProcedimientoAdmision = () => {
     hora: '',
     notas: ''
   });
+*/}
 
+const [procedimientoDate, setMedicosFollows] = useState({
+    // Horario
+    centro: 1,
+    centroNombre: '',
+    medico: '',
+    medicoNombre: '',
+    tipoCita: '',
+    tipoCitaNombre: '',
+    fecha: new Date().toISOString().split('T')[0],
+    hora: new Date().toLocaleTimeString('es-PE', { 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      hour12: false,
+      hourCycle: 'h23' 
+    }).padStart(5, '0'),
+    // Seguros
+    tipoPaciente: '',
+    medicoReferente: '',
+    medicoNombreRef: '',
+    procedencia: '10042',
+    procedenciaNombre: '',
+    nombreProcedencia: '',
+    aseguradora: 10,
+    aseguradoraNombre: '',
+    cartaGarantia: '10048',
+    cartaGarantiaNombre: '',
+    sala: '',
+    recurso: '',
+    tipoProcedimiento: '',
+    tipoProcedimientoNombre: ''
+
+  });
   // Modal de confirmación
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
 
@@ -180,8 +364,25 @@ const ProcedimientoAdmision = () => {
       correo: 'carlos.rodriguez@email.com'
     }
   ];
-
+const calcularEdad = (fechaNacimiento) => {
+    const hoy = new Date();
+    const fechaNac = new Date(fechaNacimiento);
+    let edad = hoy.getFullYear() - fechaNac.getFullYear();
+    const mes = hoy.getMonth() - fechaNac.getMonth();
+    
+    if (mes < 0 || (mes === 0 && hoy.getDate() < fechaNac.getDate())) {
+      edad--;
+    }
+    
+    return edad;
+  };
+  const formatearFecha = (fecha) => {
+    if (!fecha) return '';
+    const fechaObj = new Date(fecha);
+    return fechaObj.toISOString().split('T')[0];
+  };
   // Función para buscar paciente
+  {/*
   const handleBuscarPaciente = () => {
     setBusquedaRealizada(true);
     const pacienteEncontrado = pacientesSimulados.find(p =>
@@ -190,7 +391,63 @@ const ProcedimientoAdmision = () => {
       p.apellidos.toLowerCase().includes(searchTerm.toLowerCase())
     );
     setPacienteSeleccionado(pacienteEncontrado || null);
-  };
+  };*/}
+
+  const handleBuscarPaciente = async () => {
+      try {
+        setBusquedaRealizada(true);
+        const response = await patientsService.getByDocumentNumber(searchTerm);
+        if (response && response.data) {
+          const fechaNacimiento = formatearFecha(response.data.birthdate);
+          const edad = calcularEdad(fechaNacimiento);
+          
+          // Obtener los valores de los parámetros del sistema
+          const [
+            generoResponse,
+            estadoCivilResponse,
+            paisResponse,
+            departamentoResponse,
+            provinciaResponse,
+            distritoResponse
+          ] = await Promise.all([
+            centrosService.getSystemParameterId(response.data.gender),
+            centrosService.getSystemParameterId(response.data.statusMarital),
+            centrosService.getSystemParameterId(response.data.pais),
+            centrosService.getSystemParameterId(response.data.department),
+            centrosService.getSystemParameterId(response.data.province),
+            centrosService.getSystemParameterId(response.data.district)
+          ]);
+          
+          setPacienteSeleccionado({
+            idPaciente: response.data.pacientid || response.data.id, // Usar pacientid o id de la respuesta
+            nombres: response.data.names,
+            apellidos: response.data.lastNames,
+            documento: response.data.documentNumber,
+            historiaClinica: response.data.medicalHistory,
+            fechaNacimiento: fechaNacimiento,
+            edad: edad,
+            nacionalidad: response.data.nationality,
+            genero: generoResponse.data.value1,
+            estadocivil: estadoCivilResponse.data.value1,
+  
+            // Domicilio
+            calle: response.data.address,
+            pais: paisResponse.data.value1,
+            departamento: departamentoResponse.data.value1,
+            provincia: provinciaResponse.data.value1,
+            distrito: distritoResponse.data.value1,
+            // Información de contacto
+            telefono: response.data.phoneNumber,
+            correo: response.data.email
+          });
+        } else {
+          setPacienteSeleccionado(null);
+        }
+      } catch (error) {
+        console.error('Error al buscar paciente:', error);
+        setPacienteSeleccionado(null);
+      }
+    };
 
   // Función para limpiar búsqueda
   const handleLimpiarBusqueda = () => {
@@ -208,34 +465,154 @@ const ProcedimientoAdmision = () => {
     setActiveStep((prevActiveStep) => prevActiveStep - 1);
   };
 
-  // Función para manejar cambios en Médico/Seguros
-  const handleMedicoSegurosChange = (field, value) => {
-    setMedicoSeguros(prev => ({ ...prev, [field]: value }));
+  const handleMedicosFollowsChange = async (field, value) => {
+    if (field === 'centro') {
+      try {
+        const centro = centrosD.find(c => c.id === value);
+        setMedicosFollows(prev => ({
+          ...prev,
+          [field]: value,
+          centroNombre: centro ? centro.nombre : ''
+        }));
+      } catch (error) {
+        console.error('Error al obtener información del centro:', error);
+      }
+    } else if (field === 'medico') {
+      try {
+        const medico = medicosD.find(m => m.id === value);
+        setMedicosFollows(prev => ({
+          ...prev,
+          [field]: value,
+          medicoNombre: medico ? `${medico.nombres} ${medico.apellidos}` : ''
+        }));
+      } catch (error) {
+        console.error('Error al obtener información del médico:', error);
+      }
+    } else if (field === 'tipoCita') {
+      try {
+        const tipo = tipocitaD.find(t => t.parameterid === value);
+        setMedicosFollows(prev => ({
+          ...prev,
+          [field]: value,
+          tipoCitaNombre: tipo ? tipo.value1 : ''
+        }));
+      } catch (error) {
+        console.error('Error al obtener información del tipo de cita:', error);
+      }
+    } else if (field === 'procedencia') {
+      try {
+        const procedencia = procedenciaD.find(p => p.parameterid === value);
+        setMedicosFollows(prev => ({
+          ...prev,
+          [field]: value,
+          procedenciaNombre: procedencia ? procedencia.value1 : ''
+        }));
+      } catch (error) {
+        console.error('Error al obtener información de la procedencia:', error);
+      }
+    } else if (field === 'aseguradora') {
+      try {
+        const aseguradora = seguroD.find(s => s.id === value);
+        setMedicosFollows(prev => ({
+          ...prev,
+          [field]: value,
+          aseguradoraNombre: aseguradora ? aseguradora.name : ''
+        }));
+      } catch (error) {
+        console.error('Error al obtener información de la aseguradora:', error);
+      }
+    } else if (field === 'cartaGarantia') {
+      try {
+        const carta = cartagarantiaD.find(c => c.parameterid === value);
+        setMedicosFollows(prev => ({
+          ...prev,
+          [field]: value,
+          cartaGarantiaNombre: carta ? carta.value1 : ''
+        }));
+      } catch (error) {
+        console.error('Error al obtener información de la carta de garantía:', error);
+      }
+    }
+    else if (field === 'tipoProcedimiento') {
+      try {
+        const procedimiento = estudioD.find(m => m.id === value);
+        setMedicosFollows(prev => ({
+          ...prev,
+          [field]: value,
+          tipoProcedimientoNombre: procedimiento ? `${procedimiento.description}` : ''
+        }));
+      } catch (error) {
+        console.error('Error al obtener información del médico:', error);
+      }
+    } else {
+      setMedicosFollows(prev => ({ ...prev, [field]: value }));
+    }
   };
 
-  // Función para manejar cambios en Procedimiento
-  const handleProcedimientoChange = (field, value) => {
-    setProcedimiento(prev => ({ ...prev, [field]: value }));
-  };
-
-  // Función para crear procedimiento
+  // Función para crear procedimientoDate
   const handleCrearProcedimiento = () => {
     setOpenConfirmDialog(true);
   };
 
   // Función para confirmar creación
+  const handleConfirmarCreacion = async () => {
+      try {
+        const appointmentData = {
+          pacientId: pacienteSeleccionado.idPaciente,
+          centroId: procedimientoDate.centro,
+          personalId: procedimientoDate.medico,
+          appointmentDate: procedimientoDate.fecha,
+          hoursMedicalShedule: procedimientoDate.hora,
+
+          //typeofAppointment: procedimientoDate.tipoCita,
+          //originId: procedimientoDate.procedencia,
+          //otherOrigins: procedimientoDate.nombreProcedencia || '',
+          typeOfPatient: procedimientoDate.tipoPaciente,
+          referral_doctorsId: procedimientoDate.medicoReferente,
+          centerOfOriginId: procedimientoDate.procedencia,
+          anotherCenter: procedimientoDate.anotherCenter || '',
+          procedureRoomId: procedimientoDate.sala,
+          resourcesId: procedimientoDate.recurso,
+          studiesId: procedimientoDate.tipoProcedimiento,
+          anotacionesAdicionales: procedimientoDate.notas,
+          otherOrigins: 'NO ASIGNADO', // agregando el campo requerido
+
+          insuranceId: procedimientoDate.aseguradora || null,
+          letterOfGuarantee: procedimientoDate.cartaGarantia || null,
+          status: 1, //agendado
+          typeOfAttention: 2, //procedimiento
+        };
+    
+        const response = await appointmentsService.create_procedimiento(appointmentData);
+        
+        if (response.status === 'success') {
+          // Mostrar mensaje de éxito
+          toast.success('ProcedimientoDate médica creada exitosamente');
+          // Redirigir a la lista de citas
+          navigate('/procedimientos/agendados');
+        } else {
+          throw new Error('Error al crear el ProcedimientoDate');
+        }
+      } catch (error) {
+        console.error('Error al crear la cita:', error);
+        toast.error('Error al crear el ProcedimientoDate: ' + error.message);
+      }
+      
+      setOpenConfirmDialog(false);
+    };
+{/*
   const handleConfirmarCreacion = () => {
-    // Aquí iría la lógica para crear el procedimiento
-    console.log('Creando procedimiento:', {
+    // Aquí iría la lógica para crear el procedimientoDate
+    console.log('Creando procedimientoDate:', {
       paciente: pacienteSeleccionado,
-      medicoSeguros,
-      procedimiento
+      procedimientoDate,
+      procedimientoDate
     });
 
     setOpenConfirmDialog(false);
     // Redirigir o mostrar mensaje de éxito
     navigate('/procedimientos/agendados');
-  };
+  };*/}
 
   // Validaciones para cada paso
   const isStepValid = (step) => {
@@ -243,9 +620,9 @@ const ProcedimientoAdmision = () => {
       case 0:
         return pacienteSeleccionado !== null;
       case 1:
-        return medicoSeguros.tipoPaciente && medicoSeguros.medicoReferente;
+        return procedimientoDate.tipoPaciente && procedimientoDate.medicoReferente;
       case 2:
-        return procedimiento.centro && procedimiento.sala && procedimiento.tipoProcedimiento;
+        return procedimientoDate.centro && procedimientoDate.sala && procedimientoDate.tipoProcedimiento;
       default:
         return false;
     }
@@ -496,15 +873,16 @@ const ProcedimientoAdmision = () => {
                 <ResponsiveField label="Tipo de Paciente" required>
                   <FormControl fullWidth size="small">
                     <Select
-                      value={medicoSeguros.tipoPaciente}
-                      onChange={(e) => handleMedicoSegurosChange('tipoPaciente', e.target.value)}
+                      value={procedimientoDate.tipoPaciente}
+                      onChange={(e) => handleMedicosFollowsChange('tipoPaciente', e.target.value)}
                       displayEmpty
                     >
                       <MenuItem value="">Seleccionar tipo</MenuItem>
-                      <MenuItem value="particular">Particular</MenuItem>
-                      <MenuItem value="asegurado">Asegurado</MenuItem>
-                      <MenuItem value="convenio">Convenio Empresarial</MenuItem>
-                      <MenuItem value="emergencia">Emergencia</MenuItem>
+                      {Array.isArray(tipopacD) && tipopacD.map(estado => (
+                        <MenuItem key={estado.parameterid} value={estado.parameterid}>
+                          {estado.value1 || ''}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 </ResponsiveField>
@@ -512,15 +890,16 @@ const ProcedimientoAdmision = () => {
                 <ResponsiveField label="Médico Referente" required>
                   <FormControl fullWidth size="small">
                     <Select
-                      value={medicoSeguros.medicoReferente}
-                      onChange={(e) => handleMedicoSegurosChange('medicoReferente', e.target.value)}
+                      value={procedimientoDate.medicoReferente}
+                      onChange={(e) => handleMedicosFollowsChange('medicoReferente', e.target.value)}
                       displayEmpty
                     >
                       <MenuItem value="">Seleccionar médico</MenuItem>
-                      <MenuItem value="dr-garcia">Dr. Carlos García Mendoza</MenuItem>
-                      <MenuItem value="dra-lopez">Dra. Ana López Silva</MenuItem>
-                      <MenuItem value="dr-silva">Dr. Pedro Silva Rojas</MenuItem>
-                      <MenuItem value="dra-martinez">Dra. Carmen Martínez Torres</MenuItem>
+                      {Array.isArray(medicosRefD) && medicosRefD.map(medico => (
+                        <MenuItem key={medico.id} value={medico.id}>
+                            {medico.names + ' ' + medico.surnames}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 </ResponsiveField>
@@ -530,24 +909,25 @@ const ProcedimientoAdmision = () => {
                 <ResponsiveField label="Centro de Referencia">
                   <FormControl fullWidth size="small">
                     <Select
-                      value={medicoSeguros.centro}
-                      onChange={(e) => handleMedicoSegurosChange('centro', e.target.value)}
+                      value={procedimientoDate.procedencia}
+                      onChange={(e) => handleMedicosFollowsChange('procedencia', e.target.value)}
                       displayEmpty
                     >
-                      <MenuItem value="">Seleccionar centro</MenuItem>
-                      <MenuItem value="sede-central">Clínica María Belén - Sede Central</MenuItem>
-                      <MenuItem value="sede-norte">Clínica María Belén - Sede Norte</MenuItem>
-                      <MenuItem value="sede-sur">Clínica María Belén - Sede Sur</MenuItem>
-                      <MenuItem value="externo">Centro Externo</MenuItem>
+                      <MenuItem value="">Seleccionar procedencia</MenuItem>
+                      {Array.isArray(procedenciaD) && procedenciaD.map(procedencia => (
+                        <MenuItem key={procedencia.parameterid} value={procedencia.parameterid}>
+                          {procedencia.value1 || ''}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 </ResponsiveField>
-
+{/*
                 <ResponsiveField label="Seguro">
                   <FormControl fullWidth size="small">
                     <Select
-                      value={medicoSeguros.seguro}
-                      onChange={(e) => handleMedicoSegurosChange('seguro', e.target.value)}
+                      value={procedimientoDate.seguro}
+                      onChange={(e) => handleMedicosFollowsChange('seguro', e.target.value)}
                       displayEmpty
                     >
                       <MenuItem value="">Sin seguro</MenuItem>
@@ -558,43 +938,44 @@ const ProcedimientoAdmision = () => {
                       <MenuItem value="sis">SIS</MenuItem>
                     </Select>
                   </FormControl>
-                </ResponsiveField>
+                </ResponsiveField>*/}
               </FieldRow>
 
               <FieldRow>
                 <ResponsiveField label="Aseguradora">
-                  <FormControl fullWidth size="small">
-                    <Select
-                      value={medicoSeguros.aseguradora}
-                      onChange={(e) => handleMedicoSegurosChange('aseguradora', e.target.value)}
-                      displayEmpty
-                      disabled={!medicoSeguros.seguro || medicoSeguros.seguro === 'particular'}
-                    >
-                      <MenuItem value="">Seleccionar aseguradora</MenuItem>
-                      <MenuItem value="rimac">Rímac Seguros y Reaseguros</MenuItem>
-                      <MenuItem value="pacifico">Pacífico Seguros</MenuItem>
-                      <MenuItem value="mapfre">MAPFRE Perú</MenuItem>
-                      <MenuItem value="la-positiva">La Positiva Seguros</MenuItem>
-                    </Select>
-                  </FormControl>
-                </ResponsiveField>
+                                  <FormControl fullWidth size="small">
+                                    <Select
+                                      value={procedimientoDate.aseguradora}
+                                      onChange={(e) => handleMedicosFollowsChange('aseguradora', e.target.value)}
+                                      displayEmpty
+                                    >
+                                      <MenuItem value="">Seleccionar Aseguradora</MenuItem>
+                                                                  {Array.isArray(seguroD) && seguroD.map(seguro => (
+                                                                    <MenuItem key={seguro.id} value={seguro.id}>
+                                                                      {seguro.name}
+                                                                    </MenuItem>
+                                                                  ))}
+                                    </Select>
+                                  </FormControl>
+                                </ResponsiveField>
 
                 <ResponsiveField label="Carta de Garantía">
-                  <FormControl fullWidth size="small">
-                    <Select
-                      value={medicoSeguros.cartaGarantia}
-                      onChange={(e) => handleMedicoSegurosChange('cartaGarantia', e.target.value)}
-                      displayEmpty
-                      disabled={!medicoSeguros.seguro}
-                    >
-                      <MenuItem value="">No requerida</MenuItem>
-                      <MenuItem value="pendiente">Pendiente de Aprobación</MenuItem>
-                      <MenuItem value="aprobada">Aprobada</MenuItem>
-                      <MenuItem value="rechazada">Rechazada</MenuItem>
-                      <MenuItem value="previa">Autorización Previa</MenuItem>
-                    </Select>
-                  </FormControl>
-                </ResponsiveField>
+                                  <FormControl fullWidth size="small">
+                                    <Select
+                                      value={procedimientoDate.cartaGarantia}
+                                      onChange={(e) => handleMedicosFollowsChange('cartaGarantia', e.target.value)}
+                                      displayEmpty
+                                      disabled={!procedimientoDate.aseguradora}
+                                    >
+                                      <MenuItem value="">Selecciona tipo de Carta</MenuItem>
+                                      {Array.isArray(cartagarantiaD) && cartagarantiaD.map(estado => (
+                                          <MenuItem key={estado.parameterid} value={estado.parameterid}>
+                                            {estado.value1 || ''}
+                                          </MenuItem>
+                                      ))}
+                                    </Select>
+                                  </FormControl>
+                                </ResponsiveField>
               </FieldRow>
 
               {/* Información del paciente seleccionado */}
@@ -619,33 +1000,51 @@ const ProcedimientoAdmision = () => {
                 <ResponsiveField label="Centro" required>
                   <FormControl fullWidth size="small">
                     <Select
-                      value={procedimiento.centro}
-                      onChange={(e) => handleProcedimientoChange('centro', e.target.value)}
+                      value={procedimientoDate.centro}
+                      onChange={(e) => handleMedicosFollowsChange('centro', e.target.value)}
                       displayEmpty
                     >
                       <MenuItem value="">Seleccionar centro</MenuItem>
-                      <MenuItem value="sede-central">Clínica María Belén - Sede Central</MenuItem>
-                      <MenuItem value="sede-norte">Clínica María Belén - Sede Norte</MenuItem>
-                      <MenuItem value="sede-sur">Clínica María Belén - Sede Sur</MenuItem>
+                      {Array.isArray(centrosD) && centrosD.map(centro => (
+                        <MenuItem key={centro.id} value={centro.id}>
+                          {centro.nombre || ''}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 </ResponsiveField>
-
+              </FieldRow>
+              <FieldRow>
+                <ResponsiveField label="Médico" required>
+                                  <FormControl fullWidth size="small">
+                                    <Select
+                                      value={procedimientoDate.medico}
+                                      onChange={(e) => handleMedicosFollowsChange('medico', e.target.value)}
+                                      displayEmpty
+                                    >
+                                      <MenuItem value="">Seleccionar médico</MenuItem>
+                                                                  {Array.isArray(medicosD) && medicosD.map(medico => (
+                                                                    <MenuItem key={medico.id} value={medico.id}>
+                                                                      {medico.nombres + ' ' + medico.apellidos}
+                                                                    </MenuItem>
+                                                                  ))}
+                                    </Select>
+                                  </FormControl>
+                                </ResponsiveField>
                 <ResponsiveField label="Sala" required>
                   <FormControl fullWidth size="small">
                     <Select
-                      value={procedimiento.sala}
-                      onChange={(e) => handleProcedimientoChange('sala', e.target.value)}
+                      value={procedimientoDate.sala}
+                      onChange={(e) => handleMedicosFollowsChange('sala', e.target.value)}
                       displayEmpty
-                      disabled={!procedimiento.centro}
+                      disabled={!procedimientoDate.centro}
                     >
                       <MenuItem value="">Seleccionar sala</MenuItem>
-                      <MenuItem value="endoscopia-1">Sala de Endoscopia 1</MenuItem>
-                      <MenuItem value="endoscopia-2">Sala de Endoscopia 2</MenuItem>
-                      <MenuItem value="procedimientos">Sala de Procedimientos</MenuItem>
-                      <MenuItem value="cirugia-menor">Sala de Cirugía Menor</MenuItem>
-                      <MenuItem value="consultorios-1">Consultorio 1</MenuItem>
-                      <MenuItem value="consultorios-2">Consultorio 2</MenuItem>
+                      {Array.isArray(salaD) && salaD.map(sala => (
+                        <MenuItem key={sala.id} value={sala.id}>
+                          {sala.name}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 </ResponsiveField>
@@ -655,16 +1054,16 @@ const ProcedimientoAdmision = () => {
                 <ResponsiveField label="Recurso">
                   <FormControl fullWidth size="small">
                     <Select
-                      value={procedimiento.recurso}
-                      onChange={(e) => handleProcedimientoChange('recurso', e.target.value)}
+                      value={procedimientoDate.recurso}
+                      onChange={(e) => handleMedicosFollowsChange('recurso', e.target.value)}
                       displayEmpty
                     >
                       <MenuItem value="">Seleccionar recurso</MenuItem>
-                      <MenuItem value="endoscopio-olympus">Endoscopio Olympus EVIS X1</MenuItem>
-                      <MenuItem value="endoscopio-pentax">Endoscopio Pentax</MenuItem>
-                      <MenuItem value="colonoscopio">Colonoscopio</MenuItem>
-                      <MenuItem value="equipo-biopsia">Equipo de Biopsia</MenuItem>
-                      <MenuItem value="equipo-cauterizacion">Equipo de Cauterización</MenuItem>
+                      {Array.isArray(recursoD) && recursoD.map(recurso => (
+                        <MenuItem key={recurso.id} value={recurso.id}>
+                          {recurso.name}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 </ResponsiveField>
@@ -672,18 +1071,16 @@ const ProcedimientoAdmision = () => {
                 <ResponsiveField label="Tipo de Procedimiento" required>
                   <FormControl fullWidth size="small">
                     <Select
-                      value={procedimiento.tipoProcedimiento}
-                      onChange={(e) => handleProcedimientoChange('tipoProcedimiento', e.target.value)}
+                      value={procedimientoDate.tipoProcedimiento}
+                      onChange={(e) => handleMedicosFollowsChange('tipoProcedimiento', e.target.value)}
                       displayEmpty
                     >
-                      <MenuItem value="">Seleccionar procedimiento</MenuItem>
-                      <MenuItem value="endoscopia-alta">Endoscopia Alta</MenuItem>
-                      <MenuItem value="endoscopia-baja">Endoscopia Baja</MenuItem>
-                      <MenuItem value="colonoscopia">Colonoscopia Diagnóstica</MenuItem>
-                      <MenuItem value="biopsia-gastrica">Biopsia Gástrica</MenuItem>
-                      <MenuItem value="cpre">CPRE</MenuItem>
-                      <MenuItem value="polipectomia">Polipectomía</MenuItem>
-                      <MenuItem value="dilatacion">Dilatación Esofágica</MenuItem>
+                      <MenuItem value="">Seleccionar procedimientoDate</MenuItem>
+                      {Array.isArray(estudioD) && estudioD.map(estudio => (
+                        <MenuItem key={estudio.id} value={estudio.id}>
+                          {estudio.description}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 </ResponsiveField>
@@ -694,8 +1091,8 @@ const ProcedimientoAdmision = () => {
                   <TextField
                     fullWidth
                     type="date"
-                    value={procedimiento.fecha}
-                    onChange={(e) => handleProcedimientoChange('fecha', e.target.value)}
+                    value={procedimientoDate.fecha}
+                    onChange={(e) => handleMedicosFollowsChange('fecha', e.target.value)}
                     size="small"
                     InputLabelProps={{ shrink: true }}
                   />
@@ -705,8 +1102,8 @@ const ProcedimientoAdmision = () => {
                   <TextField
                     fullWidth
                     type="time"
-                    value={procedimiento.hora}
-                    onChange={(e) => handleProcedimientoChange('hora', e.target.value)}
+                    value={procedimientoDate.hora}
+                    onChange={(e) => handleMedicosFollowsChange('hora', e.target.value)}
                     size="small"
                     InputLabelProps={{ shrink: true }}
                   />
@@ -718,8 +1115,8 @@ const ProcedimientoAdmision = () => {
                   fullWidth
                   multiline
                   rows={3}
-                  value={procedimiento.notas}
-                  onChange={(e) => handleProcedimientoChange('notas', e.target.value)}
+                  value={procedimientoDate.notas}
+                  onChange={(e) => handleMedicosFollowsChange('notas', e.target.value)}
                   placeholder="Instrucciones especiales, preparación del paciente, observaciones..."
                   size="small"
                 />
@@ -731,10 +1128,10 @@ const ProcedimientoAdmision = () => {
                   Resumen de la Admisión:
                 </Typography>
                 <Typography variant="body2">
-                  <strong>Paciente:</strong> {pacienteSeleccionado?.nombre} {pacienteSeleccionado?.apellidos}<br/>
-                  <strong>Médico:</strong> {medicoSeguros.medicoReferente || 'No asignado'}<br/>
-                  <strong>Procedimiento:</strong> {procedimiento.tipoProcedimiento || 'No seleccionado'}<br/>
-                  <strong>Fecha:</strong> {procedimiento.fecha || 'No programada'} {procedimiento.hora && `- ${procedimiento.hora}`}
+                  <strong>Paciente:</strong> {pacienteSeleccionado?.nombres} {pacienteSeleccionado?.apellidos}<br/>
+                  <strong>Médico:</strong> {procedimientoDate.medicoNombre || 'No asignado'}<br/>
+                  <strong>Procedimiento:</strong> {procedimientoDate.tipoProcedimientoNombre || 'No seleccionado'}<br/>
+                  <strong>Fecha:</strong> {procedimientoDate.fecha || 'No programada'} {procedimientoDate.hora && `- ${procedimientoDate.hora}`}
                 </Typography>
               </Alert>
             </Box>
@@ -873,7 +1270,7 @@ const ProcedimientoAdmision = () => {
         </DialogTitle>
         <DialogContent sx={{ p: 4 }}>
           <Typography variant="h6" gutterBottom>
-            ¿Confirma la creación del procedimiento con los siguientes datos?
+            ¿Confirma la creación del procedimientoDate con los siguientes datos?
           </Typography>
 
           <Grid container spacing={2} sx={{ mt: 2 }}>
@@ -894,14 +1291,14 @@ const ProcedimientoAdmision = () => {
                 Médico y Seguros:
               </Typography>
               <Typography variant="body2">
-                <strong>Tipo de Paciente:</strong> {medicoSeguros.tipoPaciente}
+                <strong>Tipo de Paciente:</strong> {procedimientoDate.tipoPaciente}
               </Typography>
               <Typography variant="body2">
-                <strong>Médico Referente:</strong> {medicoSeguros.medicoReferente}
+                <strong>Médico Referente:</strong> {procedimientoDate.medicoReferente}
               </Typography>
-              {medicoSeguros.seguro && (
+              {procedimientoDate.seguro && (
                 <Typography variant="body2">
-                  <strong>Seguro:</strong> {medicoSeguros.seguro}
+                  <strong>Seguro:</strong> {procedimientoDate.seguro}
                 </Typography>
               )}
             </Grid>
@@ -911,16 +1308,16 @@ const ProcedimientoAdmision = () => {
                 Procedimiento:
               </Typography>
               <Typography variant="body2">
-                <strong>Tipo:</strong> {procedimiento.tipoProcedimiento}
+                <strong>Tipo:</strong> {procedimientoDate.tipoProcedimiento}
               </Typography>
               <Typography variant="body2">
-                <strong>Centro:</strong> {procedimiento.centro}
+                <strong>Centro:</strong> {procedimientoDate.centro}
               </Typography>
               <Typography variant="body2">
-                <strong>Sala:</strong> {procedimiento.sala}
+                <strong>Sala:</strong> {procedimientoDate.sala}
               </Typography>
               <Typography variant="body2">
-                <strong>Fecha y Hora:</strong> {procedimiento.fecha} - {procedimiento.hora}
+                <strong>Fecha y Hora:</strong> {procedimientoDate.fecha} - {procedimientoDate.hora}
               </Typography>
             </Grid>
           </Grid>

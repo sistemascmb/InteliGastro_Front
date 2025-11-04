@@ -5,89 +5,70 @@ import { API_ENDPOINTS } from '../constants/api';
 export const patientsService = {
   // Obtener todos los pacientes
   getAll: async (params = {}) => {
-      try {
-        console.log('🌐 Obteniendo todos los Pacientes...');
-  
-        const url = `${process.env.REACT_APP_API_URL}/Paciente`;
-        console.log('🔗 URL:', url);
-  
-        const response = await fetch(url);
-  
-        if(!response.ok){
-          throw new Error(`Error ${response.status}: ${response.statusText}`);
-        }
-  
-        const rawData = await response.json();
-        console.log('✅ Datos de Pacientes recibidos:', rawData);
-        console.log('✅ Número de Pacientes:', rawData.length);
-  
-        //Filtrar solo recusros no eliminados (isDeletd : false)
-        const pacienteActivos = rawData.filter(paciente => paciente.isDeleted === false);
-        console.log('✅ Pacientes activos (isDeleted: false):', pacienteActivos.length);
-  
-        //Mapeamos los campos del backend a los campos dell frontend
-        const mappedData = pacienteActivos.map(paciente => ({
-          //IDs y referencias
-          id: paciente.pacientid,
-          pacientid: paciente.pacientid,
-          typeDoc: paciente.typeDoc,
+    try {
+      console.log('🌐 Obteniendo todos los Pacientes...');
 
-          documentNumber: paciente.documentNumber,
-          names: paciente.names,
-          lastNames: paciente.lastNames,
-          birthdate: paciente.birthdate,
-          gender : paciente.gender,
-          statusMarital : paciente.statusMarital,
-          nationality : paciente.nationality,
-          centroId: paciente.centroId,
-          address: paciente.address,
+      const response = await api.get(API_ENDPOINTS.PATIENTS.BASE, { params });
+      console.log('✅ Datos de Pacientes recibidos:', response);
 
-          pais: paciente.pais,
-          department: paciente.department,
-          province: paciente.province,
-          district: paciente.district,
+      // Filtrar solo recursos no eliminados (isDeleted : false)
+      const pacienteActivos = response.filter(paciente => !paciente.isDeleted);
+      console.log('✅ Pacientes activos (isDeleted: false):', pacienteActivos.length);
 
-          phoneNumber: paciente.phoneNumber,
-          email: paciente.email,
-          direccion: paciente.direccion,
+      // Mapeamos los campos del backend a los campos del frontend
+      const mappedData = pacienteActivos.map(paciente => ({
+        // IDs y referencias
+        id: paciente.pacientid,
+        pacientid: paciente.pacientid,
+        typeDoc: paciente.typeDoc,
 
-          status: paciente.status, // Mantener el valor booleano original
-          estado: paciente.status ? '10007' : '10008', // Convertir a ID numérico
+        documentNumber: paciente.documentNumber,
+        names: paciente.names,
+        lastNames: paciente.lastNames,
+        birthdate: paciente.birthdate,
+        gender: paciente.gender,
+        statusMarital: paciente.statusMarital,
+        nationality: paciente.nationality,
+        centroId: paciente.centroId,
+        address: paciente.address,
 
-          medicalHistory: paciente.medicalHistory,
+        pais: paciente.pais,
+        department: paciente.department,
+        province: paciente.province,
+        district: paciente.district,
 
-          // Auditoría
-          createdAt: paciente.createdAt,
-          createdBy: paciente.createdBy,
-          updatedAt: paciente.updatedAt,
-          updatedBy: paciente.updatedBy,
-          isDeleted: paciente.isDeleted
-  
-        }));
-        //ordenamos alfabeticamente por nombre
-        const sortedData = mappedData.sort((a,b) => 
-          a.names.toLowerCase().localeCompare(b.names.toLowerCase())
-        );
-  
-        return {
-          data: sortedData,
-          status: 'success'
-        };
+        phoneNumber: paciente.phoneNumber,
+        email: paciente.email,
+        direccion: paciente.direccion,
 
-      } catch (error) {
-        console.error('❌ Error completo:', error);
-        console.error('❌ Error message:', error.message);
-  
-        if (error.code === 'ERR_NETWORK') {
-          console.error('🚫 ERROR DE RED: Posible problema de CORS o servidor no disponible');
-        }
-        if (error.message.includes('CORS')) {
-          console.error('🚫 ERROR DE CORS: El servidor debe permitir origen del frontend');
-        }
-  
-        throw error;
-      }
-    },
+        status: paciente.status, // Mantener el valor booleano original
+        estado: paciente.status ? '10007' : '10008', // Convertir a ID numérico
+
+        medicalHistory: paciente.medicalHistory,
+
+        // Auditoría
+        createdAt: paciente.createdAt,
+        createdBy: paciente.createdBy,
+        updatedAt: paciente.updatedAt,
+        updatedBy: paciente.updatedBy,
+        isDeleted: paciente.isDeleted
+      }));
+
+      // Ordenamos alfabéticamente por nombre
+      const sortedData = mappedData.sort((a, b) =>
+        a.names.toLowerCase().localeCompare(b.names.toLowerCase())
+      );
+
+      return {
+        data: sortedData,
+        status: 'success'
+      };
+
+    } catch (error) {
+      console.error('❌ Error al obtener pacientes:', error);
+      throw error;
+    }
+  },
 
   // Obtener paciente por ID
   getById: async (id) => {
@@ -141,6 +122,61 @@ export const patientsService = {
       };
     } catch (error) {
       console.error('❌ Error al obtener Personal por ID:', error);
+      throw error;
+    }
+  },
+
+  getByDocumentNumber: async (documentNumber) => {
+    if (!documentNumber) {
+      throw new Error('ID del Paciente es requerido');
+    }
+
+    try {
+      const url = `${process.env.REACT_APP_API_URL}/Paciente/document/${documentNumber}`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      return {
+        data: {
+          id: data.pacientid,
+          pacientid: data.pacientid,
+          typeDoc: data.typeDoc,
+
+          documentNumber: data.documentNumber,
+          names: data.names,
+          lastNames: data.lastNames,
+          birthdate: data.birthdate,
+          gender : data.gender,
+          statusMarital : data.statusMarital,
+          nationality : data.nationality,
+          centroId: data.centroId,
+          address: data.address,
+
+          pais: data.pais,
+          department: data.department,
+          province: data.province,
+          district: data.district,
+
+          phoneNumber: data.phoneNumber,
+          email: data.email,
+          direccion: data.direccion,
+
+          status: data.status, // Mantener el valor booleano original
+          estado: data.status ? '10007' : '10008', // Convertir a ID numérico
+
+          medicalHistory: data.medicalHistory,
+  
+          // Auditoría
+          createdAt: data.createdAt,
+          createdBy: data.createdBy,
+          updatedAt: data.updatedAt,
+          updatedBy: data.updatedBy,
+          isDeleted: data.isDeleted
+        },
+        status: 'success'
+      };
+    } catch (error) {
+      console.error('❌ Error al obtener Personal por DocumentNumber:', error);
       throw error;
     }
   },

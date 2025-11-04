@@ -99,7 +99,141 @@ export const appointmentsService = {
   },
 
   // Crear nueva cita
+
   create: async (appointmentData) => {
+    try {
+      console.log('📤 Creando nueva Agenda - Cita...');
+
+      // Validar datos requeridos
+      const requiredFields = ['pacientId', 'centroId', 'personalId'];
+      const missingFields = requiredFields.filter(field => !appointmentData[field]);
+
+      if (missingFields.length > 0) {
+        throw new Error(`Campos requeridos faltantes: ${missingFields.join(', ')}`);
+      }
+
+      const formattedData = {
+        pacientId: appointmentData.pacientId,
+        centroId: appointmentData.centroId,
+        personalId: appointmentData.personalId,
+        appointmentDate: appointmentData.appointmentDate,
+        hoursMedicalShedule: appointmentData.hoursMedicalShedule,
+        typeofAppointment : appointmentData.typeofAppointment,
+        originId : appointmentData.originId,
+        otherOrigins : appointmentData.otherOrigins,
+        insuranceId: appointmentData.insuranceId,
+        letterOfGuarantee: appointmentData.letterOfGuarantee,
+        status: appointmentData.status, 
+        typeOfAttention: appointmentData.typeOfAttention, 
+        anotherCenter : appointmentData.anotherCenter,
+
+        createdAt: new Date().toISOString(),
+        createdBy: 'Arnold' // Usuario de prueba
+      };
+
+      console.log('📊 Datos a enviar:', formattedData);
+
+      const url = `${process.env.REACT_APP_API_URL}/Agenda`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formattedData)
+      });
+
+      console.log('🔗 Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Error response:', errorText);
+        throw new Error(`Error ${response.status}: ${response.statusText} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Agenda - Cita creado exitosamente:', data);
+
+      return {
+        data: data,
+        status: 'success'
+      };
+    } catch (error) {
+      console.error('❌ Error al crear Agenda - Cita:', error);
+      throw error;
+    }
+  },
+  create_procedimiento: async (appointmentData) => {
+    try {
+      console.log('📤 Creando nueva Agenda - Cita...');
+
+      // Validar datos requeridos
+      const requiredFields = ['pacientId', 'centroId', 'personalId'];
+      const missingFields = requiredFields.filter(field => !appointmentData[field]);
+
+      if (missingFields.length > 0) {
+        throw new Error(`Campos requeridos faltantes: ${missingFields.join(', ')}`);
+      }
+
+      const formattedData = {
+        pacientId: appointmentData.pacientId,
+        centroId: appointmentData.centroId,
+        personalId: appointmentData.personalId,
+        appointmentDate: appointmentData.appointmentDate,
+        hoursMedicalShedule: appointmentData.hoursMedicalShedule,
+        //typeofAppointment : appointmentData.typeofAppointment,
+        //originId : appointmentData.originId,
+        otherOrigins : appointmentData.otherOrigins, // enviar campo requerido
+        typeOfPatient: appointmentData.typeOfPatient,
+        referral_doctorsId: appointmentData.referral_doctorsId,
+        centerOfOriginId: appointmentData.centerOfOriginId,
+        anotherCenter: appointmentData.anotherCenter,
+        procedureRoomId: appointmentData.procedureRoomId,
+        resourcesId: appointmentData.resourcesId,
+        studiesId: appointmentData.studiesId,
+
+        insuranceId: appointmentData.insuranceId,
+        letterOfGuarantee: appointmentData.letterOfGuarantee,
+        status: appointmentData.status, 
+        typeOfAttention: appointmentData.typeOfAttention, 
+        anotacionesAdicionales: appointmentData.anotacionesAdicionales,
+
+        createdAt: new Date().toISOString(),
+        createdBy: 'Arnold' // Usuario de prueba
+      };
+
+      console.log('📊 Datos a enviar:', formattedData);
+
+      const url = `${process.env.REACT_APP_API_URL}/Agenda`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formattedData)
+      });
+
+      console.log('🔗 Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Error response:', errorText);
+        throw new Error(`Error ${response.status}: ${response.statusText} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Agenda - Cita creado exitosamente:', data);
+
+      return {
+        data: data,
+        status: 'success'
+      };
+    } catch (error) {
+      console.error('❌ Error al crear Agenda - Cita:', error);
+      throw error;
+    }
+  },
+
+  create_OLD: async (appointmentData) => {
     const requiredFields = ['patientId', 'doctorId', 'date', 'time', 'type'];
     const missingFields = requiredFields.filter(field => !appointmentData[field]);
 

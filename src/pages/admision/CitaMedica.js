@@ -1,4 +1,4 @@
-import React, { useState, memo } from 'react';
+import React, { useState, memo, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -43,6 +43,13 @@ import {
   LocationOn
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { patientsService } from '../../services/patientsService';
+import { centrosService } from '../../services/centrosService';
+import { staffService } from '../../services/staffService';
+import { segurosService } from '../../services/segurosService';
+import { appointmentsService } from '../../services/appointmentsService';
+import { toast } from 'react-toastify';
+
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
@@ -106,24 +113,123 @@ const CitaMedica = () => {
   const [activeStep, setActiveStep] = useState(0);
   const steps = ['Paciente', 'Médicos/Seguros'];
 
+  const [centrosD, setCentrosCargados] = useState([]);
+  const [medicosD, setMedicosCargados] = useState([]);
+  const [seguroD, setSeguroCargados] = useState([]);
+  const [tipocitaD, setSTipoCitaCargados] = useState([]);
+  const [procedenciaD, setProcedenciaCargados] = useState([]);
+  const [cartagarantiaD, setCartaGarantiaCargados] = useState([]);
+
+  const cargarCentros = async () => {
+        try {
+          const responseSystemParameter = await centrosService.getAll();
+          console.log('✅ Respuesta de Centros:', responseSystemParameter);
+          setCentrosCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                           responseSystemParameter?.data || []);
+        } catch (error) {
+          console.error('❌ Error al cargar Centros:', error);
+          setError(`Error al cargar Centros: ${error.message}`);
+        }
+      };
+  const cargarMedicos = async () => {
+        try {
+          const responseSystemParameter = await staffService.getAll();
+          console.log('✅ Respuesta de Medicos:', responseSystemParameter);
+          setMedicosCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                           responseSystemParameter?.data || []);
+        } catch (error) {
+          console.error('❌ Error al cargar Medicos:', error);
+          setError(`Error al cargar Centros: ${error.message}`);
+        }
+      };    
+  const cargarSeguros = async () => {
+        try {
+          const responseSystemParameter = await segurosService.getAll();
+          console.log('✅ Respuesta de Seguros:', responseSystemParameter);
+          setSeguroCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                           responseSystemParameter?.data || []);
+        } catch (error) {
+          console.error('❌ Error al cargar Seguros:', error);
+          setError(`Error al cargar Seguros: ${error.message}`);
+        }
+      };  
+
+  const cargarTipoCita = async () => {
+          try {
+            const responseSystemParameter = await centrosService.getAllSystemParameterId(10037);
+            console.log('✅ Respuesta de TipoCita:', responseSystemParameter);
+            setSTipoCitaCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                             responseSystemParameter?.data || []);
+          } catch (error) {
+            console.error('❌ Error al cargar TipoCita:', error);
+            setError(`Error al cargar TipoCita: ${error.message}`);
+          }
+        };
+
+ const cargarCartaGarancia = async () => {
+          try {
+            const responseSystemParameter = await centrosService.getAllSystemParameterId(10041);
+            console.log('✅ Respuesta de Procedencia Seguros:', responseSystemParameter);
+            setProcedenciaCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                             responseSystemParameter?.data || []);
+          } catch (error) {
+            console.error('❌ Error al cargar Procedencia Seguros:', error);
+            setError(`Error al cargar Procedencia Seguros: ${error.message}`);
+          }
+        };
+  
+  const cargarProcedenciaSeguros = async () => {
+          try {
+            const responseSystemParameter = await centrosService.getAllSystemParameterId(10044);
+            console.log('✅ Respuesta de Procedencia Seguros:', responseSystemParameter);
+            setCartaGarantiaCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                             responseSystemParameter?.data || []);
+          } catch (error) {
+            console.error('❌ Error al cargar Carta Garantia:', error);
+            setError(`Error al cargar Carta Garantia: ${error.message}`);
+          }
+        };
+
   // Estados para búsqueda de paciente
   const [searchTerm, setSearchTerm] = useState('');
   const [pacienteSeleccionado, setPacienteSeleccionado] = useState(null);
   const [busquedaRealizada, setBusquedaRealizada] = useState(false);
 
+  // Cargar datos iniciales
+  useEffect(() => {
+    cargarCentros();
+    cargarMedicos();
+    cargarSeguros();
+    cargarTipoCita();
+    cargarCartaGarancia();
+    cargarProcedenciaSeguros();
+
+  }, []);
+
   // Estados para Fase 2: Médicos/Seguros
   const [medicosFollows, setMedicosFollows] = useState({
     // Horario
-    centro: '',
+    centro: 1,
+    centroNombre: '',
     medico: '',
+    medicoNombre: '',
     tipoCita: '',
-    fecha: '',
-    hora: '',
+    tipoCitaNombre: '',
+    fecha: new Date().toISOString().split('T')[0],
+    hora: new Date().toLocaleTimeString('es-PE', { 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      hour12: false,
+      hourCycle: 'h23' 
+    }).padStart(5, '0'),
     // Seguros
-    procedencia: '',
+    procedencia: '10042',
+    procedenciaNombre: '',
     nombreProcedencia: '',
-    aseguradora: '',
-    cartaGarantia: ''
+    aseguradora: 10,
+    aseguradoraNombre: '',
+    cartaGarantia: '10048',
+    cartaGarantiaNombre: ''
   });
 
   // Modal de confirmación
@@ -176,6 +282,7 @@ const CitaMedica = () => {
   ];
 
   // Función para buscar paciente
+  {/** 
   const handleBuscarPaciente = () => {
     setBusquedaRealizada(true);
     const pacienteEncontrado = pacientesSimulados.find(p =>
@@ -184,6 +291,81 @@ const CitaMedica = () => {
       p.apellidos.toLowerCase().includes(searchTerm.toLowerCase())
     );
     setPacienteSeleccionado(pacienteEncontrado || null);
+  };*/}
+
+  const calcularEdad = (fechaNacimiento) => {
+    const hoy = new Date();
+    const fechaNac = new Date(fechaNacimiento);
+    let edad = hoy.getFullYear() - fechaNac.getFullYear();
+    const mes = hoy.getMonth() - fechaNac.getMonth();
+    
+    if (mes < 0 || (mes === 0 && hoy.getDate() < fechaNac.getDate())) {
+      edad--;
+    }
+    
+    return edad;
+  };
+
+  const formatearFecha = (fecha) => {
+    if (!fecha) return '';
+    const fechaObj = new Date(fecha);
+    return fechaObj.toISOString().split('T')[0];
+  };
+
+  const handleBuscarPaciente = async () => {
+    try {
+      setBusquedaRealizada(true);
+      const response = await patientsService.getByDocumentNumber(searchTerm);
+      if (response && response.data) {
+        const fechaNacimiento = formatearFecha(response.data.birthdate);
+        const edad = calcularEdad(fechaNacimiento);
+        
+        // Obtener los valores de los parámetros del sistema
+        const [
+          generoResponse,
+          estadoCivilResponse,
+          paisResponse,
+          departamentoResponse,
+          provinciaResponse,
+          distritoResponse
+        ] = await Promise.all([
+          centrosService.getSystemParameterId(response.data.gender),
+          centrosService.getSystemParameterId(response.data.statusMarital),
+          centrosService.getSystemParameterId(response.data.pais),
+          centrosService.getSystemParameterId(response.data.department),
+          centrosService.getSystemParameterId(response.data.province),
+          centrosService.getSystemParameterId(response.data.district)
+        ]);
+        
+        setPacienteSeleccionado({
+          idPaciente: response.data.pacientid || response.data.id, // Usar pacientid o id de la respuesta
+          nombres: response.data.names,
+          apellidos: response.data.lastNames,
+          documento: response.data.documentNumber,
+          historiaClinica: response.data.medicalHistory,
+          fechaNacimiento: fechaNacimiento,
+          edad: edad,
+          nacionalidad: response.data.nationality,
+          genero: generoResponse.data.value1,
+          estadocivil: estadoCivilResponse.data.value1,
+
+          // Domicilio
+          calle: response.data.address,
+          pais: paisResponse.data.value1,
+          departamento: departamentoResponse.data.value1,
+          provincia: provinciaResponse.data.value1,
+          distrito: distritoResponse.data.value1,
+          // Información de contacto
+          telefono: response.data.phoneNumber,
+          correo: response.data.email
+        });
+      } else {
+        setPacienteSeleccionado(null);
+      }
+    } catch (error) {
+      console.error('Error al buscar paciente:', error);
+      setPacienteSeleccionado(null);
+    }
   };
 
   // Función para limpiar búsqueda
@@ -203,8 +385,76 @@ const CitaMedica = () => {
   };
 
   // Función para manejar cambios en Médicos/Seguros
-  const handleMedicosFollowsChange = (field, value) => {
-    setMedicosFollows(prev => ({ ...prev, [field]: value }));
+  const handleMedicosFollowsChange = async (field, value) => {
+    if (field === 'centro') {
+      try {
+        const centro = centrosD.find(c => c.id === value);
+        setMedicosFollows(prev => ({
+          ...prev,
+          [field]: value,
+          centroNombre: centro ? centro.nombre : ''
+        }));
+      } catch (error) {
+        console.error('Error al obtener información del centro:', error);
+      }
+    } else if (field === 'medico') {
+      try {
+        const medico = medicosD.find(m => m.id === value);
+        setMedicosFollows(prev => ({
+          ...prev,
+          [field]: value,
+          medicoNombre: medico ? `${medico.nombres} ${medico.apellidos}` : ''
+        }));
+      } catch (error) {
+        console.error('Error al obtener información del médico:', error);
+      }
+    } else if (field === 'tipoCita') {
+      try {
+        const tipo = tipocitaD.find(t => t.parameterid === value);
+        setMedicosFollows(prev => ({
+          ...prev,
+          [field]: value,
+          tipoCitaNombre: tipo ? tipo.value1 : ''
+        }));
+      } catch (error) {
+        console.error('Error al obtener información del tipo de cita:', error);
+      }
+    } else if (field === 'procedencia') {
+      try {
+        const procedencia = procedenciaD.find(p => p.parameterid === value);
+        setMedicosFollows(prev => ({
+          ...prev,
+          [field]: value,
+          procedenciaNombre: procedencia ? procedencia.value1 : ''
+        }));
+      } catch (error) {
+        console.error('Error al obtener información de la procedencia:', error);
+      }
+    } else if (field === 'aseguradora') {
+      try {
+        const aseguradora = seguroD.find(s => s.id === value);
+        setMedicosFollows(prev => ({
+          ...prev,
+          [field]: value,
+          aseguradoraNombre: aseguradora ? aseguradora.name : ''
+        }));
+      } catch (error) {
+        console.error('Error al obtener información de la aseguradora:', error);
+      }
+    } else if (field === 'cartaGarantia') {
+      try {
+        const carta = cartagarantiaD.find(c => c.parameterid === value);
+        setMedicosFollows(prev => ({
+          ...prev,
+          [field]: value,
+          cartaGarantiaNombre: carta ? carta.value1 : ''
+        }));
+      } catch (error) {
+        console.error('Error al obtener información de la carta de garantía:', error);
+      }
+    } else {
+      setMedicosFollows(prev => ({ ...prev, [field]: value }));
+    }
   };
 
   // Función para crear cita
@@ -213,14 +463,40 @@ const CitaMedica = () => {
   };
 
   // Función para confirmar creación
-  const handleConfirmarCreacion = () => {
-    console.log('Creando cita:', {
-      paciente: pacienteSeleccionado,
-      medicosFollows
-    });
-
+  const handleConfirmarCreacion = async () => {
+    try {
+      const appointmentData = {
+        pacientId: pacienteSeleccionado.idPaciente,
+        centroId: medicosFollows.centro,
+        personalId: medicosFollows.medico,
+        appointmentDate: medicosFollows.fecha,
+        hoursMedicalShedule: medicosFollows.hora,
+        typeofAppointment: medicosFollows.tipoCita,
+        originId: medicosFollows.procedencia,
+        otherOrigins: medicosFollows.nombreProcedencia || '',
+        insuranceId: medicosFollows.aseguradora || null,
+        letterOfGuarantee: medicosFollows.cartaGarantia || null,
+        status: 1, //agendado
+        typeOfAttention: 1, //cita
+        anotherCenter: 'NO ASIGNADO' // agregando el campo requerido
+      };
+  
+      const response = await appointmentsService.create(appointmentData);
+      
+      if (response.status === 'success') {
+        // Mostrar mensaje de éxito
+        toast.success('Cita médica creada exitosamente');
+        // Redirigir a la lista de citas
+        navigate('/citas/agendas');
+      } else {
+        throw new Error('Error al crear la cita médica');
+      }
+    } catch (error) {
+      console.error('Error al crear la cita:', error);
+      toast.error('Error al crear la cita médica: ' + error.message);
+    }
+    
     setOpenConfirmDialog(false);
-    navigate('/citas/agendas');
   };
 
   // Validaciones para cada paso
@@ -296,14 +572,23 @@ const CitaMedica = () => {
                             <Person />
                           </Avatar>
                           <Box sx={{ flex: 1 }}>
-                            <Typography variant="h6" fontWeight="bold">
+                            <Typography variant="h6" sx={{ color: '#2184be', fontWeight: 'bold' }}>
                               {pacienteSeleccionado.nombres} {pacienteSeleccionado.apellidos}
                             </Typography>
-                            <Chip
-                              label="Paciente Encontrado"
-                              color="success"
-                              size="small"
-                            />
+                            <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                              <Chip
+                                size="small"
+                                icon={<CalendarToday fontSize="small" />}
+                                label={`HC: ${pacienteSeleccionado.historiaClinica}`}
+                                color="primary"
+                              />
+                              <Chip
+                                size="small"
+                                icon={<Person fontSize="small" />}
+                                label={`DNI: ${pacienteSeleccionado.documento}`}
+                                color="primary"
+                              />
+                            </Box>
                           </Box>
                           <Button
                             variant="outlined"
@@ -338,6 +623,7 @@ const CitaMedica = () => {
                                 <strong>Apellidos:</strong> {pacienteSeleccionado.apellidos}
                               </Typography>
                             </Box>
+                            
                           </Grid>
                           <Grid item xs={12} md={4}>
                             <Typography variant="body2" color="text.secondary">
@@ -346,6 +632,9 @@ const CitaMedica = () => {
                             <Typography variant="body2" color="text.secondary">
                               <strong>Edad:</strong> {pacienteSeleccionado.edad} años
                             </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                <strong>Sexo:</strong> {pacienteSeleccionado.genero}
+                            </Typography>
                           </Grid>
                           <Grid item xs={12} md={4}>
                             <Typography variant="body2" color="text.secondary">
@@ -353,6 +642,9 @@ const CitaMedica = () => {
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
                               <strong>Historia Clínica:</strong> {pacienteSeleccionado.historiaClinica}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                <strong>Estado Civil:</strong> {pacienteSeleccionado.estadocivil}
                             </Typography>
                           </Grid>
                         </Grid>
@@ -373,12 +665,14 @@ const CitaMedica = () => {
                                 <strong>Calle:</strong> {pacienteSeleccionado.calle}
                               </Typography>
                             </Box>
+                            {/*
                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                               <LocationOn sx={{ color: '#ff9800', mr: 1, fontSize: 20 }} />
                               <Typography variant="body2" color="text.secondary">
                                 <strong>Código Postal:</strong> {pacienteSeleccionado.codigoPostal}
                               </Typography>
                             </Box>
+                            */}
                           </Grid>
                           <Grid item xs={12} md={6}>
                             <Typography variant="body2" color="text.secondary">
@@ -409,10 +703,11 @@ const CitaMedica = () => {
                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                               <Phone sx={{ color: '#4caf50', mr: 1, fontSize: 20 }} />
                               <Typography variant="body2" color="text.secondary">
-                                <strong>Teléfono:</strong> {pacienteSeleccionado.telefono}
+                                <strong>Celular:</strong> {pacienteSeleccionado.telefono}
                               </Typography>
                             </Box>
                           </Grid>
+                          {/* 
                           <Grid item xs={12} md={4}>
                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                               <Phone sx={{ color: '#2196f3', mr: 1, fontSize: 20 }} />
@@ -420,7 +715,7 @@ const CitaMedica = () => {
                                 <strong>Celular:</strong> {pacienteSeleccionado.celular}
                               </Typography>
                             </Box>
-                          </Grid>
+                          </Grid>*/}
                           <Grid item xs={12} md={4}>
                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                               <Email sx={{ color: '#ff9800', mr: 1, fontSize: 20 }} />
@@ -491,9 +786,11 @@ const CitaMedica = () => {
                       displayEmpty
                     >
                       <MenuItem value="">Seleccionar centro</MenuItem>
-                      <MenuItem value="sede-central">Clínica María Belén - Sede Central</MenuItem>
-                      <MenuItem value="sede-norte">Clínica María Belén - Sede Norte</MenuItem>
-                      <MenuItem value="sede-sur">Clínica María Belén - Sede Sur</MenuItem>
+                                                  {Array.isArray(centrosD) && centrosD.map(centro => (
+                                                    <MenuItem key={centro.id} value={centro.id}>
+                                                      {centro.nombre || ''}
+                                                    </MenuItem>
+                                                  ))}
                     </Select>
                   </FormControl>
                 </ResponsiveField>
@@ -506,10 +803,11 @@ const CitaMedica = () => {
                       displayEmpty
                     >
                       <MenuItem value="">Seleccionar médico</MenuItem>
-                      <MenuItem value="dr-garcia">Dr. Carlos García Mendoza</MenuItem>
-                      <MenuItem value="dra-lopez">Dra. Ana López Silva</MenuItem>
-                      <MenuItem value="dr-silva">Dr. Pedro Silva Rojas</MenuItem>
-                      <MenuItem value="dra-martinez">Dra. Carmen Martínez Torres</MenuItem>
+                                                  {Array.isArray(medicosD) && medicosD.map(medico => (
+                                                    <MenuItem key={medico.id} value={medico.id}>
+                                                      {medico.nombres + ' ' + medico.apellidos}
+                                                    </MenuItem>
+                                                  ))}
                     </Select>
                   </FormControl>
                 </ResponsiveField>
@@ -524,9 +822,11 @@ const CitaMedica = () => {
                       displayEmpty
                     >
                       <MenuItem value="">Seleccionar tipo</MenuItem>
-                      <MenuItem value="nueva">Nueva</MenuItem>
-                      <MenuItem value="resultados">Resultados</MenuItem>
-                      <MenuItem value="control">Control</MenuItem>
+                      {Array.isArray(tipocitaD) && tipocitaD.map(estado => (
+                          <MenuItem key={estado.parameterid} value={estado.parameterid}>
+                            {estado.value1 || ''}
+                          </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 </ResponsiveField>
@@ -570,12 +870,15 @@ const CitaMedica = () => {
                       displayEmpty
                     >
                       <MenuItem value="">Seleccionar procedencia</MenuItem>
-                      <MenuItem value="clinica-mariabelen">Clínica María Belén</MenuItem>
-                      <MenuItem value="otro">Otro</MenuItem>
+                      {Array.isArray(procedenciaD) && procedenciaD.map(procedencia => (
+                          <MenuItem key={procedencia.parameterid} value={procedencia.parameterid}>
+                            {procedencia.value1 || ''}
+                          </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 </ResponsiveField>
-
+                        {/* 
                 {medicosFollows.procedencia === 'otro' && (
                   <ResponsiveField label="Nombre de Procedencia">
                     <TextField
@@ -586,7 +889,9 @@ const CitaMedica = () => {
                       size="small"
                     />
                   </ResponsiveField>
-                )}
+                )}*/}
+
+
               </FieldRow>
 
               <FieldRow>
@@ -597,13 +902,12 @@ const CitaMedica = () => {
                       onChange={(e) => handleMedicosFollowsChange('aseguradora', e.target.value)}
                       displayEmpty
                     >
-                      <MenuItem value="">Sin aseguradora</MenuItem>
-                      <MenuItem value="essalud">EsSalud</MenuItem>
-                      <MenuItem value="rimac">Rímac Seguros</MenuItem>
-                      <MenuItem value="pacifico">Pacífico Seguros</MenuItem>
-                      <MenuItem value="mapfre">MAPFRE Perú</MenuItem>
-                      <MenuItem value="la-positiva">La Positiva Seguros</MenuItem>
-                      <MenuItem value="sis">SIS</MenuItem>
+                      <MenuItem value="">Seleccionar Aseguradora</MenuItem>
+                                                  {Array.isArray(seguroD) && seguroD.map(seguro => (
+                                                    <MenuItem key={seguro.id} value={seguro.id}>
+                                                      {seguro.name}
+                                                    </MenuItem>
+                                                  ))}
                     </Select>
                   </FormControl>
                 </ResponsiveField>
@@ -614,12 +918,14 @@ const CitaMedica = () => {
                       value={medicosFollows.cartaGarantia}
                       onChange={(e) => handleMedicosFollowsChange('cartaGarantia', e.target.value)}
                       displayEmpty
-                      disabled={!medicosFollows.aseguradora}
+                      disabled={!medicosFollows.aseguradora || aseguradora.value == '10'}
                     >
-                      <MenuItem value="">No requerida</MenuItem>
-                      <MenuItem value="en-tramite">En Trámite</MenuItem>
-                      <MenuItem value="aceptada">Aceptada</MenuItem>
-                      <MenuItem value="rechazada">Rechazada</MenuItem>
+                      <MenuItem value="">Selecciona tipo de Carta</MenuItem>
+                      {Array.isArray(cartagarantiaD) && cartagarantiaD.map(estado => (
+                          <MenuItem key={estado.parameterid} value={estado.parameterid}>
+                            {estado.value1 || ''}
+                          </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 </ResponsiveField>
@@ -791,13 +1097,13 @@ const CitaMedica = () => {
                 Horario:
               </Typography>
               <Typography variant="body2">
-                <strong>Centro:</strong> {medicosFollows.centro}
+                <strong>Centro:</strong> {medicosFollows.centroNombre}
               </Typography>
               <Typography variant="body2">
-                <strong>Médico:</strong> {medicosFollows.medico}
+                <strong>Médico:</strong> {medicosFollows.medicoNombre}
               </Typography>
               <Typography variant="body2">
-                <strong>Tipo de Cita:</strong> {medicosFollows.tipoCita}
+                <strong>Tipo de Cita:</strong> {medicosFollows.tipoCitaNombre}
               </Typography>
               <Typography variant="body2">
                 <strong>Fecha y Hora:</strong> {medicosFollows.fecha} - {medicosFollows.hora}
@@ -810,14 +1116,14 @@ const CitaMedica = () => {
                   Seguros:
                 </Typography>
                 <Typography variant="body2">
-                  <strong>Procedencia:</strong> {medicosFollows.procedencia}
+                  <strong>Procedencia:</strong> {medicosFollows.procedenciaNombre}
                 </Typography>
                 <Typography variant="body2">
-                  <strong>Aseguradora:</strong> {medicosFollows.aseguradora}
+                  <strong>Aseguradora:</strong> {medicosFollows.aseguradoraNombre}
                 </Typography>
                 {medicosFollows.cartaGarantia && (
                   <Typography variant="body2">
-                    <strong>Carta de Garantía:</strong> {medicosFollows.cartaGarantia}
+                    <strong>Carta de Garantía:</strong> {medicosFollows.cartaGarantiaNombre}
                   </Typography>
                 )}
               </Grid>
