@@ -478,7 +478,8 @@ const CitaMedica = () => {
         letterOfGuarantee: medicosFollows.cartaGarantia || null,
         status: 1, //agendado
         typeOfAttention: 1, //cita
-        anotherCenter: 'NO ASIGNADO' // agregando el campo requerido
+        anotherCenter: 'NO ASIGNADO', // agregando el campo requerido
+        anotacionesAdicionales: 'SIN ANOTACIONES - CONSULTA'
       };
   
       const response = await appointmentsService.create(appointmentData);
@@ -918,7 +919,7 @@ const CitaMedica = () => {
                       value={medicosFollows.cartaGarantia}
                       onChange={(e) => handleMedicosFollowsChange('cartaGarantia', e.target.value)}
                       displayEmpty
-                      disabled={!medicosFollows.aseguradora || aseguradora.value == '10'}
+                      disabled={!medicosFollows.aseguradora }
                     >
                       <MenuItem value="">Selecciona tipo de Carta</MenuItem>
                       {Array.isArray(cartagarantiaD) && cartagarantiaD.map(estado => (
@@ -1097,7 +1098,7 @@ const CitaMedica = () => {
                 Horario:
               </Typography>
               <Typography variant="body2">
-                <strong>Centro:</strong> {medicosFollows.centroNombre}
+                <strong>Centro:</strong> {medicosFollows.centroNombre || (Array.isArray(centrosD) ? (centrosD.find(c => c.id === medicosFollows.centro)?.nombre || '') : '')}
               </Typography>
               <Typography variant="body2">
                 <strong>Médico:</strong> {medicosFollows.medicoNombre}
@@ -1108,15 +1109,15 @@ const CitaMedica = () => {
               <Typography variant="body2">
                 <strong>Fecha y Hora:</strong> {medicosFollows.fecha} - {medicosFollows.hora}
               </Typography>
+              <Typography variant="body2">
+                <strong>Procedencia:</strong> {medicosFollows.procedenciaNombre || (Array.isArray(procedenciaD) ? (procedenciaD.find(p => p.parameterid === medicosFollows.procedencia)?.value1 || '') : '')}
+              </Typography>
             </Grid>
 
             {medicosFollows.aseguradora && (
               <Grid item xs={12}>
                 <Typography variant="subtitle1" fontWeight="bold" color="primary">
                   Seguros:
-                </Typography>
-                <Typography variant="body2">
-                  <strong>Procedencia:</strong> {medicosFollows.procedenciaNombre}
                 </Typography>
                 <Typography variant="body2">
                   <strong>Aseguradora:</strong> {medicosFollows.aseguradoraNombre}

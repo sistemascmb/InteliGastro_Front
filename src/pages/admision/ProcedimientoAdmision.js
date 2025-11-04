@@ -301,6 +301,7 @@ const [procedimientoDate, setMedicosFollows] = useState({
     }).padStart(5, '0'),
     // Seguros
     tipoPaciente: '',
+    tipoPacienteNombre: '',
     medicoReferente: '',
     medicoNombreRef: '',
     procedencia: '10042',
@@ -311,7 +312,9 @@ const [procedimientoDate, setMedicosFollows] = useState({
     cartaGarantia: '10048',
     cartaGarantiaNombre: '',
     sala: '',
+    salanombre:'',
     recurso: '',
+    recursonombre:'',
     tipoProcedimiento: '',
     tipoProcedimientoNombre: ''
 
@@ -488,7 +491,55 @@ const calcularEdad = (fechaNacimiento) => {
       } catch (error) {
         console.error('Error al obtener información del médico:', error);
       }
-    } else if (field === 'tipoCita') {
+    }else if (field === 'medicoReferente') {
+      try {
+        const medico = medicosRefD.find(m => m.id === value);
+        setMedicosFollows(prev => ({
+          ...prev,
+          [field]: value,
+          medicoNombreRef: medico ? `${medico.names} ${medico.surnames}` : ''
+        }));
+      } catch (error) {
+        console.error('Error al obtener información del médico:', error);
+      }
+    }
+    else if (field === 'sala') {
+      try {
+        const medico = salaD.find(m => m.id === value);
+        setMedicosFollows(prev => ({
+          ...prev,
+          [field]: value,
+          salanombre: medico ? `${medico.description}` : ''
+        }));
+      } catch (error) {
+        console.error('Error al obtener información del médico:', error);
+      }
+    }
+    else if (field === 'recurso') {
+      try {
+        const medico = recursoD.find(m => m.id === value);
+        setMedicosFollows(prev => ({
+          ...prev,
+          [field]: value,
+          recursonombre: medico ? `${medico.name}` : ''
+        }));
+      } catch (error) {
+        console.error('Error al obtener información del médico:', error);
+      }
+    }
+    else if (field === 'tipoPaciente') {
+      try {
+        const tipo = tipopacD.find(t => t.parameterid === value);
+        setMedicosFollows(prev => ({
+          ...prev,
+          [field]: value,
+          tipoPacienteNombre: tipo ? tipo.value1 : ''
+        }));
+      } catch (error) {
+        console.error('Error al obtener información del tipo de cita:', error);
+      }
+    }
+     else if (field === 'tipoCita') {
       try {
         const tipo = tipocitaD.find(t => t.parameterid === value);
         setMedicosFollows(prev => ({
@@ -574,7 +625,7 @@ const calcularEdad = (fechaNacimiento) => {
           procedureRoomId: procedimientoDate.sala,
           resourcesId: procedimientoDate.recurso,
           studiesId: procedimientoDate.tipoProcedimiento,
-          anotacionesAdicionales: procedimientoDate.notas,
+          anotacionesAdicionales: (procedimientoDate.notas || '').trim(),
           otherOrigins: 'NO ASIGNADO', // agregando el campo requerido
 
           insuranceId: procedimientoDate.aseguradora || null,
@@ -766,12 +817,13 @@ const calcularEdad = (fechaNacimiento) => {
                                 <strong>Calle:</strong> {pacienteSeleccionado.calle}
                               </Typography>
                             </Box>
+                            {/*
                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                               <LocationOn sx={{ color: '#ff9800', mr: 1, fontSize: 20 }} />
                               <Typography variant="body2" color="text.secondary">
                                 <strong>Código Postal:</strong> {pacienteSeleccionado.codigoPostal}
                               </Typography>
-                            </Box>
+                            </Box>*/}
                           </Grid>
                           <Grid item xs={12} md={6}>
                             <Typography variant="body2" color="text.secondary">
@@ -802,10 +854,11 @@ const calcularEdad = (fechaNacimiento) => {
                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                               <Phone sx={{ color: '#4caf50', mr: 1, fontSize: 20 }} />
                               <Typography variant="body2" color="text.secondary">
-                                <strong>Teléfono:</strong> {pacienteSeleccionado.telefono}
+                                <strong>Celular:</strong> {pacienteSeleccionado.telefono}
                               </Typography>
                             </Box>
                           </Grid>
+                          {/*
                           <Grid item xs={12} md={4}>
                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                               <Phone sx={{ color: '#2196f3', mr: 1, fontSize: 20 }} />
@@ -813,7 +866,7 @@ const calcularEdad = (fechaNacimiento) => {
                                 <strong>Celular:</strong> {pacienteSeleccionado.celular}
                               </Typography>
                             </Box>
-                          </Grid>
+                          </Grid>*/}
                           <Grid item xs={12} md={4}>
                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                               <Email sx={{ color: '#ff9800', mr: 1, fontSize: 20 }} />
@@ -834,7 +887,7 @@ const calcularEdad = (fechaNacimiento) => {
                           color="inherit"
                           size="small"
                           startIcon={<PersonAdd />}
-                          onClick={() => navigate('/pacientes/nuevo-paciente')}
+                          onClick={() => navigate('/pacientes/pacientes', { state: { createMode: true } })}
                         >
                           Nuevo Paciente
                         </Button>
@@ -854,7 +907,7 @@ const calcularEdad = (fechaNacimiento) => {
                   <Button
                     variant="text"
                     startIcon={<PersonAdd />}
-                    onClick={() => navigate('/pacientes/pacientes')}
+                    onClick={() => navigate('/pacientes/pacientes', { state: { createMode: true } })}
                     sx={{ mt: 2 }}
                   >
                     ¿Paciente nuevo? Registrar aquí
@@ -1291,10 +1344,10 @@ const calcularEdad = (fechaNacimiento) => {
                 Médico y Seguros:
               </Typography>
               <Typography variant="body2">
-                <strong>Tipo de Paciente:</strong> {procedimientoDate.tipoPaciente}
+                <strong>Tipo de Paciente:</strong> {procedimientoDate.tipoPacienteNombre}
               </Typography>
               <Typography variant="body2">
-                <strong>Médico Referente:</strong> {procedimientoDate.medicoReferente}
+                <strong>Médico Referente:</strong> {procedimientoDate.medicoNombreRef}
               </Typography>
               {procedimientoDate.seguro && (
                 <Typography variant="body2">
@@ -1308,13 +1361,19 @@ const calcularEdad = (fechaNacimiento) => {
                 Procedimiento:
               </Typography>
               <Typography variant="body2">
-                <strong>Tipo:</strong> {procedimientoDate.tipoProcedimiento}
+                <strong>Medico Tratante:</strong> {procedimientoDate.medicoNombre}
               </Typography>
               <Typography variant="body2">
-                <strong>Centro:</strong> {procedimientoDate.centro}
+                <strong>Procedimiento:</strong> {procedimientoDate.tipoProcedimientoNombre}
               </Typography>
               <Typography variant="body2">
-                <strong>Sala:</strong> {procedimientoDate.sala}
+                <strong>Equipo:</strong> {procedimientoDate.recursonombre}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Centro:</strong> {procedimientoDate.centroNombre || (Array.isArray(centrosD) ? (centrosD.find(c => c.id === procedimientoDate.centro)?.nombre || '') : '')}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Sala:</strong> {procedimientoDate.salanombre}
               </Typography>
               <Typography variant="body2">
                 <strong>Fecha y Hora:</strong> {procedimientoDate.fecha} - {procedimientoDate.hora}

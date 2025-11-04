@@ -39,7 +39,7 @@ import {
   Close,
   Search
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { patientsService } from '../../services/patientsService';
 import { centrosService } from '../../services/centrosService';
 import { ubigeoService } from '../../services/ubigeoService';
@@ -180,6 +180,7 @@ FieldRow.displayName = 'FieldRow';
 
 const Pacientes = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Estado para la lista de pacientes
   const [pacientes, setPacientes] = useState([]);
@@ -956,6 +957,36 @@ const Pacientes = () => {
 
   
 
+  useEffect(() => {
+     const state = location.state;
+     if (!state) return;
+ 
+     // Abrir la pestaña de creación si viene desde otra pantalla
+     if (state.createMode) {
+       setActiveTab(1);
+       navigate(location.pathname, { replace: true });
+       return;
+     }
+ 
+     if (state.editMode && state.paciente && !openEditModal) {
+       handleOpenEditModal(state.paciente);
+       // Limpiar el estado de la ruta para evitar reabrir el modal al cerrar
+       navigate(location.pathname, { replace: true });
+     } else if (state.editPacienteId && pacientes.length && !openEditModal) {
+       const editId = state.editPacienteId;
+       const match = pacientes.find(p =>
+         (p.id && String(p.id) === String(editId)) ||
+         (p.pacientid && String(p.pacientid) === String(editId)) ||
+         (p.idPaciente && String(p.idPaciente) === String(editId))
+       );
+       if (match) {
+         handleOpenEditModal(match);
+         // Limpiar el estado de la ruta para evitar reabrir el modal al cerrar
+         navigate(location.pathname, { replace: true });
+       }
+     }
+   }, [location.state, pacientes, openEditModal]);
+
   const handleCloseEditModal = () => {
     setOpenEditModal(false);
     setselectedPaciente(null);
@@ -1312,7 +1343,7 @@ const [parametrosCache, setParametrosCache] = useState({});
                       required
                       type="date"
                       value={formData.birthdate || ''}
-                      onChange={(e) => handleEditInputChange('birthdate', e.target.value)}
+                      onChange={(e) => handleInputChange('birthdate', e.target.value)}
                       error={!!errors.birthdate}
                       helperText={errors.birthdate}
                       size="small"

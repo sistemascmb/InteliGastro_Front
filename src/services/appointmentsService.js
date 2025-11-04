@@ -126,6 +126,7 @@ export const appointmentsService = {
         status: appointmentData.status, 
         typeOfAttention: appointmentData.typeOfAttention, 
         anotherCenter : appointmentData.anotherCenter,
+        anotacionesAdicionales: appointmentData.anotacionesAdicionales,
 
         createdAt: new Date().toISOString(),
         createdBy: 'Arnold' // Usuario de prueba
@@ -182,7 +183,7 @@ export const appointmentsService = {
         hoursMedicalShedule: appointmentData.hoursMedicalShedule,
         //typeofAppointment : appointmentData.typeofAppointment,
         //originId : appointmentData.originId,
-        otherOrigins : appointmentData.otherOrigins, // enviar campo requerido
+        otherOrigins : appointmentData.otherOrigins,
         typeOfPatient: appointmentData.typeOfPatient,
         referral_doctorsId: appointmentData.referral_doctorsId,
         centerOfOriginId: appointmentData.centerOfOriginId,
