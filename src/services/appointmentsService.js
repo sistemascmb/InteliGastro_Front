@@ -127,7 +127,8 @@ export const appointmentsService = {
         typeOfAttention: appointmentData.typeOfAttention, 
         anotherCenter : appointmentData.anotherCenter,
         anotacionesAdicionales: appointmentData.anotacionesAdicionales,
-
+        tipoProcedimientoId: -1,
+        urgenteId: -1,
         createdAt: new Date().toISOString(),
         createdBy: 'Arnold' // Usuario de prueba
       };
@@ -197,6 +198,8 @@ export const appointmentsService = {
         status: appointmentData.status, 
         typeOfAttention: appointmentData.typeOfAttention, 
         anotacionesAdicionales: appointmentData.anotacionesAdicionales,
+        tipoProcedimientoId: appointmentData.tipoProcedimientoId,
+        urgenteId: appointmentData.urgenteId,
 
         createdAt: new Date().toISOString(),
         createdBy: 'Arnold' // Usuario de prueba

@@ -126,6 +126,8 @@ const ProcedimientoAdmision = () => {
   const [salaD, setSalaCargados] = useState([]);
   const [recursoD, setRecursoCargados] = useState([]);
   const [estudioD, seEstudioCargados] = useState([]);
+  const [procedimmientoComplejidadD, setProcedimientoComplejidadCargados] = useState([]);
+  const [urgenteSiNoD, seturgenteSiNoCargados] = useState([]);
 
   const cargarCentros = async () => {
           try {
@@ -242,6 +244,29 @@ const ProcedimientoAdmision = () => {
             setError(`Error al cargar Estudios: ${error.message}`);
           }
         }; 
+
+  const cargarProcedimientoComplejidad = async () => {
+            try {
+              const responseSystemParameter = await centrosService.getAllSystemParameterId(10054);
+              console.log('✅ Respuesta de Procedimiento Complejidad:', responseSystemParameter);
+              setProcedimientoComplejidadCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                               responseSystemParameter?.data || []);
+            } catch (error) {
+              console.error('❌ Error al cargar Procedimiento Complejidad:', error);
+              setError(`Error al cargar Procedimiento Complejidad: ${error.message}`);
+            }
+          };
+  const cargarUrgenteSiNo = async () => {
+            try {
+              const responseSystemParameter = await centrosService.getAllSystemParameterId(10058);
+              console.log('✅ Respuesta de Urgencia:', responseSystemParameter);
+              seturgenteSiNoCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                               responseSystemParameter?.data || []);
+            } catch (error) {
+              console.error('❌ Error al cargar Urgencia:', error);
+              setError(`Error al cargar Urgencia: ${error.message}`);
+            }
+          };
   // Estados para búsqueda de paciente
   const [searchTerm, setSearchTerm] = useState('');
   const [pacienteSeleccionado, setPacienteSeleccionado] = useState(null);
@@ -259,6 +284,8 @@ const ProcedimientoAdmision = () => {
       cargarSalas();
       cargarRecursos();
       cargarEstudios();
+      cargarProcedimientoComplejidad();
+      cargarUrgenteSiNo();
     }, []);
 
     {/*
@@ -316,7 +343,11 @@ const [procedimientoDate, setMedicosFollows] = useState({
     recurso: '',
     recursonombre:'',
     tipoProcedimiento: '',
-    tipoProcedimientoNombre: ''
+    tipoProcedimientoNombre: '',
+    tipoProcedimientoComplejidadId:'',
+    tipoProcedimientoComplejidadNombre: '',
+    urgenteId: '10060',
+    urgenteValor: '',
 
   });
   // Modal de confirmación
@@ -595,6 +626,28 @@ const calcularEdad = (fechaNacimiento) => {
       } catch (error) {
         console.error('Error al obtener información del médico:', error);
       }
+    }else if (field === 'tipoProcedimientoComplejidadId') {
+      try {
+        const tipoProcedimiento = procedimmientoComplejidadD.find(c => c.parameterid === value);
+        setMedicosFollows(prev => ({
+          ...prev,
+          [field]: value,
+          tipoProcedimientoComplejidadNombre: tipoProcedimiento ? tipoProcedimiento.value1 : ''
+        }));
+      } catch (error) {
+        console.error('Error al obtener información de Tipo Procedimiento Complejidad:', error);
+      }
+    } else if (field === 'urgenteId') {
+      try {
+        const urgencia = urgenteSiNoD.find(c => c.parameterid === value);
+        setMedicosFollows(prev => ({
+          ...prev,
+          [field]: value,
+          urgenteValor: urgencia ? urgencia.value1 : ''
+        }));
+      } catch (error) {
+        console.error('Error al obtener información de Urgencia:', error);
+      }
     } else {
       setMedicosFollows(prev => ({ ...prev, [field]: value }));
     }
@@ -627,6 +680,8 @@ const calcularEdad = (fechaNacimiento) => {
           studiesId: procedimientoDate.tipoProcedimiento,
           anotacionesAdicionales: (procedimientoDate.notas || '').trim(),
           otherOrigins: 'NO ASIGNADO', // agregando el campo requerido
+          tipoProcedimientoId: procedimientoDate.tipoProcedimientoComplejidadId,
+          urgenteId: procedimientoDate.urgenteId,          
 
           insuranceId: procedimientoDate.aseguradora || null,
           letterOfGuarantee: procedimientoDate.cartaGarantia || null,
@@ -673,7 +728,7 @@ const calcularEdad = (fechaNacimiento) => {
       case 1:
         return procedimientoDate.tipoPaciente && procedimientoDate.medicoReferente;
       case 2:
-        return procedimientoDate.centro && procedimientoDate.sala && procedimientoDate.tipoProcedimiento;
+        return procedimientoDate.centro && procedimientoDate.sala && procedimientoDate.tipoProcedimiento && procedimientoDate.tipoProcedimientoComplejidadId && procedimientoDate.urgenteId;
       default:
         return false;
     }
@@ -1121,7 +1176,7 @@ const calcularEdad = (fechaNacimiento) => {
                   </FormControl>
                 </ResponsiveField>
 
-                <ResponsiveField label="Tipo de Procedimiento" required>
+                <ResponsiveField label="Procedimiento" required>
                   <FormControl fullWidth size="small">
                     <Select
                       value={procedimientoDate.tipoProcedimiento}
@@ -1138,7 +1193,24 @@ const calcularEdad = (fechaNacimiento) => {
                   </FormControl>
                 </ResponsiveField>
               </FieldRow>
-
+              <FieldRow>
+                <ResponsiveField label="Tipo de Procedimmiento">
+                  <FormControl fullWidth size="small">
+                    <Select
+                      value={procedimientoDate.tipoProcedimientoComplejidadId}
+                      onChange={(e) => handleMedicosFollowsChange('tipoProcedimientoComplejidadId', e.target.value)}
+                      displayEmpty
+                    >
+                    <MenuItem value="">Selecciona tipo de Procedimiento</MenuItem>
+                    {Array.isArray(procedimmientoComplejidadD) && procedimmientoComplejidadD.map(estado => (
+                      <MenuItem key={estado.parameterid} value={estado.parameterid}>
+                        {estado.value1 || ''}
+                      </MenuItem>
+                    ))}
+                    </Select>
+                    </FormControl>
+                  </ResponsiveField>
+              </FieldRow>
               <FieldRow>
                 <ResponsiveField label="Fecha del Procedimiento" required>
                   <TextField
@@ -1162,7 +1234,24 @@ const calcularEdad = (fechaNacimiento) => {
                   />
                 </ResponsiveField>
               </FieldRow>
-
+              <FieldRow>
+                <ResponsiveField label="¿ES URGENTE?">
+                  <FormControl fullWidth size="small">
+                    <Select
+                      value={procedimientoDate.urgenteId}
+                      onChange={(e) => handleMedicosFollowsChange('urgenteId', e.target.value)}
+                      displayEmpty
+                    >
+                    <MenuItem value="">Selecciona Urgencia</MenuItem>
+                    {Array.isArray(urgenteSiNoD) && urgenteSiNoD.map(estado => (
+                      <MenuItem key={estado.parameterid} value={estado.parameterid}>
+                        {estado.value1 || ''}
+                      </MenuItem>
+                    ))}
+                    </Select>
+                    </FormControl>
+                  </ResponsiveField>
+              </FieldRow>
               <ResponsiveField label="Notas e Indicaciones">
                 <TextField
                   fullWidth
@@ -1370,13 +1459,19 @@ const calcularEdad = (fechaNacimiento) => {
                 <strong>Equipo:</strong> {procedimientoDate.recursonombre}
               </Typography>
               <Typography variant="body2">
-                <strong>Centro:</strong> {procedimientoDate.centroNombre || (Array.isArray(centrosD) ? (centrosD.find(c => c.id === procedimientoDate.centro)?.nombre || '') : '')}
-              </Typography>
-              <Typography variant="body2">
                 <strong>Sala:</strong> {procedimientoDate.salanombre}
               </Typography>
               <Typography variant="body2">
+                <strong>Tipo Procedimiento:</strong> {procedimientoDate.tipoProcedimientoComplejidadNombre}
+              </Typography>
+              <Typography variant="body2">
+                <strong>¿Urgente?:</strong> {procedimientoDate.urgenteValor}
+              </Typography>
+              <Typography variant="body2">
                 <strong>Fecha y Hora:</strong> {procedimientoDate.fecha} - {procedimientoDate.hora}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Centro:</strong> {procedimientoDate.centroNombre || (Array.isArray(centrosD) ? (centrosD.find(c => c.id === procedimientoDate.centro)?.nombre || '') : '')}
               </Typography>
             </Grid>
           </Grid>
