@@ -476,7 +476,7 @@ const CitaMedica = () => {
         otherOrigins: medicosFollows.nombreProcedencia || '',
         insuranceId: medicosFollows.aseguradora || null,
         letterOfGuarantee: medicosFollows.cartaGarantia || null,
-        status: 1, //agendado
+        status: 10062, //agendado
         typeOfAttention: 1, //cita
         anotherCenter: 'NO ASIGNADO', // agregando el campo requerido
         anotacionesAdicionales: 'SIN ANOTACIONES - CONSULTA'

@@ -685,7 +685,7 @@ const calcularEdad = (fechaNacimiento) => {
 
           insuranceId: procedimientoDate.aseguradora || null,
           letterOfGuarantee: procedimientoDate.cartaGarantia || null,
-          status: 1, //agendado
+          status: 10062, //agendado
           typeOfAttention: 2, //procedimiento
         };
     

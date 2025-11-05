@@ -24,6 +24,14 @@ export const API_ENDPOINTS = {
     EXPORT: '/Paciente/export'
   },
 
+  // Pacientes
+  SCHEDULES: {
+    BASE: '/Agenda',
+    BY_ID: (id) => `/Agenda/${id}`,
+    SEARCH: '/Agenda/search',
+    EXPORT: '/Agenda/export'
+  },
+
   // Personal
   STAFF: {
     BASE: '/Personal',

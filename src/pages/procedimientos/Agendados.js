@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, useCallback, memo , useEffect} from 'react';
 import {
   Container,
   Paper,
@@ -43,6 +43,13 @@ import {
   Save
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { appointmentsService, patientsService, staff, staffService } from 'services';
+import examenesService from 'services/examenesService';
+import centrosService from 'services/centrosService';
+import estudiosService from 'services/estudiosService';
+import salasService from 'services/salasService';
+import recursosService from 'services/recursosService';
+import medicosRefService from 'services/medicosRefService';
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
@@ -182,7 +189,94 @@ const Agendados = () => {
   ];
 
   // Estado para los procedimientos agendados
-  const [procedimientosAgendados, setProcedimientosAgendados] = useState([
+  const [procedimientosAgendados, setProcedimientosAgendados] = useState([]);
+
+  const cargarProcedimientos = async () => {
+        try {
+          const procedimientos = await appointmentsService.getAll_Proc();
+          
+          const listaAgendasProcedimientos = await Promise.all(
+              procedimientos.data.map(async (procedimientoDat) => {
+                try {
+                  const examenDatos = await estudiosService.getById(procedimientoDat.studiesId);
+                  const centroDatos = await centrosService.getById(procedimientoDat.centroId);
+                  const pacienteDatos = await patientsService.getById(procedimientoDat.pacientId);
+                  const estadoAgenda = await centrosService.getSystemParameterId(procedimientoDat.status);
+                  const salaDatos = await salasService.getById(procedimientoDat.procedureRoomId);
+                  const recursosDatos = await recursosService.getById(procedimientoDat.resourcesId);
+                  
+                  const medicoTratDatos = await staffService.getById(procedimientoDat.personalId);
+                  const medicoRefDatos = await medicosRefService.getById(procedimientoDat.referral_doctorsId);
+
+
+                  
+                  // Transformar el estado a ID numérico, manejando tanto booleano como texto
+                  
+                  return {
+                    ...procedimientoDat,
+                    //
+                    codigo: examenDatos.data.abbreviation,
+                    tipo: examenDatos.data.name,
+                    estado: estadoAgenda.data.value1,
+                    //
+                    centro: centroDatos.data.nombre,
+                    //
+                    nombre: pacienteDatos.data.names + ' ' + pacienteDatos.data.lastNames,
+                    documento: pacienteDatos.data.documentNumber,
+                    //
+                    sala: salaDatos.data.name,
+                    recurso: recursosDatos.data.name,
+                    procedimiento: examenDatos.data.name,
+                    //
+                    medicoReferente: medicoRefDatos.data.names + ' ' + medicoRefDatos.data.surnames,
+                    gastroenterologo:  medicoTratDatos.data.nombres + ' ' +  medicoTratDatos.data.apellidos,
+                    //
+                    fechaExamen: procedimientoDat.appointmentDate,
+                    horaExamen: procedimientoDat.hoursMedicalShedule
+
+                  };
+                } catch (error) {
+                  console.error(`Error al obtener centro ${procedimientoDat.personalId}:`, error);
+                  return {
+                    ...procedimientoDat,
+                    //
+                    codigo: 'Codigo no encontrado',
+                    tipo: 'Estudio no encontrado',
+                    estado:'Estado no encontrado',
+                    //
+                    centro: 'Centro no encontrado',
+                    //
+                    tipoDocumento: 'Tipo Doc no especificado',
+                    nombre: 'Paciente no encontrado',
+                    documento: 'Documento no encontrado',
+                    //
+                    sala: '',
+                    recurso: '',
+                    procedimiento: '',
+                    //
+                    medicoReferente: '',
+                    gastroenterologo: ''
+                  };
+                }
+              })
+            );
+
+
+
+          console.log('✅ Respuesta de Centros:', listaAgendasProcedimientos);
+          setProcedimientosAgendados(Array.isArray(listaAgendasProcedimientos) ? listaAgendasProcedimientos : 
+                           listaAgendasProcedimientos?.data || []);
+        } catch (error) {
+          console.error('❌ Error al cargar Centros:', error);
+          setError(`Error al cargar Centros: ${error.message}`);
+        }
+      };
+    
+  useEffect(() => {    
+     cargarProcedimientos();
+  }, []);
+
+  const [procedimientosAgendados_old, setProcedimientosAgendados_old] = useState([
     {
       id: 1,
       indicadores: { urgente: true, primera_vez: false },
@@ -349,13 +443,19 @@ const Agendados = () => {
 
   // Filtrar procedimientos basado en los filtros
   const procedimientosFiltrados = procedimientosAgendados.filter(proc => {
-    const cumpleFechaInicio = !filters.fechaInicio || proc.fechaExamen >= filters.fechaInicio;
-    const cumpleFechaFin = !filters.fechaFin || proc.fechaExamen <= filters.fechaFin;
-    const cumpleSala = !filters.sala || proc.sala.toLowerCase().includes(filters.sala.toLowerCase());
-    const cumpleProcedimiento = !filters.procedimiento || proc.procedimiento.toLowerCase().includes(filters.procedimiento.toLowerCase());
+    const fechaExamen = proc?.fechaExamen || '';
+    const cumpleFechaInicio = !filters.fechaInicio || fechaExamen >= filters.fechaInicio;
+    const cumpleFechaFin = !filters.fechaFin || fechaExamen <= filters.fechaFin;
+    const sala = (proc?.sala || '').toLowerCase();
+    const cumpleSala = !filters.sala || sala.includes((filters.sala || '').toLowerCase());
+    const procedimiento = (proc?.procedimiento || '').toLowerCase();
+    const cumpleProcedimiento = !filters.procedimiento || procedimiento.includes((filters.procedimiento || '').toLowerCase());
+    const nombrePaciente = proc?.paciente?.nombre || '';
+    const documentoPaciente = proc?.paciente?.documento || '';
+    const search = (filters.searchTerm || '').toLowerCase();
     const cumpleBusqueda = !filters.searchTerm ||
-      proc.paciente.nombre.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-      proc.paciente.documento.includes(filters.searchTerm);
+      nombrePaciente.toLowerCase().includes(search) ||
+      documentoPaciente.includes(filters.searchTerm);
 
     return cumpleFechaInicio && cumpleFechaFin && cumpleSala && cumpleProcedimiento && cumpleBusqueda;
   });
@@ -795,20 +895,20 @@ const Agendados = () => {
                       <TableRow key={proc.id} hover>
                         <TableCell>
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                            {getIndicadorIcon(proc.indicadores)}
+                           { /*{getIndicadorIcon(proc.indicadores)}*/}
                           </Box>
                         </TableCell>
                         <TableCell>
                           <Box>
                             <Typography variant="body2" fontWeight="bold">
-                              {proc.examen.codigo}
+                              { proc.codigo}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                              {proc.examen.tipo}
+                              {proc.tipo}
                             </Typography>
                             <br />
                             <Chip
-                              label={proc.examen.estado}
+                              label={proc.estado}
                               color="info"
                               size="small"
                               sx={{ mt: 0.5 }}
@@ -818,10 +918,10 @@ const Agendados = () => {
                         <TableCell>
                           <Box>
                             <Typography variant="body2" fontWeight="bold">
-                              {proc.paciente.nombre}
+                              {proc.nombre || '—'}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                              Doc: {proc.paciente.documento}
+                              Doc: {proc.documento || '—'}
                             </Typography>
                             <br />
                             <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
@@ -869,10 +969,10 @@ const Agendados = () => {
                         <TableCell>
                           <Box>
                             <Typography variant="body2">
-                              {proc.medicoReferente}
+                             R: {proc.medicoReferente}
                             </Typography>
                             <Typography variant="caption" color="primary">
-                              {proc.gastroenterologo}
+                             G: {proc.gastroenterologo}
                             </Typography>
                           </Box>
                         </TableCell>
@@ -1281,8 +1381,8 @@ const Agendados = () => {
           {selectedProcedimiento && (
             <>
               <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                <strong>Paciente:</strong> {selectedProcedimiento.paciente.nombre} -
-                <strong> Procedimiento:</strong> {selectedProcedimiento.procedimiento}
+                <strong>Paciente:</strong> {selectedProcedimiento?.paciente?.nombre || '—'} -
+                <strong> Procedimiento:</strong> {selectedProcedimiento?.procedimiento}
               </Typography>
               <Divider sx={{ mb: 3 }} />
 
@@ -1417,8 +1517,8 @@ const Agendados = () => {
           {selectedProcedimiento && (
             <>
               <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                <strong>Paciente:</strong> {selectedProcedimiento.paciente.nombre} -
-                <strong> Examen:</strong> {selectedProcedimiento.examen.codigo}
+                <strong>Paciente:</strong> {selectedProcedimiento?.paciente?.nombre || '—'} -
+                <strong> Examen:</strong> {selectedProcedimiento?.examen?.codigo}
               </Typography>
               <Divider sx={{ mb: 3 }} />
 
@@ -1586,7 +1686,7 @@ const Agendados = () => {
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <Typography variant="body2">
-                      <strong>Paciente:</strong> {selectedProcedimiento.paciente.nombre}
+                      <strong>Paciente:</strong> {selectedProcedimiento?.paciente?.nombre || '—'}
                     </Typography>
                   </Grid>
                   <Grid item xs={12} md={6}>

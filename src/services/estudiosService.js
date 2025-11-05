@@ -73,6 +73,49 @@ export const estudiosService = {
         }
     },
 
+    // Obtener paciente por ID
+  getById: async (id) => {
+    if (!id) {
+      throw new Error('ID del Estudios es requerido');
+    }
+
+    try {
+      const url = `${process.env.REACT_APP_API_URL}/Estudios/${id}`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      return {
+        data: {
+            id: data.studiesid,
+            studiesid: data.studiesid,
+            name: data.name,
+
+            abbreviation: data.abbreviation,
+            description: data.description,
+            operatingHours: data.operatingHours,
+
+            estado: data.status ? 'activo' : 'inactivo', // String representation for display
+            status: data.status ? '10007' : '10008', // Convert numeric value to string for Select component
+            informedConsent: data.informedConsent,
+            centroId: data.centroId,
+            price: data.price,
+    
+            // Auditoría
+            createdAt: data.createdAt,
+            createdBy: data.createdBy,
+            updatedAt: data.updatedAt,
+            updatedBy: data.updatedBy,
+            isDeleted: data.isDeleted
+    
+        },
+        status: 'success'
+      };
+    } catch (error) {
+      console.error('❌ Error al obtener Estudios por ID:', error);
+      throw error;
+    }
+  },
+
     // Crear nuevo miembro del personal
   create: async (estudioData) => {
     try {
