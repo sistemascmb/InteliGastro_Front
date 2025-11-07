@@ -73,9 +73,9 @@ const Sidebar = () => {
         { title: 'Procedimiento', path: '/procedimientos/preparacionproc' },
         { title: 'Dictado', path: '/procedimientos/dictadoproc' },
         { title: 'Completados', path: '/procedimientos/completados' },
-        { title: 'CompletadoOld', path: '/procedimientos/completadosold' },
-
-        { title: 'Altas', path: '/procedimientos/altas' }
+        //{ title: 'CompletadoOld', path: '/procedimientos/completadosold' },
+        { title: 'Altas', path: '/procedimientos/altas' },
+        //{ title: 'AltasOld', path: '/procedimientos/altasold' }
       ]
     },
     {

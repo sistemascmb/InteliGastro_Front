@@ -42,7 +42,7 @@ import {
   Assessment,
   Delete,
   Save,
-  ContentPasteSearch,
+  ExitToAppRounded,
   ImageSearch,
   FactCheckRounded,
   BedroomChild,
@@ -905,7 +905,7 @@ const cargarSalas = async () => {
         <Paper sx={{ p: 3, mb: 3, minHeight: '20vh', boxShadow: 3 }}>
           {/* Título */}
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-            <MedicalServices sx={{ color: '#2184be', mr: 2, fontSize: 32 }} />
+            <Assignment sx={{ color: '#2184be', mr: 2, fontSize: 32 }} />
             <Typography variant="h4" fontWeight="bold" sx={{ color: '#2184be' }}>
               Lista de Procedimientos para Dictado
             </Typography>
@@ -1061,7 +1061,7 @@ const cargarSalas = async () => {
 
         {/* Contenido - 80% */}
         <Paper sx={{ flex: 1, boxShadow: 3, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <SectionHeader title={`Lista de Procedimientos Agendados (${procedimientosFiltrados.length})`} />
+          <SectionHeader title={`Lista de Procedimientos para Dictado (${procedimientosFiltrados.length})`} />
 
           {/* Tabla con scroll */}
           <Box sx={{ flex: 1, overflow: 'auto' }}>
@@ -1276,6 +1276,8 @@ const cargarSalas = async () => {
                               >
                                 <Assignment />
                               </IconButton>
+
+                              
                             </Box>
                           </Box>
                         </TableCell>

@@ -30,7 +30,7 @@ import {
 import {
   NavigateNext,
   Search,
-  MedicalServices,
+  MedicationSharp,
   CheckCircle,
   AddCircle,
   Schedule,
@@ -45,7 +45,8 @@ import {
   ContentPasteSearch,
   ImageSearch,
   FactCheckRounded,
-  BedroomChild
+  BedroomChild,
+  AssignmentReturn
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { appointmentsService, patientsService, staff, staffService } from 'services';
@@ -136,6 +137,9 @@ const PreparacionProc = () => {
   const [openCie10Modal, setOpenCie10Modal] = useState(false);
   const [openConfirmPresentModal, setOpenConfirmPresentModal] = useState(false);
   const [selectedProcedimiento, setSelectedProcedimiento] = useState(null);
+
+  const [openCambioDictadoModal, setCambioDictadoModal] = useState(false);
+
 
   const [medicosD, setMedicosCargados] = useState([]);
   const [salaD, setSalaCargados] = useState([]);
@@ -591,42 +595,49 @@ const cargarSalas = async () => {
     setOpenConfirmPresentModal(true);
   };
 
+  const handlePacienteDictado = (procedimiento) => {
+    setSelectedProcedimiento(procedimiento);
+    setCambioDictadoModal(true);
+  };
+
   const handleConfirmPacienteInicio = async(e) => {
 
     e.preventDefault();
 
     console.log('Paciente se presentó:', selectedProcedimiento);
-    // Mover el procedimiento de Agendados a Completados
-    // Actualizar el estado del procedimiento
+
     const procedimientoCompletado = {
       ...selectedProcedimiento,
       status: 10064,
     };
 
-    // Aquí normalmente harías una llamada a la API para mover el procedimiento
-    // y luego actualizarías la lista local
+    const procedimientoActualizado = await appointmentsService.update_Estado_Proc(selectedProcedimiento.id, procedimientoCompletado);
+    
+    console.log('✅ Procedimiento actualizado:', procedimientoActualizado);
+    await cargarProcedimientos();
 
-    // Remover de la lista de agendados
-    //setProcedimientosAgendados(prev =>
-    //  prev.filter(proc => proc.id !== selectedProcedimiento.id)
-    //);
+    handleCloseConfirmPresentModal();
+  };
+
+  const handleConfirmPacienteDictado = async(e) => {
+
+    e.preventDefault();
+
+    console.log('Paciente cambió a Dictado:', selectedProcedimiento);
+
+    const procedimientoCompletado = {
+      ...selectedProcedimiento,
+      status: 10069,
+    };
 
     const procedimientoActualizado = await appointmentsService.update_Estado_Proc(selectedProcedimiento.id, procedimientoCompletado);
     
     console.log('✅ Procedimiento actualizado:', procedimientoActualizado);
-
-
     await cargarProcedimientos();
 
-    // En un sistema real, aquí también añadirías el procedimiento a la lista de completados
-    // Esto se haría a través de una API call o context/store
-    //console.log('Procedimiento movido a Completados:', procedimientoCompletado);
-
-    handleCloseConfirmPresentModal();
-
-    // Opcional: mostrar mensaje de éxito
-    // alert(`Procedimiento completado: ${selectedProcedimiento.paciente.nombre}`);
+    handleClosePacienteDictadoModal();
   };
+
 
   const handleReagendar = (procedimiento) => {
     setSelectedProcedimiento(procedimiento);
@@ -719,6 +730,11 @@ const cargarSalas = async () => {
 
   const handleCloseConfirmPresentModal = () => {
     setOpenConfirmPresentModal(false);
+    setSelectedProcedimiento(null);
+  };
+
+  const handleClosePacienteDictadoModal = () => {
+    setCambioDictadoModal(false);
     setSelectedProcedimiento(null);
   };
 
@@ -904,7 +920,7 @@ const cargarSalas = async () => {
         <Paper sx={{ p: 3, mb: 3, minHeight: '20vh', boxShadow: 3 }}>
           {/* Título */}
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-            <MedicalServices sx={{ color: '#2184be', mr: 2, fontSize: 32 }} />
+            <MedicationSharp sx={{ color: '#2184be', mr: 2, fontSize: 32 }} />
             <Typography variant="h4" fontWeight="bold" sx={{ color: '#2184be' }}>
               Lista para Procedimiento
             </Typography>
@@ -1060,7 +1076,7 @@ const cargarSalas = async () => {
 
         {/* Contenido - 80% */}
         <Paper sx={{ flex: 1, boxShadow: 3, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <SectionHeader title={`Lista de Procedimientos Agendados (${procedimientosFiltrados.length})`} />
+          <SectionHeader title={`Lista de Procedimientos listos para Procedimiento (${procedimientosFiltrados.length})`} />
 
           {/* Tabla con scroll */}
           <Box sx={{ flex: 1, overflow: 'auto' }}>
@@ -1288,6 +1304,32 @@ const cargarSalas = async () => {
                               >
                                 <Assignment />
                               </IconButton>
+                            </Box>
+                              {proc.estado === 'En Progreso' ? (
+                                <IconButton
+                                  color="secondary"
+                                  size="small"
+                                  title="Pasar Paciente a Dictado"
+                                  onClick={() => handlePacienteDictado(proc)}
+                                >
+                                  <AssignmentReturn />
+
+                                </IconButton> ) : (
+                              
+                                <IconButton
+                                  color="success"
+                                  size="small"
+                                  title="Inciar Captura de Imágenes"
+                                  //onClick={() => handlePacientePresente(proc)}
+                                >
+
+                                </IconButton>
+                                )
+                              }
+
+                            <Box sx={{ display: 'flex', gap: 0.5 }}>
+
+
                             </Box>
                           </Box>
                         </TableCell>
@@ -2128,6 +2170,60 @@ const cargarSalas = async () => {
             }}
           >
             Confirmar Inicio de Procedimiento
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal de Cambio a Dictado */}
+      <Dialog
+        open={openCambioDictadoModal}
+        onClose={handleClosePacienteDictadoModal}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: 2 }
+        }}
+      >
+        <DialogTitle sx={{
+          backgroundColor: '#d61d89ff',
+          color: 'white',
+          textAlign: 'center'
+        }}>
+          <Typography variant="h6" fontWeight="bold">Cambiar Procedimiento a Dictado</Typography>
+        </DialogTitle>
+        <DialogContent sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="body1">
+            ¿Confirma pase de paciente para Dictado: {' '}
+            <strong>"{selectedProcedimiento?.nombre}"</strong>{' '}
+             ?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            Procedimiento: {selectedProcedimiento?.procedimiento}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Fecha: {selectedProcedimiento?.fechaExamen ? new Date(selectedProcedimiento.fechaExamen).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'} - {selectedProcedimiento?.horaExamen || '—'}
+          </Typography>
+          <Typography variant="body2" color="primary" sx={{ mt: 2, fontWeight: 'bold' }}>
+            El examen cambiará al estado a "Dictado".
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, justifyContent: 'center', gap: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={handleClosePacienteDictadoModal}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirmPacienteDictado}
+            startIcon={<CheckCircle />}
+            sx={{
+              backgroundColor: '#d61d89ff',
+              '&:hover': { backgroundColor: '#d61d89ff' }
+            }}
+          >
+            Confirmar Dictado
           </Button>
         </DialogActions>
       </Dialog>

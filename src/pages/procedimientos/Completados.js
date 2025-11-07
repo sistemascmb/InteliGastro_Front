@@ -45,7 +45,7 @@ import {
   Description,
   Email,
   SlowMotionVideoRounded,
-  BedroomChild,
+  ExitToAppRounded,
   EditDocument
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -137,6 +137,7 @@ const DictadoProc = () => {
   const [openCie10Modal, setOpenCie10Modal] = useState(false);
   const [openConfirmPresentModal, setOpenConfirmPresentModal] = useState(false);
   const [selectedProcedimiento, setSelectedProcedimiento] = useState(null);
+  const [openEmailModal, setOpenEmailModal] = useState(false);
 
   const [medicosD, setMedicosCargados] = useState([]);
   const [salaD, setSalaCargados] = useState([]);
@@ -356,6 +357,26 @@ const cargarSalas = async () => {
      cargarSalas();
      cargarEstudios();
   }, []);
+
+  const handleReporte = (procedimiento) => {
+    // Simular descarga de PDF
+    const fileName = `Reporte_${procedimiento.codigo}_${procedimiento.nombre.replace(/\s+/g, '_')}.pdf`;
+
+    // Crear un enlace temporal para descargar
+    const link = document.createElement('a');
+    link.href = '#'; // En producción aquí iría la URL del PDF generado
+    link.download = fileName;
+
+    // Simular la descarga (en producción esto sería una URL real del servidor)
+    console.log(`Descargando reporte: ${fileName}`);
+    alert(`Descargando reporte: ${fileName}`);
+
+    // En producción sería algo como:
+    // link.href = `/api/reportes/pdf/${procedimiento.id}`;
+    // document.body.appendChild(link);
+    // link.click();
+    // document.body.removeChild(link);
+  };
 
   const [procedimientosAgendados_old, setProcedimientosAgendados_old] = useState([
     {
@@ -684,7 +705,55 @@ const cargarSalas = async () => {
     setOpenUploadModal(true);
   };
 
-  const handleCancelarExamen = (procedimiento) => {
+  const handleSubirArchivo = (procedimiento) => {
+    setSelectedProcedimiento(procedimiento);
+    setUploadForm({
+      selectedFile: null,
+      tipoArchivo: '',
+      descripcion: ''
+    });
+    setOpenUploadModal(true);
+  };
+
+  // Estado para el formulario de correo
+    const [emailForm, setEmailForm] = useState({
+      destinatario: ''
+    });
+
+  const handleEnviarCorreo = (procedimiento) => {
+    setSelectedProcedimiento(procedimiento);
+    setEmailForm({
+      destinatario: ''
+    });
+    setOpenEmailModal(true);
+  };
+
+  // Funciones para manejar el modal de email
+  const handleCloseEmailModal = () => {
+    setOpenEmailModal(false);
+    setSelectedProcedimiento(null);
+    setEmailForm({
+      destinatario: ''
+    });
+  };
+
+  const handleEmailFormChange = (field, value) => {
+    setEmailForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleSendEmail = () => {
+    console.log('Enviando correo:', {
+      procedimiento: selectedProcedimiento,
+      email: emailForm
+    });
+    // Aquí implementarías la lógica para enviar el correo
+    handleCloseEmailModal();
+  };
+
+  const handleAltaExamen = (procedimiento) => {
     setSelectedProcedimiento(procedimiento);
     setOpenCancelModal(true);
   };
@@ -700,7 +769,7 @@ const cargarSalas = async () => {
   };
 
   // Funciones para cerrar modales
-  const handleCloseCancelModal = () => {
+  const handleCloseAltaModal = () => {
     setOpenCancelModal(false);
     setSelectedProcedimiento(null);
   };
@@ -726,14 +795,14 @@ const cargarSalas = async () => {
   };
 
   // Función para confirmar cancelación
-  const handleConfirmCancel = async(e) => {
+  const handleConfirmAlta = async(e) => {
     e.preventDefault();
 
     console.log('Se cancela atención:', selectedProcedimiento);
 
     const procedimientoCompletado = {
       ...selectedProcedimiento,
-      status: 10067,
+      status: 10066,
     };
 
     const procedimientoActualizado = await appointmentsService.update_Estado_Proc(selectedProcedimiento.id, procedimientoCompletado);
@@ -743,7 +812,7 @@ const cargarSalas = async () => {
 
     await cargarProcedimientos();
 
-    handleCloseCancelModal();
+    handleCloseAltaModal();
     
     {/*
     console.log('Examen cancelado:', selectedProcedimiento);
@@ -751,7 +820,7 @@ const cargarSalas = async () => {
     setProcedimientosAgendados(prev =>
       prev.filter(proc => proc.id !== selectedProcedimiento.id)
     );
-    handleCloseCancelModal();
+    handleCloseAltaModal();
     */}
   };
 
@@ -1062,7 +1131,7 @@ const cargarSalas = async () => {
 
         {/* Contenido - 80% */}
         <Paper sx={{ flex: 1, boxShadow: 3, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <SectionHeader title={`Lista de Procedimientos Agendados (${procedimientosFiltrados.length})`} />
+          <SectionHeader title={`Lista de Procedimientos Completados (${procedimientosFiltrados.length})`} />
 
           {/* Tabla con scroll */}
           <Box sx={{ flex: 1, overflow: 'auto' }}>
@@ -1220,10 +1289,11 @@ const cargarSalas = async () => {
                             <Typography variant="caption" color="text.secondary">
                               HORA: {proc.horaExamen} 
                             </Typography>
+                            {/*
                             <Typography variant="body2" fontWeight="bold">
                               DURACIÓN: {proc.tiempo} mins.
                             </Typography>
-
+                            */}
                           </Box>
                         </TableCell>
                         <TableCell>
@@ -1236,8 +1306,9 @@ const cargarSalas = async () => {
                                 day: 'numeric'
                               })}
                             </Typography>
-                            
-
+                            <Typography variant="caption" color="text.secondary">
+                              HORA: {proc.fechaCompletado ? new Date(proc.fechaCompletado).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                            </Typography>
                           </Box>
                         </TableCell>
                         <TableCell align="center">
@@ -1267,8 +1338,19 @@ const cargarSalas = async () => {
                             >
                               <Email />
                             </IconButton>
+                            
                             </Box>
                             
+                          </Box>
+                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                            <IconButton
+                              color="error"
+                              size="small"
+                              title="Pasar paciente a Alta"
+                              onClick={() => handleAltaExamen(proc)}
+                            >
+                            <ExitToAppRounded />
+                            </IconButton>
                           </Box>
                         </TableCell>
                       </TableRow>
@@ -1540,7 +1622,7 @@ const cargarSalas = async () => {
       {/* Modal para Cancelar Examen */}
       <Dialog
         open={openCancelModal}
-        onClose={handleCloseCancelModal}
+        onClose={handleCloseAltaModal}
         maxWidth="xs"
         fullWidth
         PaperProps={{
@@ -1572,14 +1654,14 @@ const cargarSalas = async () => {
         <DialogActions sx={{ p: 3, justifyContent: 'center', gap: 2 }}>
           <Button
             variant="outlined"
-            onClick={handleCloseCancelModal}
+            onClick={handleCloseAltaModal}
           >
             Cancelar
           </Button>
           <Button
             variant="contained"
             color="error"
-            onClick={handleConfirmCancel}
+            onClick={handleConfirmAlta}
             startIcon={<Cancel />}
           >
             Confirmar Cancelación
@@ -1878,6 +1960,89 @@ const cargarSalas = async () => {
             onClick={handleCloseUploadModal}
           >
             Cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+{/* Modal para Enviar Correo */}
+      <Dialog
+        open={openEmailModal}
+        onClose={handleCloseEmailModal}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: 2 }
+        }}
+      >
+        <DialogTitle sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          backgroundColor: '#2184be',
+          color: 'white'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Email sx={{ mr: 1 }} />
+            <Typography variant="h6" fontWeight="bold">Enviar Reporte por Correo</Typography>
+          </Box>
+          <IconButton onClick={handleCloseEmailModal} sx={{ color: 'white' }}>
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 4 }}>
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="body2" fontWeight="bold" sx={{ mb: 1 }}>
+              Correo Electrónico *
+            </Typography>
+            <TextField
+              fullWidth
+              placeholder="Ingrese el correo electrónico"
+              value={emailForm.destinatario}
+              onChange={(e) => handleEmailFormChange('destinatario', e.target.value)}
+              type="email"
+              size="small"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Email sx={{ color: '#666' }} />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: '#f8f9fa',
+                  '&:hover': {
+                    backgroundColor: '#e9ecef',
+                  },
+                  '&.Mui-focused': {
+                    backgroundColor: '#fff',
+                  }
+                }
+              }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button
+            variant="outlined"
+            onClick={handleCloseEmailModal}
+            sx={{ mr: 2 }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSendEmail}
+            startIcon={<Email />}
+            disabled={!emailForm.destinatario}
+            sx={{
+              backgroundColor: '#2184be',
+              '&:hover': {
+                backgroundColor: '#1e75a6'
+              }
+            }}
+          >
+            Enviar Correo
           </Button>
         </DialogActions>
       </Dialog>

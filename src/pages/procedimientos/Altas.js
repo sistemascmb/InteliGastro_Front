@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, useCallback, memo , useEffect} from 'react';
 import {
   Container,
   Paper,
@@ -30,14 +30,33 @@ import {
 import {
   NavigateNext,
   Search,
+  MedicalServices,
+  CheckCircle,
+  AddCircle,
+  Schedule,
   CloudUpload,
+  Cancel,
+  Assignment,
   Close,
   History,
   Assessment,
   Delete,
-  ExitToApp
+  Save,
+  Description,
+  Email,
+  SlowMotionVideoRounded,
+  ExitToAppRounded,
+  ExitToApp 
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { appointmentsService, patientsService, staff, staffService } from 'services';
+import examenesService from 'services/examenesService';
+import centrosService from 'services/centrosService';
+import estudiosService from 'services/estudiosService';
+import salasService from 'services/salasService';
+import recursosService from 'services/recursosService';
+import medicosRefService from 'services/medicosRefService';
+import segurosService from 'services/segurosService';
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
@@ -98,9 +117,12 @@ const Altas = () => {
   const navigate = useNavigate();
 
   // Estado para filtros de búsqueda
+  const today = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
   const [filters, setFilters] = useState({
-    fechaInicio: '',
-    fechaFin: '',
+    fechaInicio: todayStr,
+    fechaFin: todayStr,
     sala: '',
     procedimiento: '',
     searchTerm: ''
@@ -109,8 +131,72 @@ const Altas = () => {
   // Estados para modales
   const [openPatientHistoryModal, setOpenPatientHistoryModal] = useState(false);
   const [openExamHistoryModal, setOpenExamHistoryModal] = useState(false);
+  const [openCancelModal, setOpenCancelModal] = useState(false);
+  const [openRescheduleModal, setOpenRescheduleModal] = useState(false);
   const [openUploadModal, setOpenUploadModal] = useState(false);
+  const [openCie10Modal, setOpenCie10Modal] = useState(false);
+  const [openConfirmPresentModal, setOpenConfirmPresentModal] = useState(false);
   const [selectedProcedimiento, setSelectedProcedimiento] = useState(null);
+  const [openEmailModal, setOpenEmailModal] = useState(false);
+
+  const [medicosD, setMedicosCargados] = useState([]);
+  const [salaD, setSalaCargados] = useState([]);
+  const [recursoD, setRecursoCargados] = useState([]);
+  const [estudioD, seEstudioCargados] = useState([]);
+
+const cargarMedicos = async () => {
+          try {
+            const responseSystemParameter = await staffService.getAll();
+            console.log('✅ Respuesta de Medicos:', responseSystemParameter);
+            setMedicosCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                             responseSystemParameter?.data || []);
+          } catch (error) {
+            console.error('❌ Error al cargar Medicos:', error);
+            setError(`Error al cargar Centros: ${error.message}`);
+          }
+        };   
+const cargarSalas = async () => {
+          try {
+            const responseSystemParameter = await salasService.getAll();
+            console.log('✅ Respuesta de Salas:', responseSystemParameter);
+            setSalaCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                             responseSystemParameter?.data || []);
+          } catch (error) {
+            console.error('❌ Error al cargar Salas:', error);
+            setError(`Error al cargar Salas: ${error.message}`);
+          }
+        };
+  const cargarRecursos = async () => {
+            try {
+              const responseSystemParameter = await recursosService.getAll();
+              console.log('✅ Respuesta de Recursos:', responseSystemParameter);
+              setRecursoCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                               responseSystemParameter?.data || []);
+            } catch (error) {
+              console.error('❌ Error al cargar Recursos:', error);
+              setError(`Error al cargar Recursos: ${error.message}`);
+            }
+          }; 
+  const cargarEstudios = async () => {
+            try {
+              const responseSystemParameter = await estudiosService.getAll();
+              console.log('✅ Respuesta de Estudios:', responseSystemParameter);
+              seEstudioCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                               responseSystemParameter?.data || []);
+            } catch (error) {
+              console.error('❌ Error al cargar Estudios:', error);
+              setError(`Error al cargar Estudios: ${error.message}`);
+            }
+          }; 
+
+  // Estados para reagendar
+  const [rescheduleForm, setRescheduleForm] = useState({
+    medico: '',
+    sala: '',
+    equipo: '',
+    fecha: '',
+    hora: ''
+  });
 
   // Estados para subir archivos
   const [uploadForm, setUploadForm] = useState({
@@ -122,158 +208,307 @@ const Altas = () => {
   const [archivosSubidos, setArchivosSubidos] = useState([
     {
       id: 1,
-      nombre: 'Alta_Medica_001.pdf',
-      tipo: 'Documento',
-      fechaCreacion: '2024-01-12',
-      tamanio: '1.5 MB'
+      nombre: 'Resultado_Laboratorio_001.pdf',
+      tipo: 'Laboratorio',
+      fechaCreacion: '2024-01-10',
+      tamaño: '2.5 MB'
     },
     {
       id: 2,
-      nombre: 'Reporte_Final_002.pdf',
-      tipo: 'Documento',
-      fechaCreacion: '2024-01-12',
-      tamanio: '2.1 MB'
+      nombre: 'Imagen_Endoscopia_001.jpg',
+      tipo: 'Imagen',
+      fechaCreacion: '2024-01-09',
+      tamaño: '1.8 MB'
     }
   ]);
 
-  // Estado para los procedimientos dados de alta
-  const [procedimientosAltas] = useState([
+  // Estados para CIE-10
+  const [cie10Form, setCie10Form] = useState({
+    codigoSeleccionado: '',
+    descripcionSeleccionada: ''
+  });
+
+  const [cie10Seleccionados, setCie10Seleccionados] = useState([]);
+
+  // Base de datos simulada de códigos CIE-10
+  const codigosCie10 = [
+    { codigo: 'K25.0', descripcion: 'Úlcera gástrica aguda con hemorragia' },
+    { codigo: 'K25.1', descripcion: 'Úlcera gástrica aguda con perforación' },
+    { codigo: 'K25.9', descripcion: 'Úlcera gástrica sin complicaciones' },
+    { codigo: 'K26.0', descripcion: 'Úlcera duodenal aguda con hemorragia' },
+    { codigo: 'K26.9', descripcion: 'Úlcera duodenal sin complicaciones' },
+    { codigo: 'K29.0', descripcion: 'Gastritis hemorrágica aguda' },
+    { codigo: 'K29.1', descripcion: 'Gastritis y duodenitis atrófica' },
+    { codigo: 'K29.5', descripcion: 'Gastritis crónica no especificada' },
+    { codigo: 'K31.9', descripcion: 'Enfermedad del estómago y duodeno no especificada' },
+    { codigo: 'K50.0', descripcion: 'Enfermedad de Crohn del intestino delgado' },
+    { codigo: 'K51.0', descripcion: 'Colitis ulcerativa (pancolitis)' },
+    { codigo: 'K59.0', descripcion: 'Estreñimiento' },
+    { codigo: 'K92.0', descripcion: 'Hematemesis' },
+    { codigo: 'K92.1', descripcion: 'Melena' },
+    { codigo: 'K92.2', descripcion: 'Hemorragia gastrointestinal sin especificación' }
+  ];
+
+  // Estado para los procedimientos agendados
+  const [procedimientosAgendados, setProcedimientosAgendados] = useState([]);
+
+  const cargarProcedimientos = async () => {
+        try {
+          const procedimientos = await appointmentsService.getAll_Proc_Alta();
+          
+          const listaAgendasProcedimientos = await Promise.all(
+              procedimientos.data.map(async (procedimientoDat) => {
+                try {
+                  const examenDatos = await estudiosService.getById(procedimientoDat.studiesId);
+                  const centroDatos = await centrosService.getById(procedimientoDat.centroId);
+                  const pacienteDatos = await patientsService.getById(procedimientoDat.pacientId);
+                  const estadoAgenda = await centrosService.getSystemParameterId(procedimientoDat.status);
+                  const salaDatos = await salasService.getById(procedimientoDat.procedureRoomId);
+                  const recursosDatos = await recursosService.getById(procedimientoDat.resourcesId);
+                  
+                  const medicoTratDatos = await staffService.getById(procedimientoDat.personalId);
+                  const medicoRefDatos = await medicosRefService.getById(procedimientoDat.referral_doctorsId);
+
+                  const seguroDatos = await segurosService.getById(procedimientoDat.insuranceId);
+                  const tipoAtencion = await centrosService.getSystemParameterId(procedimientoDat.typeOfPatient);
+                  const tipoProced = await centrosService.getSystemParameterId(procedimientoDat.tipoProcedimientoId);
+
+                  
+                  // Transformar el estado a ID numérico, manejando tanto booleano como texto
+                  
+                  return {
+                    ...procedimientoDat,
+                    //
+                    codigo: procedimientoDat.medicalscheduleid,
+                    tipo: examenDatos.data.name,
+                    estado: estadoAgenda.data.value1,
+                    //
+                    centro: centroDatos.data.nombre,
+                    //
+                    nombre: pacienteDatos.data.names + ' ' + pacienteDatos.data.lastNames,
+                    documento: pacienteDatos.data.documentNumber,
+                    fechaNac: pacienteDatos.data.birthdate,
+                    genero: pacienteDatos.data.gender == '10001' ?'MASCULINO':'FEMENINO',
+                    tipoAtencion: tipoAtencion.data.value1,
+                    seguro: seguroDatos.data.name,
+                    tipoProcedimiento: tipoProced.data.value1,
+                    tiempo: examenDatos.data.operatingHours,
+                    //
+                    sala: salaDatos.data.name,
+                    recurso: recursosDatos.data.name,
+                    procedimiento: examenDatos.data.name,
+                    //
+                    medicoReferente: medicoRefDatos.data.names + ' ' + medicoRefDatos.data.surnames,
+                    gastroenterologo:  medicoTratDatos.data.nombres + ' ' +  medicoTratDatos.data.apellidos,
+                    //
+                    fechaExamen: procedimientoDat.appointmentDate,
+                    horaExamen: procedimientoDat.hoursMedicalShedule,
+                    urgente: procedimientoDat.urgenteId == '10059' ?true: false,
+                    fechaCompletado: procedimientoDat.updatedAt,
+
+
+                  };
+                } catch (error) {
+                  console.error(`Error al obtener centro ${procedimientoDat.personalId}:`, error);
+                  return {
+                    ...procedimientoDat,
+                    //
+                    codigo: 'Codigo no encontrado',
+                    tipo: 'Estudio no encontrado',
+                    estado:'Estado no encontrado',
+                    //
+                    centro: 'Centro no encontrado',
+                    //
+                    tipoDocumento: 'Tipo Doc no especificado',
+                    nombre: 'Paciente no encontrado',
+                    documento: 'Documento no encontrado',
+                    fechaNac: '',
+                    genero: '',
+                    tipoAtencion: '',
+                    seguro: '',
+                    tipoProc: '',
+                    //
+                    sala: '',
+                    recurso: '',
+                    procedimiento: '',
+                    //
+                    medicoReferente: '',
+                    gastroenterologo: ''
+                  };
+                }
+              })
+            );
+
+
+
+          console.log('✅ Respuesta de Centros:', listaAgendasProcedimientos);
+          setProcedimientosAgendados(Array.isArray(listaAgendasProcedimientos) ? listaAgendasProcedimientos : 
+                           listaAgendasProcedimientos?.data || []);
+        } catch (error) {
+          console.error('❌ Error al cargar Centros:', error);
+          setError(`Error al cargar Centros: ${error.message}`);
+        }
+      };
+    
+  useEffect(() => {    
+     cargarProcedimientos();
+     cargarMedicos();
+     cargarRecursos();
+     cargarSalas();
+     cargarEstudios();
+  }, []);
+
+  const handleReporte = (procedimiento) => {
+    // Simular descarga de PDF
+    const fileName = `Reporte_${procedimiento.codigo}_${procedimiento.nombre.replace(/\s+/g, '_')}.pdf`;
+
+    // Crear un enlace temporal para descargar
+    const link = document.createElement('a');
+    link.href = '#'; // En producción aquí iría la URL del PDF generado
+    link.download = fileName;
+
+    // Simular la descarga (en producción esto sería una URL real del servidor)
+    console.log(`Descargando reporte: ${fileName}`);
+    alert(`Descargando reporte: ${fileName}`);
+
+    // En producción sería algo como:
+    // link.href = `/api/reportes/pdf/${procedimiento.id}`;
+    // document.body.appendChild(link);
+    // link.click();
+    // document.body.removeChild(link);
+  };
+
+  const [procedimientosAgendados_old, setProcedimientosAgendados_old] = useState([
     {
       id: 1,
-      indicadores: { urgente: false, primera_vez: true },
+      indicadores: { urgente: true, primera_vez: false },
       examen: {
-        codigo: 'EX-2024-015',
+        codigo: 'EX-2024-001',
         tipo: 'Endoscopia Alta',
-        estado: 'Alta'
+        estado: 'Agendado'
       },
       paciente: {
-        nombre: 'María José Fernández',
-        documento: '23456780',
-        telefono: '998765430',
+        nombre: 'María Elena González',
+        documento: '12345678',
+        telefono: '987654321',
         edad: 38,
-        historiaClinica: 'HC-2024-015'
+        historiaClinica: 'HC-2024-001'
       },
       centro: 'Clínica María Belén - Sede Central',
       sala: 'Sala de Endoscopia 1',
       recurso: 'Endoscopio Olympus EVIS X1',
-      procedimiento: 'Endoscopia Diagnóstica',
-      cie10: 'K29.5',
-      medicoReferente: 'Dr. Luis Martínez Torres',
+      procedimiento: 'Endoscopia Alta',
+      cie10: 'K25.9',
+      medicoReferente: 'Dr. Carlos García Mendoza',
       gastroenterologo: 'Dra. Ana López Silva',
-      fechaExamen: '2024-01-11',
-      horaExamen: '08:30',
-      fechaAlta: '2024-01-12',
-      horaAlta: '14:20'
+      fechaExamen: '2024-01-15',
+      horaExamen: '09:00'
     },
     {
       id: 2,
-      indicadores: { urgente: true, primera_vez: false },
+      indicadores: { urgente: false, primera_vez: true },
       examen: {
-        codigo: 'EX-2024-016',
+        codigo: 'EX-2024-002',
         tipo: 'Colonoscopia',
-        estado: 'Alta'
+        estado: 'Agendado'
       },
       paciente: {
-        nombre: 'Roberto Carlos Vásquez',
-        documento: '34567890',
-        telefono: '987654320',
-        edad: 62,
-        historiaClinica: 'HC-2024-016'
+        nombre: 'Carlos Antonio Rodríguez',
+        documento: '87654321',
+        telefono: '912345678',
+        edad: 45,
+        historiaClinica: 'HC-2024-002'
       },
       centro: 'Clínica María Belén - Sede Norte',
       sala: 'Sala de Endoscopia 2',
-      recurso: 'Colonoscopio Pentax',
-      procedimiento: 'Colonoscopia Terapéutica',
+      recurso: 'Colonoscopio',
+      procedimiento: 'Colonoscopia Diagnóstica',
       cie10: 'K59.0',
-      medicoReferente: 'Dra. Carmen Ruiz Mendoza',
+      medicoReferente: 'Dr. Pedro Silva Rojas',
       gastroenterologo: 'Dr. Carlos García Mendoza',
-      fechaExamen: '2024-01-10',
-      horaExamen: '15:00',
-      fechaAlta: '2024-01-12',
-      horaAlta: '10:45'
+      fechaExamen: '2024-01-16',
+      horaExamen: '14:30'
     },
     {
       id: 3,
       indicadores: { urgente: false, primera_vez: false },
       examen: {
-        codigo: 'EX-2024-017',
-        tipo: 'CPRE',
-        estado: 'Alta'
+        codigo: 'EX-2024-003',
+        tipo: 'Biopsia Gástrica',
+        estado: 'Agendado'
       },
       paciente: {
-        nombre: 'Elena Patricia Morales',
-        documento: '45678901',
+        nombre: 'Ana Patricia Martínez',
+        documento: '11223344',
         telefono: '976543210',
-        edad: 54,
-        historiaClinica: 'HC-2024-017'
+        edad: 52,
+        historiaClinica: 'HC-2024-003'
       },
       centro: 'Clínica María Belén - Sede Central',
       sala: 'Sala de Procedimientos',
-      recurso: 'Equipo CPRE Olympus',
-      procedimiento: 'CPRE Diagnóstica',
-      cie10: 'K87.1',
-      medicoReferente: 'Dr. Pedro Silva Rojas',
-      gastroenterologo: 'Dra. Ana Ldpez Silva',
-      fechaExamen: '2024-01-09',
-      horaExamen: '12:30',
-      fechaAlta: '2024-01-11',
-      horaAlta: '16:10'
+      recurso: 'Equipo de Biopsia',
+      procedimiento: 'Biopsia Gástrica',
+      cie10: 'K31.9',
+      medicoReferente: 'Dra. Carmen Martínez Torres',
+      gastroenterologo: 'Dr. Pedro Silva Rojas',
+      fechaExamen: '2024-01-17',
+      horaExamen: '11:00'
     }
   ]);
 
   // Datos simulados para información del paciente
   const pacienteCompleto = {
-    registro: 'REG-2024-015',
-    documento: '23456780',
-    mrn: 'MRN-001245',
-    nombres: 'María José',
-    apellidos: 'Fernández Ruiz',
+    registro: 'REG-2024-001',
+    documento: '12345678',
+    mrn: 'MRN-001234',
+    nombres: 'María Elena',
+    apellidos: 'González Martínez',
     estadoCivil: 'Casada',
     genero: 'Femenino',
     fechaNacimiento: '1985-03-15',
     edad: 38,
-    tipo: 'Seguro',
+    tipo: 'Particular',
     nacionalidad: 'Peruana',
-    direccion: 'Av. Arequipa 1234',
-    distrito: 'Lince',
-    codPostal: '15046',
+    direccion: 'Av. Principal 123, Dpto. 201',
+    distrito: 'Miraflores',
+    codPostal: '15001',
     provincia: 'Lima',
     departamento: 'Lima',
     pais: 'Perú',
-    correo: 'maria.fernandez@email.com',
-    telefonoCelular: '998765430',
-    fechaHistoriaMedica: '2023-08-20',
-    fechaUltimoTriaje: '2024-01-11'
+    correo: 'maria.gonzalez@email.com',
+    telefonoCelular: '987654321',
+    fechaHistoriaMedica: '2023-01-15',
+    fechaUltimoTriaje: '2024-01-10'
   };
 
   // Datos simulados para información médica del examen
   const examenCompleto = {
-    id: 'EX-015',
-    numeroAcceso: 'ACC-2024-015',
-    paciente: 'María José Fernández',
-    hc: 'HC-2024-015',
+    id: 'EX-001',
+    numeroAcceso: 'ACC-2024-001',
+    paciente: 'María Elena González',
+    hc: 'HC-2024-001',
     fechaNacimiento: '1985-03-15',
     edad: 38,
     centro: 'Clínica María Belén - Sede Central',
     salaRecurso: 'Sala de Endoscopia 1 / Endoscopio Olympus',
-    procedimiento: 'Endoscopia Diagnóstica',
+    procedimiento: 'Endoscopia Alta',
     medicoAsignado: 'Dra. Ana López Silva',
-    fechaExamen: '2024-01-11',
-    estado: 'Alta',
-    estadoReporte: 'Finalizado',
-    medicoRef: 'Dr. Luis Martínez Torres',
-    suministros: 'Sedación, Material de Biopsia',
-    cie10: 'K29.5',
-    urgente: 'No',
-    adenda: 'Sí',
-    reporte: 'Sí',
-    archivosMultimedia: 'Disponible'
+    fechaExamen: '2024-01-15',
+    estado: 'Agendado',
+    estadoReporte: 'Pendiente',
+    medicoRef: 'Dr. Carlos García Mendoza',
+    suministros: 'Sedación, Biopsia Kit',
+    cie10: 'K25.9',
+    urgente: 'Sí',
+    adenda: 'No',
+    reporte: 'No',
+    archivosMultimedia: 'Pendiente'
   };
 
   // Funciones auxiliares
   const getIndicadorIcon = (indicadores) => {
     const icons = [];
-    if (indicadores.urgente) {
+    if (indicadores) {
       icons.push(
         <Chip
           key="urgente"
@@ -305,23 +540,55 @@ const Altas = () => {
 
   // Función para buscar procedimientos
   const handleBuscarProcedimientos = () => {
-    console.log('Buscando procedimientos dados de alta con filtros:', filters);
+    console.log('Buscando procedimientos con filtros:', filters);
   };
 
-  // Filtrar procedimientos basado en los filtros
-  const procedimientosFiltrados = procedimientosAltas.filter(proc => {
-    const cumpleFechaInicio = !filters.fechaInicio || proc.fechaAlta >= filters.fechaInicio;
-    const cumpleFechaFin = !filters.fechaFin || proc.fechaAlta <= filters.fechaFin;
-    const cumpleSala = !filters.sala || proc.sala.toLowerCase().includes(filters.sala.toLowerCase());
-    const cumpleProcedimiento = !filters.procedimiento || proc.procedimiento.toLowerCase().includes(filters.procedimiento.toLowerCase());
+  // Filtrar procedimientos basado en los filtros (comparando fechas con Date y fin de día inclusivo)
+  const procedimientosFiltrados = procedimientosAgendados.filter(proc => {
+    const fechaExamenRaw = proc?.fechaExamen;
+
+    // Parsear fechas como locales para evitar desfases por timezone y comparar solo día
+    const parseLocalDate = (val) => {
+      if (!val) return null;
+      if (typeof val === 'string') {
+        const m = val.match(/^(\d{4})-(\d{2})-(\d{2})(?:$|T)/);
+        if (m) {
+          return new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
+        }
+        return new Date(val);
+      }
+      if (val instanceof Date) {
+        return new Date(val.getFullYear(), val.getMonth(), val.getDate());
+      }
+      return null;
+    };
+
+    const examDate = parseLocalDate(fechaExamenRaw);
+    const startDate = parseLocalDate(filters.fechaInicio);
+    const endDate = parseLocalDate(filters.fechaFin);
+
+    const toStartOfDay = (d) => (d ? new Date(d.getFullYear(), d.getMonth(), d.getDate()) : null);
+    const toEndOfDay = (d) => (d ? new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999) : null);
+
+    const normalizedExam = toStartOfDay(examDate);
+    const cumpleFechaInicio = !startDate || (normalizedExam && normalizedExam >= toStartOfDay(startDate));
+    const cumpleFechaFin = !endDate || (normalizedExam && normalizedExam <= toEndOfDay(endDate));
+
+    const sala = (proc?.sala || '').toLowerCase();
+    const cumpleSala = !filters.sala || sala.includes((filters.sala || '').toLowerCase());
+    const procedimiento = (proc?.procedimiento || '').toLowerCase();
+    const cumpleProcedimiento = !filters.procedimiento || procedimiento.includes((filters.procedimiento || '').toLowerCase());
+    const nombrePaciente = proc?.paciente?.nombre || '';
+    const documentoPaciente = proc?.paciente?.documento || '';
+    const search = (filters.searchTerm || '').toLowerCase();
     const cumpleBusqueda = !filters.searchTerm ||
-      proc.paciente.nombre.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-      proc.paciente.documento.includes(filters.searchTerm);
+      nombrePaciente.toLowerCase().includes(search) ||
+      documentoPaciente.includes(filters.searchTerm);
 
     return cumpleFechaInicio && cumpleFechaFin && cumpleSala && cumpleProcedimiento && cumpleBusqueda;
   });
 
-  // Funciones para manejar modales de historial
+  // Funciones para manejar modales
   const handleOpenPatientHistory = (procedimiento) => {
     setSelectedProcedimiento(procedimiento);
     setOpenPatientHistoryModal(true);
@@ -342,7 +609,102 @@ const Altas = () => {
     setSelectedProcedimiento(null);
   };
 
-  // Función para la acción de subir archivos
+  // Funciones para las acciones
+  const handlePacientePresente = (procedimiento) => {
+    setSelectedProcedimiento(procedimiento);
+    setOpenConfirmPresentModal(true);
+  };
+
+  const handleConfirmPacienteInicio = async(e) => {
+
+    e.preventDefault();
+
+    console.log('Paciente se presentó:', selectedProcedimiento);
+    // Mover el procedimiento de Agendados a Completados
+    // Actualizar el estado del procedimiento
+    const procedimientoCompletado = {
+      ...selectedProcedimiento,
+      status: 10064,
+    };
+
+    // Aquí normalmente harías una llamada a la API para mover el procedimiento
+    // y luego actualizarías la lista local
+
+    // Remover de la lista de agendados
+    //setProcedimientosAgendados(prev =>
+    //  prev.filter(proc => proc.id !== selectedProcedimiento.id)
+    //);
+
+    const procedimientoActualizado = await appointmentsService.update_Estado_Proc(selectedProcedimiento.id, procedimientoCompletado);
+    
+    console.log('✅ Procedimiento actualizado:', procedimientoActualizado);
+
+
+    await cargarProcedimientos();
+
+    // En un sistema real, aquí también añadirías el procedimiento a la lista de completados
+    // Esto se haría a través de una API call o context/store
+    //console.log('Procedimiento movido a Completados:', procedimientoCompletado);
+
+    handleCloseConfirmPresentModal();
+
+    // Opcional: mostrar mensaje de éxito
+    // alert(`Procedimiento completado: ${selectedProcedimiento.paciente.nombre}`);
+  };
+
+  const handleReagendar = (procedimiento) => {
+    setSelectedProcedimiento(procedimiento);
+
+    // Normalizar fecha y hora del procedimiento actual
+    const fechaActual = (() => {
+      const f = procedimiento?.appointmentDate || procedimiento?.fechaExamen || '';
+      if (!f) return '';
+      if (typeof f === 'string') {
+        const parts = f.split('T');
+        return parts[0] || '';
+      }
+      if (f instanceof Date) {
+        const y = f.getFullYear();
+        const m = String(f.getMonth() + 1).padStart(2, '0');
+        const d = String(f.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }
+      return '';
+    })();
+
+    const horaActual = (() => {
+      const h = procedimiento?.hoursMedicalShedule || procedimiento?.horaExamen || '';
+      if (!h) return '';
+      if (typeof h === 'string') {
+        // Asegurar formato HH:mm
+        const hhmm = h.substring(0,5);
+        return hhmm;
+      }
+      return '';
+    })();
+
+    setRescheduleForm({
+      id: procedimiento.id,
+      medico: procedimiento?.personalId || '',
+      sala: procedimiento?.procedureRoomId || '',
+      equipo: procedimiento?.resourcesId || '',
+      fecha: fechaActual,
+      hora: horaActual
+    });
+
+    setOpenRescheduleModal(true);
+  };
+
+  const handleSubirArchivos = (procedimiento) => {
+    setSelectedProcedimiento(procedimiento);
+    setUploadForm({
+      selectedFile: null,
+      tipoArchivo: '',
+      descripcion: ''
+    });
+    setOpenUploadModal(true);
+  };
+
   const handleSubirArchivo = (procedimiento) => {
     setSelectedProcedimiento(procedimiento);
     setUploadForm({
@@ -353,12 +715,138 @@ const Altas = () => {
     setOpenUploadModal(true);
   };
 
-  // Funciones para manejar el modal de upload
+  // Estado para el formulario de correo
+    const [emailForm, setEmailForm] = useState({
+      destinatario: ''
+    });
+
+  const handleEnviarCorreo = (procedimiento) => {
+    setSelectedProcedimiento(procedimiento);
+    setEmailForm({
+      destinatario: ''
+    });
+    setOpenEmailModal(true);
+  };
+
+  // Funciones para manejar el modal de email
+  const handleCloseEmailModal = () => {
+    setOpenEmailModal(false);
+    setSelectedProcedimiento(null);
+    setEmailForm({
+      destinatario: ''
+    });
+  };
+
+  const handleEmailFormChange = (field, value) => {
+    setEmailForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleSendEmail = () => {
+    console.log('Enviando correo:', {
+      procedimiento: selectedProcedimiento,
+      email: emailForm
+    });
+    // Aquí implementarías la lógica para enviar el correo
+    handleCloseEmailModal();
+  };
+  
+  const handleAltaExamen = (procedimiento) => {
+    setSelectedProcedimiento(procedimiento);
+    setOpenCancelModal(true);
+  };
+
+  const handleCie10 = (procedimiento) => {
+    setSelectedProcedimiento(procedimiento);
+    setCie10Form({
+      codigoSeleccionado: '',
+      descripcionSeleccionada: ''
+    });
+    setCie10Seleccionados([]);
+    setOpenCie10Modal(true);
+  };
+
+  // Funciones para cerrar modales
+  const handleCloseAltaModal = () => {
+    setOpenCancelModal(false);
+    setSelectedProcedimiento(null);
+  };
+
+  const handleCloseRescheduleModal = () => {
+    setOpenRescheduleModal(false);
+    setSelectedProcedimiento(null);
+  };
+
   const handleCloseUploadModal = () => {
     setOpenUploadModal(false);
     setSelectedProcedimiento(null);
   };
 
+  const handleCloseCie10Modal = () => {
+    setOpenCie10Modal(false);
+    setSelectedProcedimiento(null);
+  };
+
+  const handleCloseConfirmPresentModal = () => {
+    setOpenConfirmPresentModal(false);
+    setSelectedProcedimiento(null);
+  };
+
+  // Función para confirmar cancelación
+  const handleConfirmAlta = async(e) => {
+    e.preventDefault();
+
+    console.log('Se cancela atención:', selectedProcedimiento);
+
+    const procedimientoCompletado = {
+      ...selectedProcedimiento,
+      status: 10066,
+    };
+
+    const procedimientoActualizado = await appointmentsService.update_Estado_Proc(selectedProcedimiento.id, procedimientoCompletado);
+    
+    console.log('✅ Procedimiento cancelado:', procedimientoActualizado);
+
+
+    await cargarProcedimientos();
+
+    handleCloseAltaModal();
+    
+    {/*
+    console.log('Examen cancelado:', selectedProcedimiento);
+    // Aquí actualizarías el estado del procedimiento a cancelado
+    setProcedimientosAgendados(prev =>
+      prev.filter(proc => proc.id !== selectedProcedimiento.id)
+    );
+    handleCloseAltaModal();
+    */}
+  };
+
+  // Función para confirmar reagendamiento
+  const handleConfirmReschedule = async(e) => {
+    console.log('Procedimiento reagendado:', rescheduleForm);
+
+    const procedimientoCompletado = {
+      ...rescheduleForm,
+      status: 10068,
+      personalId: rescheduleForm.medico,
+      procedureRoomId: rescheduleForm.sala,
+      resourcesId: rescheduleForm.equipo,
+      appointmentDate: rescheduleForm.fecha,
+      hoursMedicalShedule: rescheduleForm.hora
+    };
+    
+    const procedimientoActualizado = await appointmentsService.update_Sala_med_equipo_fecha_hora_Proc(rescheduleForm.id, procedimientoCompletado);
+    
+    console.log('✅ Procedimiento cancelado:', procedimientoActualizado);
+    await cargarProcedimientos();
+    // Aquí actualizarías el procedimiento con los nuevos datos
+    handleCloseRescheduleModal();
+  };
+
+  // Función para manejar selección de archivos
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
     setUploadForm(prev => ({ ...prev, selectedFile: file }));
@@ -372,7 +860,7 @@ const Altas = () => {
         nombre: uploadForm.selectedFile.name,
         tipo: uploadForm.tipoArchivo,
         fechaCreacion: new Date().toISOString().split('T')[0],
-        tamanio: `${(uploadForm.selectedFile.size / 1024 / 1024).toFixed(1)} MB`
+        tamaño: `${(uploadForm.selectedFile.size / 1024 / 1024).toFixed(1)} MB`
       };
       setArchivosSubidos(prev => [...prev, newFile]);
       setUploadForm({
@@ -383,8 +871,70 @@ const Altas = () => {
     }
   };
 
+  // Función para eliminar archivo
   const handleDeleteFile = (fileId) => {
     setArchivosSubidos(prev => prev.filter(file => file.id !== fileId));
+  };
+
+  // Funciones para CIE-10
+  const handleAgregarCie10 = () => {
+    if (cie10Form.codigoSeleccionado && cie10Form.descripcionSeleccionada) {
+      const nuevoCie10 = {
+        id: cie10Seleccionados.length + 1,
+        codigo: cie10Form.codigoSeleccionado,
+        descripcion: cie10Form.descripcionSeleccionada
+      };
+
+      // Verificar que no esté ya agregado
+      const yaExiste = cie10Seleccionados.some(item => item.codigo === nuevoCie10.codigo);
+      if (!yaExiste) {
+        setCie10Seleccionados(prev => [...prev, nuevoCie10]);
+        setCie10Form({
+          codigoSeleccionado: '',
+          descripcionSeleccionada: ''
+        });
+      }
+    }
+  };
+
+  const handleEliminarCie10 = (id) => {
+    setCie10Seleccionados(prev => prev.filter(item => item.id !== id));
+  };
+
+  const handleCie10SelectChange = (codigoSeleccionado) => {
+    const cie10Encontrado = codigosCie10.find(item => item.codigo === codigoSeleccionado);
+    setCie10Form({
+      codigoSeleccionado,
+      descripcionSeleccionada: cie10Encontrado ? cie10Encontrado.descripcion : ''
+    });
+  };
+
+  // Función para guardar CIE-10
+  const handleGuardarCie10 = () => {
+    console.log('CIE-10 guardados:', cie10Seleccionados);
+    // Aquí actualizarías los códigos CIE-10 del procedimiento
+    // En un sistema real, harías una llamada a la API
+    handleCloseCie10Modal();
+  };
+
+  const getTipoColor = (tipo) => {
+    if (!tipo) return 'default';
+    //const tipoNum = parseInt(tipo);
+    switch (tipo) {
+      case 'Alta': return 'warning';
+      default: return 'default';
+    }
+  };
+
+  // Función para obtener el label del tipo
+  const getTipoLabel = (tipo) => {
+    if (!tipo) return 'No definido';
+    const tipoNum = parseInt(tipo);
+    switch (tipoNum) {
+      case 10024: return 'Laboratorio';
+      case 10025: return 'Adicional';
+      default: return 'Otro';
+    }
   };
 
   return (
@@ -421,16 +971,15 @@ const Altas = () => {
 
       {/* Estructura Principal con distribución 20% - 80% */}
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-        {/* Cabecera - 20% */}
-        <Paper sx={{ p: 3, mb: 3, minHeight: '20vh', boxShadow: 3 }}>
-          {/* Título */}
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-            <ExitToApp sx={{ color: '#2184be', mr: 2, fontSize: 32 }} />
-            <Typography variant="h4" fontWeight="bold" sx={{ color: '#2184be' }}>
-              Altas de Procedimientos
-            </Typography>
-          </Box>
-
+              {/* Cabecera - 20% */}
+              <Paper sx={{ p: 3, mb: 3, minHeight: '20vh', boxShadow: 3 }}>
+                {/* Título */}
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                  <ExitToApp sx={{ color: '#2184be', mr: 2, fontSize: 32 }} />
+                  <Typography variant="h4" fontWeight="bold" sx={{ color: '#2184be' }}>
+                    Altas de Procedimientos
+                  </Typography>
+                </Box>
           {/* Filtros de Búsqueda */}
           <FieldRow>
             <ResponsiveField label="Fecha Inicio" required>
@@ -494,10 +1043,11 @@ const Altas = () => {
                   }}
                 >
                   <MenuItem value="">Todas las salas</MenuItem>
-                  <MenuItem value="Sala de Endoscopia 1">Sala de Endoscopia 1</MenuItem>
-                  <MenuItem value="Sala de Endoscopia 2">Sala de Endoscopia 2</MenuItem>
-                  <MenuItem value="Sala de Procedimientos">Sala de Procedimientos</MenuItem>
-                  <MenuItem value="Sala de Cirugía Menor">Sala de Cirugía Menor</MenuItem>
+                  {Array.isArray(salaD) && salaD.map(sala => (
+                    <MenuItem key={sala.id} value={sala.name}>
+                      {sala.name}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
             </ResponsiveField>
@@ -519,11 +1069,11 @@ const Altas = () => {
                   }}
                 >
                   <MenuItem value="">Todos los procedimientos</MenuItem>
-                  <MenuItem value="Endoscopia Alta">Endoscopia Alta</MenuItem>
-                  <MenuItem value="Colonoscopia">Colonoscopia</MenuItem>
-                  <MenuItem value="Biopsia Gástrica">Biopsia Gástrica</MenuItem>
-                  <MenuItem value="CPRE">CPRE</MenuItem>
-                  <MenuItem value="Polipectomía">Polipectomía</MenuItem>
+                  {Array.isArray(estudioD) && estudioD.map(estudio => (
+                    <MenuItem key={estudio.id} value={estudio.name}>
+                      {estudio.description}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
             </ResponsiveField>
@@ -558,29 +1108,29 @@ const Altas = () => {
               />
             </ResponsiveField>
 
-            <ResponsiveField label=" " sx={{ flex: 1 }}>
-              <Button
-                fullWidth
-                variant="contained"
-                startIcon={<Search />}
-                onClick={handleBuscarProcedimientos}
-                sx={{
-                  backgroundColor: '#ff9800',
-                  '&:hover': {
-                    backgroundColor: '#f57c00'
-                  },
-                  minHeight: '40px'
-                }}
-              >
-                Buscar
-              </Button>
-            </ResponsiveField>
+           <ResponsiveField label=" " sx={{ flex: 1 }}>
+                         <Button
+                           fullWidth
+                           variant="contained"
+                           startIcon={<Search />}
+                           onClick={handleBuscarProcedimientos}
+                           sx={{
+                             backgroundColor: '#ff9800',
+                             '&:hover': {
+                               backgroundColor: '#f57c00'
+                             },
+                             minHeight: '40px'
+                           }}
+                         >
+                           Buscar
+                         </Button>
+                       </ResponsiveField>
           </FieldRow>
         </Paper>
 
         {/* Contenido - 80% */}
         <Paper sx={{ flex: 1, boxShadow: 3, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <SectionHeader title={`Lista de Altas de Procedimientos (${procedimientosFiltrados.length})`} />
+          <SectionHeader title={`Lista de Procedimientos Completados (${procedimientosFiltrados.length})`} />
 
           {/* Tabla con scroll */}
           <Box sx={{ flex: 1, overflow: 'auto' }}>
@@ -593,21 +1143,21 @@ const Altas = () => {
                     <TableCell><strong>Paciente</strong></TableCell>
                     <TableCell><strong>Centro (Sala) {'{Recurso}'}</strong></TableCell>
                     <TableCell><strong>Procedimiento {'{CIE-10}'}</strong></TableCell>
-                    <TableCell><strong>Médico Ref.</strong></TableCell>
-                    <TableCell><strong>Gastroenterólogo</strong></TableCell>
-                    <TableCell><strong>Fecha Examen</strong></TableCell>
-                    <TableCell><strong>Fecha Alta</strong></TableCell>
+                    <TableCell><strong>Gastroenterólogo(a) / Médico Ref.</strong></TableCell>
+                    <TableCell><strong>Fecha</strong></TableCell>
+                    <TableCell><strong>Alta</strong></TableCell>
+
                     <TableCell align="center"><strong>Acciones</strong></TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {procedimientosFiltrados.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
+                      <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                         <Typography variant="body1" color="text.secondary">
                           {filters.fechaInicio || filters.fechaFin || filters.sala || filters.procedimiento || filters.searchTerm
-                            ? 'No se encontraron altas que coincidan con los filtros'
-                            : 'No hay altas de procedimientos'}
+                            ? 'No se encontraron procedimientos que coincidan con los filtros'
+                            : 'No hay procedimientos agendados'}
                         </Typography>
                       </TableCell>
                     </TableRow>
@@ -616,33 +1166,57 @@ const Altas = () => {
                       <TableRow key={proc.id} hover>
                         <TableCell>
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                            {getIndicadorIcon(proc.indicadores)}
+                            {/*{getIndicadorIcon(proc.urgente)}*/}
+                           <IconButton
+                                color="success"
+                                size="small"
+                                title="Información"
+                                //onClick={() => handlePacientePresente(proc)}
+                              >
+                                <AddCircle />
+                              </IconButton>
+                              <IconButton
+                                color="error"
+                                size="small"
+                                title="Información"
+                                //onClick={() => handlePacientePresente(proc)}
+                              >
+                                <SlowMotionVideoRounded/>
+                              </IconButton>
                           </Box>
                         </TableCell>
                         <TableCell>
                           <Box>
                             <Typography variant="body2" fontWeight="bold">
-                              {proc.examen.codigo}
+                             EX-Nº { proc.codigo}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                              {proc.examen.tipo}
+                              {proc.tipo}
                             </Typography>
                             <br />
                             <Chip
-                              label={proc.examen.estado}
-                              color="warning"
+                              label={proc.estado}
+                              color={getTipoColor(proc.estado)}
                               size="small"
-                              sx={{ mt: 0.5 }}
                             />
                           </Box>
                         </TableCell>
                         <TableCell>
                           <Box>
                             <Typography variant="body2" fontWeight="bold">
-                              {proc.paciente.nombre}
+                              {proc.nombre || '—'}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                              Doc: {proc.paciente.documento}
+                              ({proc.genero || '—'})
+                            </Typography><br />
+                            <Typography variant="caption" color="text.secondary">
+                              [{proc.fechaNac ? new Date(proc.fechaNac).toLocaleDateString() : '-'}]
+                            </Typography><br />
+                            <Typography variant="caption" color="text.secondary">
+                              {'{'+proc.tipoAtencion +'}'|| '—'+'}'}
+                            </Typography><br />
+                            <Typography variant="caption" color="text.secondary">
+                              [{proc.seguro || '—'}]
                             </Typography>
                             <br />
                             <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
@@ -683,19 +1257,23 @@ const Altas = () => {
                               {proc.procedimiento}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                              {'{' + proc.cie10 + '}'}
+                              {/*'{' + proc.cie10 + '}'*/}
+                              ()
+                            </Typography>
+                            <Typography variant="body2" fontWeight="bold">
+                              {'{' +proc.tipoProcedimiento+ '}'}
                             </Typography>
                           </Box>
                         </TableCell>
                         <TableCell>
-                          <Typography variant="body2">
-                            {proc.medicoReferente}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" color="primary">
-                            {proc.gastroenterologo}
-                          </Typography>
+                          <Box>
+                            <Typography variant="body2" color="primary">
+                             Dr. Tt: {proc.gastroenterologo}
+                            </Typography>
+                            <Typography variant="caption">
+                             Ref: {proc.medicoReferente}
+                            </Typography>
+                          </Box>
                         </TableCell>
                         <TableCell>
                           <Box>
@@ -708,14 +1286,19 @@ const Altas = () => {
                               })}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                              {proc.horaExamen}
+                              HORA: {proc.horaExamen} 
                             </Typography>
+                            {/*
+                            <Typography variant="body2" fontWeight="bold">
+                              DURACIÓN: {proc.tiempo} mins.
+                            </Typography>
+                            */}
                           </Box>
                         </TableCell>
                         <TableCell>
                           <Box>
                             <Typography variant="body2" fontWeight="bold">
-                              {new Date(proc.fechaAlta).toLocaleDateString('es-ES', {
+                              {new Date(proc.fechaCompletado).toLocaleDateString('es-ES', {
                                 weekday: 'short',
                                 year: 'numeric',
                                 month: 'short',
@@ -723,19 +1306,56 @@ const Altas = () => {
                               })}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                              {proc.horaAlta}
+                              HORA: {proc.fechaCompletado ? new Date(proc.fechaCompletado).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '—'}
                             </Typography>
                           </Box>
                         </TableCell>
                         <TableCell align="center">
-                          <IconButton
-                            color="info"
-                            size="small"
-                            title="Subir archivo"
-                            onClick={() => handleSubirArchivo(proc)}
-                          >
-                            <CloudUpload />
-                          </IconButton>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                            <Box sx={{ display: 'flex', gap: 0.5 }}>
+                            {/*
+                            <IconButton
+                              color="primary"
+                              size="small"
+                              title="Reporte"
+                              onClick={() => handleReporte(proc)}
+                            >
+                              <Description />
+                            </IconButton>
+                            */}
+                            <IconButton
+                              color="info"
+                              size="small"
+                              title="Subir archivo"
+                              onClick={() => handleSubirArchivo(proc)}
+                            >
+                              <CloudUpload />
+                            </IconButton>
+                            {/*
+                            <IconButton
+                              color="warning"
+                              size="small"
+                              title="Enviar correo"
+                              onClick={() => handleEnviarCorreo(proc)}
+                            >
+                              <Email />
+                            </IconButton>
+                            */}
+                            </Box>
+                            
+                          </Box>
+                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                             {/*
+                            <IconButton
+                              color="error"
+                              size="small"
+                              title="Pasar paciente a Alta"
+                              onClick={() => handleAltaExamen(proc)}
+                            >
+                            <ExitToAppRounded />
+                            </IconButton>
+                             */}
+                          </Box>
                         </TableCell>
                       </TableRow>
                     ))
@@ -747,7 +1367,6 @@ const Altas = () => {
         </Paper>
       </Box>
 
-      {/* Modales de Historial (iguales a otros componentes) */}
       {/* Modal para Historial del Paciente */}
       <Dialog
         open={openPatientHistoryModal}
@@ -1004,6 +1623,194 @@ const Altas = () => {
         </DialogActions>
       </Dialog>
 
+      {/* Modal para Cancelar Examen */}
+      <Dialog
+        open={openCancelModal}
+        onClose={handleCloseAltaModal}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: 2 }
+        }}
+      >
+        <DialogTitle sx={{
+          backgroundColor: '#f44336',
+          color: 'white',
+          textAlign: 'center'
+        }}>
+          <Typography variant="h6" fontWeight="bold">Confirmar Cancelación</Typography>
+        </DialogTitle>
+        <DialogContent sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="body1">
+            ¿Está seguro de que desea cancelar el examen de{' '}
+            <strong>"{selectedProcedimiento?.paciente?.nombre}"</strong>?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            Procedimiento: {selectedProcedimiento?.procedimiento}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Fecha: {selectedProcedimiento?.fechaExamen ? new Date(selectedProcedimiento.fechaExamen).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'} - {selectedProcedimiento?.horaExamen || '—'}
+          </Typography>
+          <Typography variant="body2" color="error" sx={{ mt: 2 }}>
+            Esta acción no se puede deshacer.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, justifyContent: 'center', gap: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={handleCloseAltaModal}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleConfirmAlta}
+            startIcon={<Cancel />}
+          >
+            Confirmar Cancelación
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal para Reagendar */}
+      <Dialog
+        open={openRescheduleModal}
+        onClose={handleCloseRescheduleModal}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: 2 }
+        }}
+      >
+        <DialogTitle sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          backgroundColor: '#2184be',
+          color: 'white'
+        }}>
+          <Typography variant="h6" fontWeight="bold">Reagendar Procedimiento</Typography>
+          <IconButton onClick={handleCloseRescheduleModal} sx={{ color: 'white' }}>
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 4 }}>
+          {selectedProcedimiento && (
+            <>
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                <strong>Paciente:</strong> {selectedProcedimiento?.nombre || '—'} -
+                <strong> Procedimiento:</strong> {selectedProcedimiento?.procedimiento}
+              </Typography>
+              <Divider sx={{ mb: 3 }} />
+
+              {/* Selección de Médico, Sala y Equipo */}
+              <FieldRow>
+                <ResponsiveField label="Médico" required>
+                  <FormControl fullWidth size="small">
+                    <Select
+                      value={rescheduleForm.medico}
+                      onChange={(e) => setRescheduleForm(prev => ({ ...prev, medico: e.target.value }))}
+                      displayEmpty
+                    >
+                      <MenuItem value="">Seleccionar médico</MenuItem>
+                      {Array.isArray(medicosD) && medicosD.map(medico => (
+                        <MenuItem key={medico.id} value={medico.id}>
+                          {medico.nombres + ' ' + medico.apellidos}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </ResponsiveField>
+                <ResponsiveField label="Sala" required>
+                  <FormControl fullWidth size="small">
+                    <Select
+                      value={rescheduleForm.sala}
+                      onChange={(e) => setRescheduleForm(prev => ({ ...prev, sala: e.target.value }))}
+                      displayEmpty
+                    >
+                      <MenuItem value="">Seleccionar sala</MenuItem>
+                      {Array.isArray(salaD) && salaD.map(sala => (
+                        <MenuItem key={sala.id} value={sala.id}>
+                          {sala.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </ResponsiveField>
+
+                <ResponsiveField label="Equipo" required>
+                  <FormControl fullWidth size="small">
+                    <Select
+                      value={rescheduleForm.equipo}
+                      onChange={(e) => setRescheduleForm(prev => ({ ...prev, equipo: e.target.value }))}
+                      displayEmpty
+                    >
+                      <MenuItem value="">Seleccionar recurso</MenuItem>
+                      {Array.isArray(recursoD) && recursoD.map(recurso => (
+                        <MenuItem key={recurso.id} value={recurso.id}>
+                          {recurso.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </ResponsiveField>
+              </FieldRow>
+
+              <Divider sx={{ my: 3 }} />
+
+              {/* Horario para Reagendar */}
+              <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
+                Horario para Reagendar
+              </Typography>
+              <FieldRow>
+                <ResponsiveField label="Nueva Fecha" required>
+                  <TextField
+                    fullWidth
+                    type="date"
+                    value={rescheduleForm.fecha}
+                    onChange={(e) => setRescheduleForm(prev => ({ ...prev, fecha: e.target.value }))}
+                    size="small"
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </ResponsiveField>
+
+                <ResponsiveField label="Nueva Hora" required>
+                  <TextField
+                    fullWidth
+                    type="time"
+                    value={rescheduleForm.hora}
+                    onChange={(e) => setRescheduleForm(prev => ({ ...prev, hora: e.target.value }))}
+                    size="small"
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </ResponsiveField>
+              </FieldRow>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 3, gap: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={handleCloseRescheduleModal}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirmReschedule}
+            disabled={!rescheduleForm.medico || !rescheduleForm.sala || !rescheduleForm.equipo || !rescheduleForm.fecha || !rescheduleForm.hora}
+            startIcon={<Schedule />}
+            sx={{
+              backgroundColor: '#4caf50',
+              '&:hover': { backgroundColor: '#45a049' }
+            }}
+          >
+            Confirmar Reagendamiento
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Modal para Subir Archivos */}
       <Dialog
         open={openUploadModal}
@@ -1030,8 +1837,8 @@ const Altas = () => {
           {selectedProcedimiento && (
             <>
               <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                <strong>Paciente:</strong> {selectedProcedimiento.paciente.nombre} -
-                <strong> Examen:</strong> {selectedProcedimiento.examen.codigo}
+                <strong>Paciente:</strong> {selectedProcedimiento?.nombre || '—'} -
+                <strong> Examen:</strong> {selectedProcedimiento?.codigo}
               </Typography>
               <Divider sx={{ mb: 3 }} />
 
@@ -1131,7 +1938,7 @@ const Altas = () => {
                             />
                           </TableCell>
                           <TableCell>{archivo.fechaCreacion}</TableCell>
-                          <TableCell>{archivo.tamanio}</TableCell>
+                          <TableCell>{archivo.tamaño}</TableCell>
                           <TableCell align="center">
                             <IconButton
                               color="error"
@@ -1160,7 +1967,321 @@ const Altas = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+{/* Modal para Enviar Correo */}
+      <Dialog
+        open={openEmailModal}
+        onClose={handleCloseEmailModal}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: 2 }
+        }}
+      >
+        <DialogTitle sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          backgroundColor: '#2184be',
+          color: 'white'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Email sx={{ mr: 1 }} />
+            <Typography variant="h6" fontWeight="bold">Enviar Reporte por Correo</Typography>
+          </Box>
+          <IconButton onClick={handleCloseEmailModal} sx={{ color: 'white' }}>
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 4 }}>
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="body2" fontWeight="bold" sx={{ mb: 1 }}>
+              Correo Electrónico *
+            </Typography>
+            <TextField
+              fullWidth
+              placeholder="Ingrese el correo electrónico"
+              value={emailForm.destinatario}
+              onChange={(e) => handleEmailFormChange('destinatario', e.target.value)}
+              type="email"
+              size="small"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Email sx={{ color: '#666' }} />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: '#f8f9fa',
+                  '&:hover': {
+                    backgroundColor: '#e9ecef',
+                  },
+                  '&.Mui-focused': {
+                    backgroundColor: '#fff',
+                  }
+                }
+              }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button
+            variant="outlined"
+            onClick={handleCloseEmailModal}
+            sx={{ mr: 2 }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSendEmail}
+            startIcon={<Email />}
+            disabled={!emailForm.destinatario}
+            sx={{
+              backgroundColor: '#2184be',
+              '&:hover': {
+                backgroundColor: '#1e75a6'
+              }
+            }}
+          >
+            Enviar Correo
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal para CIE-10 */}
+      <Dialog
+        open={openCie10Modal}
+        onClose={handleCloseCie10Modal}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: 2 }
+        }}
+      >
+        <DialogTitle sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          backgroundColor: '#2184be',
+          color: 'white'
+        }}>
+          <Typography variant="h6" fontWeight="bold">Gestionar CIE-10</Typography>
+          <IconButton onClick={handleCloseCie10Modal} sx={{ color: 'white' }}>
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 4 }}>
+          {selectedProcedimiento && (
+            <>
+              {/* Información del Examen y Paciente */}
+              <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f8f9fa' }}>
+                <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, color: '#2184be' }}>
+                  Información del Examen
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body2">
+                      <strong>Examen:</strong> {selectedProcedimiento.codigo} - {selectedProcedimiento.tipo}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body2">
+                      <strong>Paciente:</strong> {selectedProcedimiento?.nombre || '—'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body2">
+                      <strong>Procedimiento:</strong> {selectedProcedimiento.procedimiento}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body2">
+                      <strong>CIE-10 Actual:</strong> {selectedProcedimiento.cie10}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </Paper>
+
+              <Divider sx={{ mb: 3 }} />
+
+              {/* Seleccionar CIE-10 */}
+              <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
+                Seleccionar CIE-10
+              </Typography>
+
+              <FieldRow>
+                <ResponsiveField label="Seleccione un CIE-10" required sx={{ flex: 2 }}>
+                  <FormControl fullWidth size="small">
+                    <Select
+                      value={cie10Form.codigoSeleccionado}
+                      onChange={(e) => handleCie10SelectChange(e.target.value)}
+                      displayEmpty
+                    >
+                      <MenuItem value="">Seleccionar código CIE-10</MenuItem>
+                      {codigosCie10.map((item) => (
+                        <MenuItem key={item.codigo} value={item.codigo}>
+                          {item.codigo} - {item.descripcion}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </ResponsiveField>
+
+                <ResponsiveField label=" " sx={{ flex: 1 }}>
+                  <Button
+                    variant="contained"
+                    onClick={handleAgregarCie10}
+                    disabled={!cie10Form.codigoSeleccionado}
+                    startIcon={<Assignment />}
+                    sx={{
+                      backgroundColor: '#4caf50',
+                      '&:hover': { backgroundColor: '#45a049' },
+                      height: '40px'
+                    }}
+                  >
+                    Agregar
+                  </Button>
+                </ResponsiveField>
+              </FieldRow>
+
+              <Divider sx={{ my: 3 }} />
+
+              {/* Lista de CIE-10 Seleccionados */}
+              <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, color: '#2184be' }}>
+                CIE-10 Seleccionados
+              </Typography>
+              <TableContainer component={Paper} sx={{ mt: 2 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                      <TableCell><strong>ID</strong></TableCell>
+                      <TableCell><strong>Código</strong></TableCell>
+                      <TableCell><strong>Descripción</strong></TableCell>
+                      <TableCell align="center"><strong>Acciones</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {cie10Seleccionados.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} align="center" sx={{ py: 2 }}>
+                          <Typography variant="body2" color="text.secondary">
+                            No hay códigos CIE-10 seleccionados
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      cie10Seleccionados.map((item) => (
+                        <TableRow key={item.id} hover>
+                          <TableCell>{item.id}</TableCell>
+                          <TableCell>
+                            <Typography variant="body2" fontWeight="bold">
+                              {item.codigo}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2">
+                              {item.descripcion}
+                            </Typography>
+                          </TableCell>
+                          <TableCell align="center">
+                            <IconButton
+                              color="error"
+                              size="small"
+                              onClick={() => handleEliminarCie10(item.id)}
+                              title="Eliminar código"
+                            >
+                              <Delete />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 3, gap: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={handleCloseCie10Modal}
+          >
+            Cerrar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleGuardarCie10}
+            disabled={cie10Seleccionados.length === 0}
+            startIcon={<Save />}
+            sx={{
+              backgroundColor: '#4caf50',
+              '&:hover': { backgroundColor: '#45a049' }
+            }}
+          >
+            Guardar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal de Confirmación para Paciente Presente */}
+      <Dialog
+        open={openConfirmPresentModal}
+        onClose={handleCloseConfirmPresentModal}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: 2 }
+        }}
+      >
+        <DialogTitle sx={{
+          backgroundColor: '#dbb539ff',
+          color: 'white',
+          textAlign: 'center'
+        }}>
+          <Typography variant="h6" fontWeight="bold">Iniciar Procedimiento</Typography>
+        </DialogTitle>
+        <DialogContent sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="body1">
+            ¿Confirma inicio de procedimiento del paciente{' '}
+            <strong>"{selectedProcedimiento?.nombre}"</strong>{' '}
+             ?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            Procedimiento: {selectedProcedimiento?.procedimiento}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Fecha: {selectedProcedimiento?.fechaExamen ? new Date(selectedProcedimiento.fechaExamen).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'} - {selectedProcedimiento?.horaExamen || '—'}
+          </Typography>
+          <Typography variant="body2" color="primary" sx={{ mt: 2, fontWeight: 'bold' }}>
+            El examen cambiará al estado de "En Proceso".
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, justifyContent: 'center', gap: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={handleCloseConfirmPresentModal}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirmPacienteInicio}
+            startIcon={<CheckCircle />}
+            sx={{
+              backgroundColor: '#dbb539ff',
+              '&:hover': { backgroundColor: '#dbb539ff' }
+            }}
+          >
+            Confirmar Inicio de Procedimiento
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };
+
 export default Altas;

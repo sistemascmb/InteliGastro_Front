@@ -19,6 +19,7 @@ import DictadoProc from './pages/procedimientos/DictadoProc';
 import Completados from './pages/procedimientos/Completados';
 import CompletadoOld from './pages/procedimientos/CompletadoOld';
 import Altas from './pages/procedimientos/Altas';
+import AltasOld from './pages/procedimientos/AltasOld';
 
 import Pacientes from './pages/pacientes/Pacientes';
 
@@ -125,6 +126,8 @@ function App() {
             <Route path="/procedimientos/completados" element={<Completados />} />
             <Route path="/procedimientos/completadosold" element={<CompletadoOld />} />
             <Route path="/procedimientos/altas" element={<Altas />} />
+
+            <Route path="/procedimientos/AltasOld" element={<AltasOld />} />
             
             <Route path="/pacientes/pacientes" element={<Pacientes />} />
             

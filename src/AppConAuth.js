@@ -29,7 +29,7 @@ import AgendaHoy from './pages/procedimientos/AgendaHoy';
 import Ordenes from './pages/procedimientos/Ordenes';
 import Agendados from './pages/procedimientos/Agendados';
 import Completados from './pages/procedimientos/Completados';
-import Altas from './pages/procedimientos/Altas';
+import Altas from './pages/procedimientos/AltasOld';
 
 // Páginas de administración
 import Personal from './pages/administracion/Personal';
