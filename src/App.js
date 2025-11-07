@@ -14,7 +14,10 @@ import Finalizadas from './pages/citas/Finalizadas';
 import AgendaHoy from './pages/procedimientos/AgendaHoy';
 import Ordenes from './pages/procedimientos/Ordenes';
 import Agendados from './pages/procedimientos/Agendados';
+import PreparacionProc from './pages/procedimientos/PreparacionProc';
+import DictadoProc from './pages/procedimientos/DictadoProc';
 import Completados from './pages/procedimientos/Completados';
+import CompletadoOld from './pages/procedimientos/CompletadoOld';
 import Altas from './pages/procedimientos/Altas';
 
 import Pacientes from './pages/pacientes/Pacientes';
@@ -117,7 +120,10 @@ function App() {
             <Route path="/procedimientos/agenda-hoy" element={<AgendaHoy />} />
             <Route path="/procedimientos/ordenes" element={<Ordenes />} />
             <Route path="/procedimientos/agendados" element={<Agendados />} />
+            <Route path="/procedimientos/preparacionproc" element={<PreparacionProc />} />
+            <Route path="/procedimientos/dictadoproc" element={<DictadoProc />} />
             <Route path="/procedimientos/completados" element={<Completados />} />
+            <Route path="/procedimientos/completadosold" element={<CompletadoOld />} />
             <Route path="/procedimientos/altas" element={<Altas />} />
             
             <Route path="/pacientes/pacientes" element={<Pacientes />} />

@@ -41,7 +41,12 @@ import {
   History,
   Assessment,
   Delete,
-  Save
+  Save,
+  ContentPasteSearch,
+  ImageSearch,
+  FactCheckRounded,
+  BedroomChild,
+  EditDocument
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { appointmentsService, patientsService, staff, staffService } from 'services';
@@ -108,7 +113,7 @@ const FieldRow = memo(({ children }) => (
 
 FieldRow.displayName = 'FieldRow';
 
-const Agendados = () => {
+const DictadoProc = () => {
   const navigate = useNavigate();
 
   // Estado para filtros de búsqueda
@@ -248,7 +253,7 @@ const cargarSalas = async () => {
 
   const cargarProcedimientos = async () => {
         try {
-          const procedimientos = await appointmentsService.getAll_Proc_Agendado();
+          const procedimientos = await appointmentsService.getAll_Proc_Dictado();
           
           const listaAgendasProcedimientos = await Promise.all(
               procedimientos.data.map(async (procedimientoDat) => {
@@ -587,7 +592,7 @@ const cargarSalas = async () => {
     setOpenConfirmPresentModal(true);
   };
 
-  const handleConfirmPacientePresente = async(e) => {
+  const handleConfirmPacienteInicio = async(e) => {
 
     e.preventDefault();
 
@@ -596,7 +601,7 @@ const cargarSalas = async () => {
     // Actualizar el estado del procedimiento
     const procedimientoCompletado = {
       ...selectedProcedimiento,
-      status: 10063,
+      status: 10064,
     };
 
     // Aquí normalmente harías una llamada a la API para mover el procedimiento
@@ -845,8 +850,8 @@ const cargarSalas = async () => {
     if (!tipo) return 'default';
     //const tipoNum = parseInt(tipo);
     switch (tipo) {
-      case 'Agendado': return 'success';
-      case 'Reagendado': return 'info';
+      case 'Dictado': return 'success';
+      case 'En Progreso': return 'warning';
       default: return 'default';
     }
   };
@@ -891,7 +896,7 @@ const cargarSalas = async () => {
         >
           Procedimientos
         </Link>
-        <Typography color="text.primary">Agendados</Typography>
+        <Typography color="text.primary">Dictado</Typography>
       </Breadcrumbs>
 
       {/* Estructura Principal con distribución 20% - 80% */}
@@ -902,7 +907,7 @@ const cargarSalas = async () => {
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
             <MedicalServices sx={{ color: '#2184be', mr: 2, fontSize: 32 }} />
             <Typography variant="h4" fontWeight="bold" sx={{ color: '#2184be' }}>
-              Procedimientos Agendados
+              Lista de Procedimientos para Dictado
             </Typography>
           </Box>
 
@@ -1110,17 +1115,11 @@ const cargarSalas = async () => {
                               {proc.tipo}
                             </Typography>
                             <br />
-                            {/*<Chip
-                              label={proc.estado}
-                              color="info"
-                              size="small"
-                              sx={{ mt: 0.5 }}
-                            />*/}
                             <Chip
-                                label={proc.estado}
-                                color={getTipoColor(proc.estado)}
-                                size="small"
-                              />
+                              label={proc.estado}
+                              color={getTipoColor(proc.estado)}
+                              size="small"
+                            />
                           </Box>
                         </TableCell>
                         <TableCell>
@@ -1219,14 +1218,17 @@ const cargarSalas = async () => {
                         <TableCell align="center">
                           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                             <Box sx={{ display: 'flex', gap: 0.5 }}>
+
                               <IconButton
                                 color="success"
                                 size="small"
-                                title="Paciente se presentó al centro"
-                                onClick={() => handlePacientePresente(proc)}
+                                title="Iniciar informe de paciente"
+                                //onClick={() => handlePacientePresente(proc)}
                               >
-                                <CheckCircle />
-                              </IconButton>
+                                <EditDocument />
+
+                              </IconButton> 
+                              {/*
                               <IconButton
                                 color="warning"
                                 size="small"
@@ -1235,6 +1237,18 @@ const cargarSalas = async () => {
                               >
                                 <Schedule />
                               </IconButton>
+                              */}
+                              <IconButton
+                                color="warning"
+                                size="small"
+                                title="Preparación de Paciente"
+                                //onClick={() => handleSubirArchivos(proc)}
+                              >
+                                <BedroomChild />
+                              </IconButton>
+                            </Box>
+                            
+                            <Box sx={{ display: 'flex', gap: 0.5 }}>
                               <IconButton
                                 color="info"
                                 size="small"
@@ -1243,8 +1257,8 @@ const cargarSalas = async () => {
                               >
                                 <CloudUpload />
                               </IconButton>
-                            </Box>
-                            <Box sx={{ display: 'flex', gap: 0.5 }}>
+
+                              {/*
                               <IconButton
                                 color="error"
                                 size="small"
@@ -1253,6 +1267,7 @@ const cargarSalas = async () => {
                               >
                                 <Cancel />
                               </IconButton>
+                              */}
                               <IconButton
                                 color="primary"
                                 size="small"
@@ -1629,7 +1644,6 @@ const cargarSalas = async () => {
                     </Select>
                   </FormControl>
                 </ResponsiveField>
-
                 <ResponsiveField label="Sala" required>
                   <FormControl fullWidth size="small">
                     <Select
@@ -2063,17 +2077,17 @@ const cargarSalas = async () => {
         }}
       >
         <DialogTitle sx={{
-          backgroundColor: '#4caf50',
+          backgroundColor: '#dbb539ff',
           color: 'white',
           textAlign: 'center'
         }}>
-          <Typography variant="h6" fontWeight="bold">Confirmar Presencia</Typography>
+          <Typography variant="h6" fontWeight="bold">Iniciar Procedimiento</Typography>
         </DialogTitle>
         <DialogContent sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="body1">
-            ¿Confirma que el paciente{' '}
+            ¿Confirma inicio de procedimiento del paciente{' '}
             <strong>"{selectedProcedimiento?.nombre}"</strong>{' '}
-            se presentó al examen?
+             ?
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
             Procedimiento: {selectedProcedimiento?.procedimiento}
@@ -2082,7 +2096,7 @@ const cargarSalas = async () => {
             Fecha: {selectedProcedimiento?.fechaExamen ? new Date(selectedProcedimiento.fechaExamen).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'} - {selectedProcedimiento?.horaExamen || '—'}
           </Typography>
           <Typography variant="body2" color="primary" sx={{ mt: 2, fontWeight: 'bold' }}>
-            El examen se moverá a la lista de "Procedimientos".
+            El examen cambiará al estado de "En Proceso".
           </Typography>
         </DialogContent>
         <DialogActions sx={{ p: 3, justifyContent: 'center', gap: 2 }}>
@@ -2094,14 +2108,14 @@ const cargarSalas = async () => {
           </Button>
           <Button
             variant="contained"
-            onClick={handleConfirmPacientePresente}
+            onClick={handleConfirmPacienteInicio}
             startIcon={<CheckCircle />}
             sx={{
-              backgroundColor: '#4caf50',
-              '&:hover': { backgroundColor: '#45a049' }
+              backgroundColor: '#dbb539ff',
+              '&:hover': { backgroundColor: '#dbb539ff' }
             }}
           >
-            Confirmar Presencia
+            Confirmar Inicio de Procedimiento
           </Button>
         </DialogActions>
       </Dialog>
@@ -2109,4 +2123,4 @@ const cargarSalas = async () => {
   );
 };
 
-export default Agendados;
+export default DictadoProc;
