@@ -523,6 +523,37 @@ const cargarSalas = async () => {
     console.log('Buscando procedimientos con filtros:', filters);
   };
 
+  // Abrir nueva ventana para captura de imágenes con datos
+  const handleIniciarCapturaImagenes = (procedimiento) => {
+    if (!procedimiento) return;
+
+    // Calcular edad a partir de fecha de nacimiento y fecha del estudio (o hoy)
+    const calcAge = (birthdate, refDate) => {
+      if (!birthdate) return '';
+      const b = new Date(birthdate);
+      const r = refDate ? new Date(refDate) : new Date();
+      let age = r.getFullYear() - b.getFullYear();
+      const m = r.getMonth() - b.getMonth();
+      if (m < 0 || (m === 0 && r.getDate() < b.getDate())) age--;
+      return age;
+    };
+
+    const paciente = encodeURIComponent(procedimiento.nombre || '');
+    const estudio = encodeURIComponent(procedimiento.procedimiento || '');
+    const codigo = encodeURIComponent(procedimiento.codigo || '');
+    const centro = encodeURIComponent(procedimiento.centro || '');
+    const sala = encodeURIComponent(procedimiento.sala || '');
+    const gastro = encodeURIComponent(procedimiento.gastroenterologo || '');
+
+    const fechaEstudioRaw = procedimiento.fechaExamen || '';
+    const edadPacienteRaw = procedimiento.fechaNac ? calcAge(procedimiento.fechaNac, fechaEstudioRaw || new Date()) : '';
+    const fechaEstudio = encodeURIComponent(fechaEstudioRaw || '');
+    const edadPaciente = encodeURIComponent(edadPacienteRaw !== '' ? String(edadPacienteRaw) : '');
+
+    const url = `/procedimientos/captura-imagenes?paciente=${paciente}&procedimiento=${estudio}&codigo=${codigo}&centro=${centro}&sala=${sala}&gastro=${gastro}&fechaEstudio=${fechaEstudio}&edadPaciente=${edadPaciente}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   // Filtrar procedimientos basado en los filtros (comparando fechas con Date y fin de día inclusivo)
   const procedimientosFiltrados = procedimientosAgendados.filter(proc => {
     const fechaExamenRaw = proc?.fechaExamen;
@@ -1249,7 +1280,7 @@ const cargarSalas = async () => {
                                 color="success"
                                 size="small"
                                 title="Inciar Captura de Imágenes"
-                                //onClick={() => handlePacientePresente(proc)}
+                                onClick={() => handleIniciarCapturaImagenes(proc)}
                               >
                                 <ImageSearch />
 
@@ -1320,9 +1351,9 @@ const cargarSalas = async () => {
                                   color="success"
                                   size="small"
                                   title="Inciar Captura de Imágenes"
-                                  //onClick={() => handlePacientePresente(proc)}
+                                  onClick={() => handleIniciarCapturaImagenes(proc)}
                                 >
-
+                                  <ImageSearch />
                                 </IconButton>
                                 )
                               }

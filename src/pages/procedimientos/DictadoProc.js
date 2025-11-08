@@ -900,7 +900,7 @@ const cargarSalas = async () => {
       </Breadcrumbs>
 
       {/* Estructura Principal con distribución 20% - 80% */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+    <Container maxWidth="lg" sx={{ py: 1, px: 2, maxWidth: '100% !important' }}>
         {/* Cabecera - 20% */}
         <Paper sx={{ p: 3, mb: 3, minHeight: '20vh', boxShadow: 3 }}>
           {/* Título */}
@@ -1289,7 +1289,7 @@ const cargarSalas = async () => {
             </TableContainer>
           </Box>
         </Paper>
-      </Box>
+      </Container>
 
       {/* Modal para Historial del Paciente */}
       <Dialog

@@ -20,6 +20,7 @@ import Completados from './pages/procedimientos/Completados';
 import CompletadoOld from './pages/procedimientos/CompletadoOld';
 import Altas from './pages/procedimientos/Altas';
 import AltasOld from './pages/procedimientos/AltasOld';
+import CapturaImagenes from './pages/procedimientos/CapturaImagenes';
 
 import Pacientes from './pages/pacientes/Pacientes';
 
@@ -128,6 +129,8 @@ function App() {
             <Route path="/procedimientos/altas" element={<Altas />} />
 
             <Route path="/procedimientos/AltasOld" element={<AltasOld />} />
+
+            <Route path="/procedimientos/captura-imagenes" element={<CapturaImagenes />} />
             
             <Route path="/pacientes/pacientes" element={<Pacientes />} />
             

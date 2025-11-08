@@ -12,6 +12,7 @@ import {
   Logout as LogoutIcon
 } from '@mui/icons-material';
 import Sidebar from './Sidebar';
+import { useLocation } from 'react-router-dom';
 
 // CONFIGURACIÓN: Ancho del sidebar cuando está abierto (280px)
 const drawerWidth = 280;
@@ -19,6 +20,11 @@ const drawerWidth = 280;
 const MainLayout = ({ children }) => {
   // ESTADO: Controla si el sidebar está abierto (true) o cerrado (false)
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const location = useLocation();
+  
+  // Forzar ocultar el sidebar en la página de Captura de Imágenes
+  const isSidebarForcedClosed = location.pathname === '/procedimientos/captura-imagenes';
+  const effectiveSidebarOpen = isSidebarForcedClosed ? false : sidebarOpen;
 
   // FUNCIÓN: Alternar apertura/cierre del sidebar al hacer clic en hamburguesa
   const handleSidebarToggle = () => {
@@ -33,7 +39,7 @@ const MainLayout = ({ children }) => {
       <Box
         sx={{
           // COMPORTAMIENTO: Ancho cambia según estado (280px abierto, 0px cerrado)
-          width: sidebarOpen ? drawerWidth : 0,
+          width: effectiveSidebarOpen ? drawerWidth : 0,
           flexShrink: 0,
           transition: 'width 0.4s ease-in-out', // ANIMACIÓN: Suave al abrir/cerrar
           overflow: 'hidden',
@@ -45,7 +51,7 @@ const MainLayout = ({ children }) => {
             width: drawerWidth,
             height: '100vh',
             // ANIMACIÓN: Desliza hacia la izquierda cuando se cierra
-            transform: sidebarOpen ? 'translateX(0)' : `translateX(-${drawerWidth}px)`,
+            transform: effectiveSidebarOpen ? 'translateX(0)' : `translateX(-${drawerWidth}px)`,
             transition: 'transform 0.4s ease-in-out'
           }}
         >
@@ -160,9 +166,7 @@ const MainLayout = ({ children }) => {
           </Box>
         </Box>
         
-        {/* ═══════════════════════════════════════════════════════════════════
-            CONTENIDO PRINCIPAL (80%): Área donde se muestran las páginas
-            ═══════════════════════════════════════════════════════════════════ */}
+        {/* ═══════════════════════════════════════════════════════════════════ */}
         <Box
           component="main"
           sx={{
