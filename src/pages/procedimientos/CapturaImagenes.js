@@ -38,7 +38,7 @@ const CapturaImagenes = () => {
   const theme = useTheme();
 
   // Ruta base de almacenamiento (configurable por .env)
-  const storageBasePath = process.env.REACT_APP_ALMACENAMIENTO_URL || 'D\\\\GastroProcedures\\Capturas';
+  const storageBasePath = process.env.REACT_APP_ALMACENAMIENTO_URL || 'D:\\GastroProcedures\\Capturas';
   const [storageFolderPath, setStorageFolderPath] = useState('');
   const [storageFolderName, setStorageFolderName] = useState('');
   // File System Access API
@@ -109,8 +109,10 @@ const CapturaImagenes = () => {
           const perm = await h.queryPermission({ mode: 'readwrite' });
           if (perm === 'granted') {
             setBaseDirHandle(h);
-            const dir = await h.getDirectoryHandle(storageFolderName, { create: true });
-            setStudyDirHandle(dir);
+            if (storageFolderName) {
+              const dir = await h.getDirectoryHandle(storageFolderName, { create: true });
+              setStudyDirHandle(dir);
+            }
           }
         }
       } catch (e) {
@@ -195,7 +197,7 @@ const CapturaImagenes = () => {
 
   // Al montar, componer y crear/verificar carpeta paciente+estudio+fecha
   useEffect(() => {
-    const studyDate = fechaEstudio ? new Date(fechaEstudio) : new Date();
+    const studyDate = new Date(fechaEstudio);
     const folderName = `${sanitizeSegment(paciente)}_${formatDate(studyDate)}_${sanitizeSegment(codigo)}`;
     const fullPath = `${storageBasePath}\\${folderName}`;
     setStorageFolderName(folderName);
@@ -363,7 +365,7 @@ const CapturaImagenes = () => {
       }
       if (!base) {
         // Solicitar una única vez permiso de carpeta: elige D:\\GastroProcedures\\Capturas
-        alert('Seleccione D:\\\GastroProcedures\\\Capturas para guardar automáticamente las capturas');
+        alert('Seleccione D:\\GastroProcedures\\Capturas para guardar automáticamente las capturas');
         try {
           base = await window.showDirectoryPicker();
           setBaseDirHandle(base);
@@ -382,6 +384,49 @@ const CapturaImagenes = () => {
       return false;
     }
   };
+
+  // Listar archivos existentes al abrir y precargar el visor
+  const listExistingStudyFiles = async () => {
+    if (!isFSAccessSupported || !studyDirHandle) return;
+    try {
+      const loaded = [];
+      let idx = 0;
+      for await (const [name, handle] of studyDirHandle.entries()) {
+        if (handle.kind !== 'file') continue;
+        const file = await handle.getFile();
+        const lower = (name || '').toLowerCase();
+        if ((file.type && file.type.startsWith('image/')) || lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png') || lower.endsWith('.webp')) {
+          const url = URL.createObjectURL(file);
+          loaded.push({ id: Date.now() + idx++, src: url, fullSrc: url, thumbSrc: url, fileName: name, saved: true, storedPath: `${storageFolderPath}\\${name}` });
+        } else if ((file.type && file.type.startsWith('video/')) || lower.endsWith('.mp4') || lower.endsWith('.webm')) {
+          const url = URL.createObjectURL(file);
+          loaded.push({ id: Date.now() + idx++, kind: 'video', videoSrc: url, mimeType: file.type || (lower.endsWith('.mp4') ? 'video/mp4' : 'video/webm'), videoBlob: file, fileName: name, saved: true, storedPath: `${storageFolderPath}\\${name}` });
+        }
+      }
+      if (loaded.length > 0) setCapturedImages(loaded);
+    } catch (e) {
+      console.warn('No se pudieron listar archivos existentes:', e);
+    }
+  };
+
+  useEffect(() => {
+    if (!isFSAccessSupported) return;
+    if (!studyDirHandle) return;
+    (async () => { await listExistingStudyFiles(); })();
+  }, [studyDirHandle]);
+
+
+
+  useEffect(() => {
+    if (!isFSAccessSupported) return;
+    if (!storageFolderName) return;
+    if (baseDirHandle && !studyDirHandle) {
+      (async () => {
+        const ok = await ensureLocalDirReady();
+        if (ok) await listExistingStudyFiles();
+      })();
+    }
+  }, [isFSAccessSupported, storageFolderName, baseDirHandle, studyDirHandle]);
 
   const handleGuardarImagen = async (img) => {
     try {
@@ -445,6 +490,15 @@ const CapturaImagenes = () => {
     try {
       const fullPath = item?.storedPath || (item?.fileName && storageFolderPath ? `${storageFolderPath}\\${item.fileName}` : null);
       if (fullPath) await deleteFileFromStorage(fullPath);
+      // Revocar URLs blob
+      try {
+        if (item?.kind === 'video' && item?.videoSrc?.startsWith('blob:')) {
+          URL.revokeObjectURL(item.videoSrc);
+        } else {
+          const imgUrl = item?.fullSrc || item?.src;
+          if (imgUrl && imgUrl.startsWith('blob:')) URL.revokeObjectURL(imgUrl);
+        }
+      } catch {}
       setCapturedImages((prev) => prev.filter((i) => i.id !== id));
     } catch {}
   };
@@ -457,9 +511,15 @@ const CapturaImagenes = () => {
         if (fullPath) {
           try { await deleteFileFromStorage(fullPath); } catch {}
         }
-        if (item?.kind === 'video' && item.videoSrc?.startsWith('blob:')) {
-          try { URL.revokeObjectURL(item.videoSrc); } catch {}
-        }
+        // Revocar URLs blob para imágenes y videos
+        try {
+          if (item?.kind === 'video' && item.videoSrc?.startsWith('blob:')) {
+            URL.revokeObjectURL(item.videoSrc);
+          } else {
+            const imgUrl = item?.fullSrc || item?.src;
+            if (imgUrl && imgUrl.startsWith('blob:')) URL.revokeObjectURL(imgUrl);
+          }
+        } catch {}
       }
     } catch {}
     setCapturedImages([]);
