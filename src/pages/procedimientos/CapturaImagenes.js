@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Container, Paper, Box, Typography, Divider, Grid, Button, ImageList, ImageListItem, Dialog, DialogTitle, DialogContent, DialogActions, ToggleButtonGroup, ToggleButton, FormControl, Select, MenuItem, InputLabel, FormControlLabel, Switch } from '@mui/material';
-import { PhotoCamera, FiberManualRecord, Stop, Delete as DeleteIcon } from '@mui/icons-material';
+import { Container, Paper, Box, Typography, Divider, Grid, Button, ImageList, ImageListItem, Dialog, DialogTitle, DialogContent, DialogActions, ToggleButtonGroup, ToggleButton, FormControl, Select, MenuItem, InputLabel, FormControlLabel, Switch, IconButton } from '@mui/material';
+import { PhotoCamera, FiberManualRecord, Stop, Delete as DeleteIcon, Fullscreen, FullscreenExit } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { List } from 'react-window';
 
 // Componente de header de sección, siguiendo patrón existente
-const SectionHeader = ({ title, rightNode }) => (
+const SectionHeader = ({ title, leftNode, rightNode }) => (
   <Box
     sx={{
       bgcolor: 'primary.main',
@@ -19,8 +19,10 @@ const SectionHeader = ({ title, rightNode }) => (
       justifyContent: 'space-between'
     }}
   >
-    <Typography variant="h6" fontWeight="bold">{title}</Typography>
-    {/* Contenido a la derecha del título */}
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      {leftNode}
+      <Typography variant="h6" fontWeight="bold">{title}</Typography>
+    </Box>
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>{rightNode}</Box>
   </Box>
 );
@@ -38,6 +40,10 @@ const CapturaImagenes = () => {
   const fechaEstudio = query.get('fechaEstudio') || '';
   const edadPaciente = query.get('edadPaciente') || '';
   const theme = useTheme();
+
+  const sectionRef = useRef(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const viewerObjectFit = isFullscreen ? 'contain' : 'cover';
 
   // Ruta base de almacenamiento (configurable por .env)
    const storageBasePath = process.env.REACT_APP_ALMACENAMIENTO_URL || 'D\\\\GastroProcedures\\\\Capturas';
@@ -60,6 +66,22 @@ const CapturaImagenes = () => {
   // Estado de permiso de guardado
   const [canSaveLocally, setCanSaveLocally] = useState(false);
   const [permDialogOpen, setPermDialogOpen] = useState(false);
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+      if (viewerRef.current) setViewerHeight(viewerRef.current.clientHeight || 0);
+    };
+    const onResize = () => { if (viewerRef.current) setViewerHeight(viewerRef.current.clientHeight || 0); };
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    window.addEventListener('resize', onResize);
+    // Inicial
+    onResize();
+    return () => {
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+      window.removeEventListener('resize', onResize);
+    };
+  }, []);
 
   // Selección de fuente de video: webcam vs otro dispositivo (videoinput)
   const [sourceType, setSourceType] = useState('webcam');
@@ -1257,10 +1279,24 @@ const CapturaImagenes = () => {
     window.close();
   };
 
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement && sectionRef.current?.requestFullscreen) {
+        await sectionRef.current.requestFullscreen();
+      } else if (document.exitFullscreen) {
+        await document.exitFullscreen();
+      }
+    } catch {}
+  };
+
   return (
     <Container maxWidth="lg" sx={{ py: 1, px: 2, maxWidth: '100% !important' }}>
-      <Paper elevation={3} sx={{ borderRadius: 2, overflow: 'hidden' }}>
-        <SectionHeader title="Captura de Imágenes" rightNode={(
+      <Paper elevation={3} sx={{ borderRadius: 2, overflow: 'hidden' }} ref={sectionRef}>
+        <SectionHeader title="Captura de Imágenes" leftNode={(
+          <IconButton size="small" onClick={toggleFullscreen} sx={{ color: 'primary.contrastText' }} aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Maximizar sección'}>
+            {isFullscreen ? <FullscreenExit /> : <Fullscreen />}
+          </IconButton>
+        )} rightNode={(
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <ToggleButtonGroup
               size="small"
@@ -1453,11 +1489,11 @@ const CapturaImagenes = () => {
           <Grid container spacing={2}>
             {/* Izquierda: recuadro grande para visualizar imagen a capturar */}
             <Grid item xs={12} md={8}>
-              <Paper variant="outlined" sx={{ height: 600, width: 1000, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f8f9fa' }}>
+              <Paper variant="outlined" sx={{ height: { xs: 260, md: isFullscreen ? '72vh' : 600 }, width: 1000, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f8f9fa' }}>
                 {sourceType === 'device' && bridgeAvailable ? (
-                   <img crossOrigin="anonymous" ref={bridgeImgRef} src={bridgeStreamUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="stream-dispositivo" />
+                   <img crossOrigin="anonymous" ref={bridgeImgRef} src={bridgeStreamUrl} style={{ width: '100%', height: '100%', objectFit: viewerObjectFit }} alt="stream-dispositivo" />
                  ) : cameraAvailable ? (
-                   <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted playsInline />
+                   <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: viewerObjectFit }} muted playsInline />
                  ) : (
                    <Typography variant="body1" color="text.secondary">
                      {cameraError || 'Dispositivo no disponible'}
@@ -1467,8 +1503,8 @@ const CapturaImagenes = () => {
             </Grid>
 
             {/* Derecha: columna dividida en 2 filas */}
-            <Grid item xs={10} md={4} sx={{ height: { xs: 'auto', md: 600 } }}>
-              <Grid container direction="column" spacing={2} sx={{ height: '100%' }}>
+            <Grid item xs={12} md={4} sx={{ height: { xs: 'auto', md: isFullscreen ? '72vh' : 600 } }}>
+              <Grid container direction="column" spacing={1} sx={{ height: '100%' }}>
                 <Grid item xs={12}>
                   <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                     <Box sx={{ display: 'flex', gap: 0.5, rowGap: 0.5, flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
@@ -1481,18 +1517,18 @@ const CapturaImagenes = () => {
                       <Button aria-label="Terminar" size="small" variant="contained" color="error" startIcon={<Stop />} onClick={handleTerminar} disabled={!isRecording || (sourceType === 'device' && bridgeAvailable)} sx={{ minWidth: 0, px: 1 }}>
                         <Box component="span" sx={{ display: { xs: 'none', sm: 'none', md: 'inline' } }}>DETENER</Box>
                       </Button>
-                      <Button aria-label="Guardar todas" size="small" variant="outlined" color="primary" onClick={handleGuardarTodas} disabled={capturedImages.length === 0 || !canSaveLocally} sx={{ minWidth: 0, px: 1 }}>
+                      {/*<Button aria-label="Guardar todas" size="small" variant="outlined" color="primary" onClick={handleGuardarTodas} disabled={capturedImages.length === 0 || !canSaveLocally} sx={{ minWidth: 0, px: 1 }}>
                         <Box component="span" sx={{ display: { xs: 'none', sm: 'none', md: 'inline' } }}>Guardar todas</Box>
                       </Button>
                        <Button size="small" variant="outlined" color="error" onClick={handleBorrarTodas} disabled={capturedImages.length === 0} sx={{ minWidth: 0, px: 1 }}>
                          Borrar todas
-                       </Button>
+                       </Button>*/}
                        {/*<Typography variant="caption" sx={{ alignSelf: 'center', ml: 1, color: pedalConnected ? 'success.main' : 'text.secondary' }}>Pedal: {pedalConnected ? 'Conectado' : 'No conectado'}</Typography>*/}
                     </Box>
                   </Paper>
                 </Grid>
                 <Grid item xs={10} sx={{ flexGrow: 1 }}>
-                  <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, height: '90%', display: 'flex', flexDirection: 'column' }}>
+                  <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, height: '94%', display: 'flex', flexDirection: 'column' }}>
                     
                     <Box sx={{ position: { xs: 'sticky', sm: 'sticky', md: 'static' }, top: { xs: 0, sm: 0, md: 'auto' }, zIndex: 1, bgcolor: 'background.paper', borderBottom: '1px solid #eee', pb: 1, mb: 1 }}>
                       <Typography variant="subtitle2" sx={{ color: '#666' }}>Visor de Imágenes ({capturedImages.length})</Typography>
@@ -1504,10 +1540,10 @@ const CapturaImagenes = () => {
                         </Box>
                       ) : (
                         <List
-                           rowCount={capturedImages.length}
-                           rowHeight={112}
-                           rowProps={{ images: capturedImages }}
-                           rowComponent={({ index, style, images }) => {
+                            rowCount={capturedImages.length}
+                            rowHeight={isFullscreen ? 140 : 112}
+                            rowProps={{ images: capturedImages }}
+                            rowComponent={({ index, style, images }) => {
                              const item = images?.[index];
                              if (!item) return null;
                              return (
@@ -1541,11 +1577,15 @@ const CapturaImagenes = () => {
                              </Box>
                            );
                          }}
-                         style={{ height: viewerHeight || 400 }}
+                         style={{ height: viewerHeight || (isFullscreen ? 500 : 400) }}
                          overscanCount={3}
                        />
                       )}
                     </Box>
+                    <Divider sx={{ my: 1 }} />
+                    <Button size="small" variant="outlined" color="error" onClick={handleBorrarTodas} disabled={capturedImages.length === 0} sx={{ minWidth: 0, px: 1 }}>
+                         Borrar todas
+                       </Button>
                   </Paper>
                                   <Typography variant="caption">Para capturar puede presionar el pedal o la tecla "C"</Typography>
 
@@ -1560,14 +1600,14 @@ const CapturaImagenes = () => {
             <DialogTitle>Vista previa</DialogTitle>
             <DialogContent dividers>
               {selectedImage && (
-                <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-                  {selectedImage.kind === 'video' ? (
-                    <video src={selectedImage.videoSrc} controls style={{ maxWidth: '100%', maxHeight: '70vh' }} />
-                  ) : (
-                    <img src={selectedImage.fullSrc || selectedImage.src} alt="vista-previa" style={{ maxWidth: '100%', maxHeight: '70vh' }} />
+                    <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                      {selectedImage.kind === 'video' ? (
+                        <video src={selectedImage.videoSrc} controls style={{ maxWidth: '100%', maxHeight: isFullscreen ? '90vh' : '70vh', objectFit: 'contain' }} />
+                      ) : (
+                        <img src={selectedImage.fullSrc || selectedImage.src} alt="vista-previa" style={{ maxWidth: '100%', maxHeight: isFullscreen ? '90vh' : '70vh', objectFit: 'contain' }} />
+                      )}
+                    </Box>
                   )}
-                </Box>
-              )}
             </DialogContent>
             <DialogActions>
               <Button onClick={handleClosePreview}>Cerrar</Button>
