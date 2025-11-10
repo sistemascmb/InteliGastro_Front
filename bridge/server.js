@@ -22,12 +22,34 @@ const server = http.createServer((req, res) => {
 
   if (pathname === '/status') {
     setCors(res);
+    const scheme = req.socket && req.socket.encrypted ? 'https' : 'http';
+    const host = req.headers.host || `localhost:${scheme === 'https' ? (Number(process.env.PORT_HTTPS || (Number(PORT) + 1))) : Number(PORT)}`;
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, streamUrl: `http://localhost:${PORT}/stream.mjpeg` }));
+    res.end(JSON.stringify({ ok: true, streamUrl: `${scheme}://${host}/stream.mjpeg` }));
+    return;
+  }
+
+  if (pathname === '/snapshot.jpg') {
+    setCors(res);
+    const fetchFrame = (cb) => {
+      const imgUrl = `https://picsum.photos/800/600.jpg?random=${Date.now()}`;
+      https.get(imgUrl, (r) => {
+        const chunks = [];
+        r.on('data', (d) => chunks.push(d));
+        r.on('end', () => cb(Buffer.concat(chunks)));
+      }).on('error', () => cb(null));
+    };
+    fetchFrame((buf) => {
+      if (!buf) { res.writeHead(500); res.end('no frame'); return; }
+      res.writeHead(200, { 'Content-Type': 'image/jpeg' });
+      res.end(buf);
+    });
     return;
   }
 
   if (pathname === '/stream.mjpeg') {
+    // Habilitar CORS para permitir uso en canvas desde la app (https://localhost:3002)
+    setCors(res);
     res.writeHead(200, {
       'Content-Type': 'multipart/x-mixed-replace; boundary=frame',
       'Connection': 'keep-alive',
@@ -69,3 +91,18 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, () => {
   console.log(`Bridge server listening on http://localhost:${PORT}`);
 });
+
+// Intentar levantar también servidor HTTPS si hay certificados disponibles
+try {
+  const crtPath = require('path').join(__dirname, '..', 'certs', 'dev-cert.pem');
+  const keyPath = require('path').join(__dirname, '..', 'certs', 'dev-key.pem');
+  const cert = require('fs').readFileSync(crtPath);
+  const key = require('fs').readFileSync(keyPath);
+  const httpsServer = https.createServer({ key, cert }, server.listeners('request')[0]);
+  const HTTPS_PORT = Number(process.env.PORT_HTTPS || (Number(PORT) + 1));
+  httpsServer.listen(HTTPS_PORT, () => {
+    console.log(`Bridge HTTPS server listening on https://localhost:${HTTPS_PORT}`);
+  });
+} catch (err) {
+  console.log('[bridge] HTTPS not enabled:', err?.message || err);
+}

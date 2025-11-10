@@ -42,7 +42,15 @@ const CapturaImagenes = () => {
   // Ruta base de almacenamiento (configurable por .env)
    const storageBasePath = process.env.REACT_APP_ALMACENAMIENTO_URL || 'D\\\\GastroProcedures\\\\Capturas';
    // Puente de captura nativo (opcional)
-   const captureBridgeBaseUrl = process.env.REACT_APP_CAPTURE_BRIDGE_URL || 'http://localhost:8765';
+   const defaultBridgeHost = process.env.REACT_APP_CAPTURE_BRIDGE_HOST || 'localhost:8765';
+  const isHttpsApp = (typeof window !== 'undefined' && window?.location?.protocol === 'https:');
+  const [bridgeHostname, bridgePortFromHost] = String(defaultBridgeHost).split(':');
+  const defaultHttpPort = Number(bridgePortFromHost || 8765);
+  const httpsPortEnv = process.env.REACT_APP_CAPTURE_BRIDGE_PORT_HTTPS ? Number(process.env.REACT_APP_CAPTURE_BRIDGE_PORT_HTTPS) : (defaultHttpPort === 8765 ? 8766 : defaultHttpPort);
+  const httpPortEnv = process.env.REACT_APP_CAPTURE_BRIDGE_PORT ? Number(process.env.REACT_APP_CAPTURE_BRIDGE_PORT) : defaultHttpPort;
+  const bridgePort = isHttpsApp ? httpsPortEnv : httpPortEnv;
+  const hostFallback = (typeof window !== 'undefined' && window.location?.hostname) ? window.location.hostname : 'localhost';
+  const captureBridgeBaseUrl = process.env.REACT_APP_CAPTURE_BRIDGE_URL || `${isHttpsApp ? 'https' : 'http'}://${bridgeHostname || hostFallback}:${bridgePort}`;
   const [storageFolderPath, setStorageFolderPath] = useState('');
   const [storageFolderName, setStorageFolderName] = useState('');
   // File System Access API
@@ -139,6 +147,19 @@ const CapturaImagenes = () => {
       }
       const devices = await navigator.mediaDevices.enumerateDevices();
       setMediaDevicesInfo(devices || []);
+      // Actualizar también HID y Gamepad
+      try {
+        if (hidSupported && navigator.hid) {
+          const hidDevs = await navigator.hid.getDevices();
+          setHidDevices(hidDevs || []);
+        }
+      } catch {}
+      try {
+        if (gamepadSupported && navigator.getGamepads) {
+          const pads = Array.from(navigator.getGamepads()).filter(Boolean);
+          setGamepadsInfo(pads || []);
+        }
+      } catch {}
       if (stream) {
         stream.getTracks().forEach((t) => t.stop());
       }
@@ -372,6 +393,26 @@ const CapturaImagenes = () => {
   const [devicesModalOpen, setDevicesModalOpen] = useState(false);
   const [mediaDevicesInfo, setMediaDevicesInfo] = useState([]);
   const [mediaDevicesError, setMediaDevicesError] = useState('');
+  // Estado para pedal (WebHID) y gamepad
+  const [hidSupported, setHidSupported] = useState(typeof navigator !== 'undefined' && 'hid' in navigator);
+  const [hidDevices, setHidDevices] = useState([]);
+  const [pedalDevice, setPedalDevice] = useState(null);
+  const [pedalConnected, setPedalConnected] = useState(false);
+  const [gamepadSupported, setGamepadSupported] = useState(typeof navigator !== 'undefined' && 'getGamepads' in navigator);
+   const [gamepadsInfo, setGamepadsInfo] = useState([]);
+   const pedalCooldownRef = useRef(0);
+   const gamepadPollRef = useRef(null);
+   const pedalCenterMask = parseInt(process.env.REACT_APP_PEDAL_CENTER_MASK || '2', 10);
+   const pedalByteIndex = parseInt(process.env.REACT_APP_PEDAL_BYTE_INDEX || '0', 10);
+   const pedalReportIdFilter = parseInt(process.env.REACT_APP_PEDAL_REPORT_ID || '', 10);
+   const pedalKeycodes = (process.env.REACT_APP_PEDAL_CENTER_KEYCODES || '').split(',').map(s => parseInt(s.trim(), 10)).filter((n) => Number.isFinite(n));
+   const [pedalFallbackAnyChange, setPedalFallbackAnyChange] = useState(false);
+   const [hidLastReportHex, setHidLastReportHex] = useState('');
+   const [hidLastReportAt, setHidLastReportAt] = useState(0);
+    const [hidLastReportId, setHidLastReportId] = useState(null);
+    const [keyboardPedalEnabled, setKeyboardPedalEnabled] = useState(true);
+    const [lastKey, setLastKey] = useState('');
+    const [lastCode, setLastCode] = useState('');
   useEffect(() => {
     const update = () => {
       if (viewerRef.current) setViewerHeight(viewerRef.current.clientHeight || 0);
@@ -380,6 +421,214 @@ const CapturaImagenes = () => {
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
   }, []);
+
+  // HID/WebHID: listar y conectar dispositivos y pedal
+  useEffect(() => {
+    if (!hidSupported || !navigator.hid) return;
+    (async () => {
+      try {
+        const devices = await navigator.hid.getDevices();
+        setHidDevices(devices || []);
+        const pedal = (devices || []).find((d) => (d.productName || '').toLowerCase().includes('pedal'));
+        if (pedal) {
+          try { await pedal.open(); } catch {}
+          setPedalDevice(pedal);
+          setPedalConnected(!!pedal.opened);
+          const onReport = (e) => {
+            try {
+              const now = Date.now();
+              if (now - (pedalCooldownRef.current || 0) < 400) return;
+              const dv = e.data;
+              const len = dv.byteLength;
+              const bytes = [];
+              for (let i = 0; i < len; i++) bytes.push(dv.getUint8(i));
+              setHidLastReportHex(bytes.map((b) => b.toString(16).padStart(2, '0')).join(' '));
+              setHidLastReportAt(now);
+              setHidLastReportId(e.reportId);
+              const matchesReportId = Number.isFinite(pedalReportIdFilter) ? (e.reportId === pedalReportIdFilter) : true;
+              if (!matchesReportId) return;
+              const idx = Math.max(0, Math.min(len - 1, pedalByteIndex));
+              let centerPressed = len > 0 && ((dv.getUint8(idx) & pedalCenterMask) !== 0);
+              if (!centerPressed && idx !== 0) {
+                centerPressed = ((dv.getUint8(0) & pedalCenterMask) !== 0) || (len > 1 && ((dv.getUint8(1) & pedalCenterMask) !== 0));
+              }
+              if (!centerPressed && pedalKeycodes.length > 0 && len >= 3) {
+                const keyBytes = bytes.slice(2);
+                const pressedCenterViaKeycodes = keyBytes.some((b) => b !== 0 && pedalKeycodes.includes(b));
+                if (pressedCenterViaKeycodes) centerPressed = true;
+              }
+              const anyChange = bytes.some((b) => b !== 0);
+              if (!(centerPressed || (pedalFallbackAnyChange && anyChange))) return;
+              if (!canCaptureNow()) return;
+              pedalCooldownRef.current = now;
+              handleCapturar();
+            } catch {}
+          };
+          pedal.addEventListener('inputreport', onReport);
+        }
+      } catch {}
+    })();
+    const onConnect = (e) => {
+      setHidDevices((prev) => [...(prev || []), e.device]);
+    };
+    const onDisconnect = (e) => {
+      setHidDevices((prev) => (prev || []).filter((d) => d !== e.device));
+      if (pedalDevice && e.device === pedalDevice) {
+        setPedalDevice(null);
+        setPedalConnected(false);
+      }
+    };
+    navigator.hid.addEventListener('connect', onConnect);
+    navigator.hid.addEventListener('disconnect', onDisconnect);
+    return () => {
+      navigator.hid.removeEventListener('connect', onConnect);
+      navigator.hid.removeEventListener('disconnect', onDisconnect);
+    };
+  }, [hidSupported]);
+
+  // Gamepad: listar y monitorear botones para accionar captura
+  useEffect(() => {
+    if (!gamepadSupported) return;
+    const refresh = () => {
+      try {
+        const pads = Array.from(navigator.getGamepads ? navigator.getGamepads() : []).filter(Boolean);
+        setGamepadsInfo(pads || []);
+      } catch {}
+    };
+    const onConnect = () => refresh();
+    const onDisconnect = () => refresh();
+    window.addEventListener('gamepadconnected', onConnect);
+    window.addEventListener('gamepaddisconnected', onDisconnect);
+    refresh();
+    return () => {
+      window.removeEventListener('gamepadconnected', onConnect);
+      window.removeEventListener('gamepaddisconnected', onDisconnect);
+    };
+  }, [gamepadSupported]);
+
+  // Teclado: fallback para pedaleras que actúan como teclado HID
+  useEffect(() => {
+    const keyboardPedalKeys = (process.env.REACT_APP_PEDAL_KEYS || 'Enter,Space,c,KeyC').split(',').map(s => s.trim()).filter(Boolean);
+    const onKeyDown = (e) => {
+      try {
+        setLastKey(e.key);
+        setLastCode(e.code);
+        // Tecla C: ejecutar exactamente la misma acción que el botón CAPTURAR
+        if (e.key === 'c' || e.key === 'C' || e.code === 'KeyC') {
+          const canClickButton = (cameraAvailable || (sourceType === 'device' && bridgeAvailable));
+          if (!canClickButton) return;
+          handleCapturar();
+          return;
+        }
+        if (!keyboardPedalEnabled) return;
+        // Evitar interferir con inputs
+        const el = document.activeElement;
+        if (el && ['INPUT','TEXTAREA','SELECT'].includes(el.tagName)) return;
+        // Coincidencia por key o code (incluye Enter, Space, c, KeyC)
+        const match = keyboardPedalKeys.includes(e.key) || keyboardPedalKeys.includes(e.code);
+        if (!match) return;
+        const now = Date.now();
+        if (now - (pedalCooldownRef.current || 0) < 400) return;
+        if (!canCaptureNow()) return;
+        pedalCooldownRef.current = now;
+        handleCapturar();
+      } catch {}
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown, true);
+    };
+  }, [keyboardPedalEnabled, cameraAvailable, bridgeAvailable, sourceType]);
+
+  useEffect(() => {
+    if (!gamepadSupported) return;
+    if ((gamepadsInfo || []).length === 0) return;
+    let frameId = null;
+    const poll = () => {
+      try {
+        const pads = Array.from(navigator.getGamepads ? navigator.getGamepads() : []).filter(Boolean);
+        const pressed = pads.some((gp) => (gp.buttons || []).some((b) => b.pressed));
+        if (pressed) {
+          const now = Date.now();
+          if (now - (pedalCooldownRef.current || 0) >= 400) {
+            if (!canCaptureNow()) {
+              // No hay fuente disponible; no capturar (replica lógica del botón)
+            } else {
+              pedalCooldownRef.current = now;
+              handleCapturar();
+            }
+          }
+        }
+      } catch {}
+      frameId = requestAnimationFrame(poll);
+    };
+    frameId = requestAnimationFrame(poll);
+    gamepadPollRef.current = frameId;
+    return () => {
+      if (frameId) cancelAnimationFrame(frameId);
+      gamepadPollRef.current = null;
+    };
+  }, [gamepadsInfo, gamepadSupported, cameraAvailable, bridgeAvailable, sourceType]);
+
+  const connectPedal = async () => {
+    try {
+      if (!hidSupported || !navigator.hid) {
+        alert('Tu navegador no soporta WebHID (Chrome/Edge requerido).');
+        return;
+      }
+      const devices = await navigator.hid.requestDevice({ filters: [] });
+      const dev = devices && devices[0];
+      if (!dev) return;
+      try { await dev.open(); } catch {}
+      setPedalDevice(dev);
+      setPedalConnected(!!dev.opened);
+      const onReport = (e) => {
+        try {
+          const now = Date.now();
+          if (now - (pedalCooldownRef.current || 0) < 400) return;
+          const dv = e.data;
+          const len = dv.byteLength;
+          const bytes = [];
+          for (let i = 0; i < len; i++) bytes.push(dv.getUint8(i));
+          setHidLastReportHex(bytes.map((b) => b.toString(16).padStart(2, '0')).join(' '));
+          setHidLastReportAt(now);
+          setHidLastReportId(e.reportId);
+          const matchesReportId = Number.isFinite(pedalReportIdFilter) ? (e.reportId === pedalReportIdFilter) : true;
+          if (!matchesReportId) return;
+          const idx = Math.max(0, Math.min(len - 1, pedalByteIndex));
+          let centerPressed = len > 0 && ((dv.getUint8(idx) & pedalCenterMask) !== 0);
+          if (!centerPressed && idx !== 0) {
+            centerPressed = ((dv.getUint8(0) & pedalCenterMask) !== 0) || (len > 1 && ((dv.getUint8(1) & pedalCenterMask) !== 0));
+          }
+          if (!centerPressed && pedalKeycodes.length > 0 && len >= 3) {
+            const keyBytes = bytes.slice(2);
+            const pressedCenterViaKeycodes = keyBytes.some((b) => b !== 0 && pedalKeycodes.includes(b));
+            if (pressedCenterViaKeycodes) centerPressed = true;
+          }
+          const anyChange = bytes.some((b) => b !== 0);
+          if (!(centerPressed || (pedalFallbackAnyChange && anyChange))) return;
+          if (!canCaptureNow()) return;
+          pedalCooldownRef.current = now;
+          handleCapturar();
+        } catch {}
+      };
+      dev.addEventListener('inputreport', onReport);
+      setHidDevices((prev) => {
+        const arr = prev || [];
+        return arr.find((d) => d === dev) ? arr : [...arr, dev];
+      });
+    } catch (err) {
+      console.warn('Conexión de pedal cancelada o fallida:', err);
+    }
+  };
+
+  const disconnectPedal = async () => {
+    try {
+      if (pedalDevice?.opened) await pedalDevice.close();
+    } catch {}
+    setPedalConnected(false);
+    setPedalDevice(null);
+  };
 
   // Handlers de preview y guardado de imágenes
   const handleOpenPreview = (img) => {
@@ -450,7 +699,7 @@ const CapturaImagenes = () => {
   
   // Asegurar carpeta del estudio dentro de la base
   const ensureLocalDirReady = async () => {
-    if (!isFSAccessSupported) return false;
+    if (!isFSAccessSupported) return null;
     try {
       let base = baseDirHandle;
       if (!base) {
@@ -479,15 +728,15 @@ const CapturaImagenes = () => {
           setSavedHandleAvailable(true);
         } catch (e) {
           console.warn('Selección de carpeta cancelada o fallida:', e);
-          return false;
+          return null;
         }
       }
       const dir = studyDirHandle || await base.getDirectoryHandle(storageFolderName, { create: true });
       setStudyDirHandle(dir);
-      return true;
+      return dir;
     } catch (e) {
       console.warn('No se pudo asegurar carpeta del estudio:', e);
-      return false;
+      return null;
     }
   };
 
@@ -537,9 +786,10 @@ const CapturaImagenes = () => {
   const handleGuardarImagen = async (img) => {
     try {
       const fileName = img.fileName || getImageFileName();
-      if (await ensureLocalDirReady()) {
+      const dir = await ensureLocalDirReady();
+      if (dir) {
         const blob = dataUrlToBlob(img.fullSrc || img.src || '');
-        const fh = await studyDirHandle.getFileHandle(fileName, { create: true });
+        const fh = await dir.getFileHandle(fileName, { create: true });
         const writable = await fh.createWritable();
         await writable.write(blob);
         await writable.close();
@@ -564,8 +814,9 @@ const CapturaImagenes = () => {
   const handleGuardarVideo = async (item) => {
     try {
       const fileName = item.fileName || getVideoFileName(item.mimeType);
-      if (await ensureLocalDirReady()) {
-        const fh = await studyDirHandle.getFileHandle(fileName, { create: true });
+      const dir = await ensureLocalDirReady();
+      if (dir) {
+        const fh = await dir.getFileHandle(fileName, { create: true });
         const writable = await fh.createWritable();
         await writable.write(item.videoBlob);
         await writable.close();
@@ -800,67 +1051,137 @@ const CapturaImagenes = () => {
     connectBridge();
   }, [sourceType, videoDevices, captureBridgeBaseUrl, forceBridge]);
 
-  const handleCapturar = () => {
+  const canCaptureNow = () => (cameraAvailable || (sourceType === 'device' && bridgeAvailable));
+
+  // Espera a que el video/imágen del visor esté listo para evitar capturas de placeholder
+  const waitForVideoReady = (video, timeout = 1000) => new Promise((resolve) => {
     try {
+      if (!video) return resolve(false);
+      if ((video.readyState || 0) >= 2 && (video.videoWidth || 0) > 0) return resolve(true);
+      let done = false;
+      const cleanup = () => {
+        video.removeEventListener('loadedmetadata', onReady);
+        video.removeEventListener('loadeddata', onReady);
+        video.removeEventListener('canplay', onReady);
+        video.removeEventListener('playing', onReady);
+      };
+      const onReady = () => { if (!done) { done = true; cleanup(); resolve(true); } };
+      video.addEventListener('loadedmetadata', onReady, { once: true });
+      video.addEventListener('loadeddata', onReady, { once: true });
+      video.addEventListener('canplay', onReady, { once: true });
+      video.addEventListener('playing', onReady, { once: true });
+      setTimeout(() => { if (!done) { done = true; cleanup(); resolve((video.videoWidth || 0) > 0); } }, timeout);
+    } catch { resolve(false); }
+  });
+  const waitForImageReady = (img, timeout = 1000) => new Promise((resolve) => {
+    try {
+      if (!img) return resolve(false);
+      if (img.complete && (img.naturalWidth || 0) > 0) return resolve(true);
+      let done = false;
+      const cleanup = () => { img.removeEventListener('load', onLoad); img.removeEventListener('error', onErr); };
+      const onLoad = () => { if (!done) { done = true; cleanup(); resolve(true); } };
+      const onErr = () => { if (!done) { done = true; cleanup(); resolve(false); } };
+      img.addEventListener('load', onLoad, { once: true });
+      img.addEventListener('error', onErr, { once: true });
+      setTimeout(() => { if (!done) { done = true; cleanup(); resolve(img.complete && (img.naturalWidth || 0) > 0); } }, timeout);
+    } catch { resolve(false); }
+  });
+
+  const handleCapturar = async () => {
+    try {
+      // Modo dispositivo con puente: intentar primero snapshot del puente (más robusto)
+      if (sourceType === 'device' && bridgeAvailable) {
+        try {
+          const resp = await fetch(`${captureBridgeBaseUrl}/snapshot.jpg`, { cache: 'no-store' });
+          if (!resp.ok) throw new Error('snapshot_failed');
+          const blob = await resp.blob();
+          const fullDataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          const blobUrl = URL.createObjectURL(blob);
+          await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; img.src = blobUrl; });
+          try { URL.revokeObjectURL(blobUrl); } catch {}
+          const width = img.naturalWidth || img.width || 1280;
+          const height = img.naturalHeight || img.height || 720;
+          const thumbMaxWidth = 320;
+          const scale = Math.min(1, thumbMaxWidth / width);
+          const thumbW = Math.round(width * scale);
+          const thumbH = Math.round(height * scale);
+          const thumbCanvas = document.createElement('canvas');
+          thumbCanvas.width = thumbW;
+          thumbCanvas.height = thumbH;
+          const tctx = thumbCanvas.getContext('2d');
+          tctx.drawImage(img, 0, 0, width, height, 0, 0, thumbW, thumbH);
+          const thumbDataUrl = thumbCanvas.toDataURL('image/jpeg', 0.85);
+
+          const newImage = { id: Date.now(), src: fullDataUrl, fullSrc: fullDataUrl, thumbSrc: thumbDataUrl };
+          setCapturedImages((prev) => [...prev, newImage]);
+          handleGuardarImagen(newImage);
+          try { if (navigator.vibrate) navigator.vibrate(50); } catch {}
+          return;
+        } catch (snapshotErr) {
+          // Fallback: capturar del visor (<img> con stream.mjpeg)
+          const drawEl = bridgeImgRef.current;
+          if (drawEl) {
+            try {
+              const isReady = await waitForImageReady(drawEl, 1000);
+              if (!isReady) return;
+              const width = drawEl.naturalWidth || drawEl.width || viewerRef.current?.clientWidth || 1280;
+              const height = drawEl.naturalHeight || drawEl.height || viewerRef.current?.clientHeight || 720;
+              const canvas = document.createElement('canvas');
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(drawEl, 0, 0, width, height);
+              const fullDataUrl = canvas.toDataURL('image/jpeg', 0.95);
+              if (!fullDataUrl || fullDataUrl === 'data:,') throw new Error('tainted');
+              const thumbMaxWidth = 320;
+              const scale = Math.min(1, thumbMaxWidth / width);
+              const thumbW = Math.round(width * scale);
+              const thumbH = Math.round(height * scale);
+              const thumbCanvas = document.createElement('canvas');
+              thumbCanvas.width = thumbW;
+              thumbCanvas.height = thumbH;
+              const tctx = thumbCanvas.getContext('2d');
+              tctx.drawImage(canvas, 0, 0, width, height, 0, 0, thumbW, thumbH);
+              const thumbDataUrl = thumbCanvas.toDataURL('image/jpeg', 0.85);
+
+              const newImage = { id: Date.now(), src: fullDataUrl, fullSrc: fullDataUrl, thumbSrc: thumbDataUrl };
+              setCapturedImages((prev) => [...prev, newImage]);
+              handleGuardarImagen(newImage);
+              try { if (navigator.vibrate) navigator.vibrate(50); } catch {}
+              return;
+            } catch (viewerErr) {
+              // Continuar hacia captura de webcam si también falla el visor
+            }
+          }
+        }
+      }
+
+      // Caso normal: cámara/webcam
       const video = videoRef.current;
-       let drawEl = (sourceType === 'device' && bridgeAvailable) ? (bridgeVideoRef.current || bridgeImgRef.current) : video;
-       if (!drawEl || (!cameraAvailable && !(sourceType === 'device' && bridgeAvailable))) {
-         const sampleUrl = `https://via.placeholder.com/600x400.png?text=Sin+camara+${capturedImages.length + 1}`;
-         setCapturedImages((prev) => [...prev, { id: Date.now(), src: sampleUrl, fullSrc: sampleUrl, thumbSrc: sampleUrl }]);
-         return;
-       }
-       const width = (drawEl?.videoWidth || drawEl?.naturalWidth || drawEl?.clientWidth || 1280);
-       const height = (drawEl?.videoHeight || drawEl?.naturalHeight || drawEl?.clientHeight || 720);
-       const canvas = document.createElement('canvas');
-       canvas.width = width;
-       canvas.height = height;
-       const ctx = canvas.getContext('2d');
-       ctx.drawImage(drawEl, 0, 0, width, height);
-
-      /*
-       * Anotaciones/overlay de captura deshabilitadas temporalmente para reuso futuro.
-       * Se conserva el código comentado para poder reactivarlo más adelante.
-       
-      // Overlay: fondo semitransparente y textos con colores del tema
-      const now = new Date();
-      const timestamp = now.toLocaleString();
-      //const line1 = `Examen Nº ${codigo || '—'}`;
-      //const line2 = `Dr: ${gastro || '—'}`;
-      //const line3 = `Centro: ${centro || '—'}${sala ? ` (${sala})` : ''}`;
-
-      const padding = 16;
-      const lineHeight = 22;
-      const boxHeight = padding * 2 + lineHeight * (storageFolderName ? 4 : 3);
-
-      // Usar tipografía del tema para medición y render
-      ctx.font = `16px ${theme.typography?.fontFamily || 'sans-serif'}`;
-      ctx.textBaseline = 'top';
-
-      // Banda inferior a ancho completo
-      ctx.fillStyle = toRgba(theme.palette?.primary?.main, 0.85);
-      ctx.fillRect(0, height - boxHeight, width, boxHeight);
-
-      // Texto con contraste del tema
-      //ctx.fillStyle = theme.palette?.primary?.contrastText || '#fff';
-      //let y = height - boxHeight + padding;
-      //ctx.fillText(line1, padding, y); y += lineHeight;
-      //ctx.fillText(line2, padding, y); y += lineHeight;
-      //ctx.fillText(line3, padding, y);
-
-      // timestamp arriba derecha con chip del tema
-      const tsPadding = 12;
-      const tsText = timestamp;
-      const tsWidth = ctx.measureText(tsText).width + tsPadding * 2;
-      const tsHeight = 28;
-      ctx.fillStyle = toRgba(theme.palette?.primary?.main, 0.85);
-      ctx.fillRect(width - tsWidth - tsPadding, tsPadding, tsWidth, tsHeight);
-      //ctx.fillStyle = theme.palette?.primary?.contrastText || '#fff';
-      //ctx.fillText(tsText, width - tsWidth - tsPadding + tsPadding, tsPadding + 6);
-      */
+      const drawEl = video;
+      const videoReady = await waitForVideoReady(video, 1000);
+      if (!videoReady) return;
+      if (!drawEl || !cameraAvailable) {
+        const sampleUrl = '/placeholder.svg';
+        setCapturedImages((prev) => [...prev, { id: Date.now(), src: sampleUrl, fullSrc: sampleUrl, thumbSrc: sampleUrl }]);
+        return;
+      }
+      const width = (drawEl?.videoWidth || drawEl?.clientWidth || 1280);
+      const height = (drawEl?.videoHeight || drawEl?.clientHeight || 720);
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(drawEl, 0, 0, width, height);
 
       const fullDataUrl = canvas.toDataURL('image/jpeg', 0.92);
-
-      // Generar miniatura ligera manteniendo proporción
       const thumbMaxWidth = 320;
       const scale = Math.min(1, thumbMaxWidth / width);
       const thumbW = Math.round(width * scale);
@@ -875,8 +1196,9 @@ const CapturaImagenes = () => {
       const newImage = { id: Date.now(), src: fullDataUrl, fullSrc: fullDataUrl, thumbSrc: thumbDataUrl };
       setCapturedImages((prev) => [...prev, newImage]);
       handleGuardarImagen(newImage);
+      try { if (navigator.vibrate) navigator.vibrate(50); } catch {}
     } catch (e) {
-      const sampleUrl = `https://via.placeholder.com/600x400.png?text=Captura+${capturedImages.length + 1}`;
+      const sampleUrl = '/placeholder.svg';
       setCapturedImages((prev) => [...prev, { id: Date.now(), src: sampleUrl, fullSrc: sampleUrl, thumbSrc: sampleUrl }]);
     }
   };
@@ -1016,12 +1338,48 @@ const CapturaImagenes = () => {
                 {mediaDevicesInfo.filter((d) => d.kind === 'audiooutput').map((d) => (
                   <Typography key={`${d.kind}-${d.deviceId}`} variant="body2">• {(d.label || 'Sin nombre')} — id: {String(d.deviceId || '').slice(-8) || '—'}</Typography>
                 ))}
+                <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5 }}>Otros (HID)</Typography>
+                {hidSupported ? (
+                  hidDevices.length === 0 ? (
+                    <Typography variant="body2">• Ningún dispositivo HID listado</Typography>
+                  ) : (
+                    hidDevices.map((d, idx) => (
+                      <Typography key={`hid-${idx}`} variant="body2">• {(d.productName || 'HID sin nombre')} — vid: {d.vendorId?.toString(16) || '—'} pid: {d.productId?.toString(16) || '—'}</Typography>
+                    ))
+                  )
+                ) : (
+                  <Typography variant="body2">Tu navegador no soporta WebHID</Typography>
+                )}
+                <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5 }}>Gamepad</Typography>
+                {gamepadSupported ? (
+                  (gamepadsInfo.length === 0 ? (
+                    <Typography variant="body2">• Ningún gamepad conectado</Typography>
+                  ) : (
+                    gamepadsInfo.map((gp, idx) => (
+                      <Typography key={`gp-${idx}`} variant="body2">• {(gp.id || 'Gamepad')} — botones: {gp.buttons?.length || 0}</Typography>
+                    ))
+                  ))
+                ) : (
+                  <Typography variant="body2">Tu navegador no soporta Gamepad API</Typography>
+                )}
+                <Box sx={{ mt: 2 }}>
+                  <FormControlLabel control={<Switch size="small" checked={pedalFallbackAnyChange} onChange={(e) => setPedalFallbackAnyChange(e.target.checked)} />} label="Compatibilidad: disparar ante cualquier cambio" />
+                  <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>Último reporte HID: {hidLastReportHex || '—'}</Typography>
+                  <Typography variant="caption" sx={{ display: 'block' }}>Último reportId: {hidLastReportId ?? '—'}</Typography>
+                  <FormControlLabel sx={{ mt: 1 }} control={<Switch size="small" checked={keyboardPedalEnabled} onChange={(e) => setKeyboardPedalEnabled(e.target.checked)} />} label="Usar teclado como pedal" />
+                  <Typography variant="caption" sx={{ display: 'block' }}>Última tecla: {lastKey || '—'} ({lastCode || '—'})</Typography>
+                </Box>
               </Box>
             )}
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setDevicesModalOpen(false)}>Cerrar</Button>
             <Button variant="outlined" onClick={enumerateAllMediaDevices}>Actualizar</Button>
+            {hidSupported && (
+              <Button variant="contained" color="primary" onClick={connectPedal}>
+                Conectar pedal (HID)
+              </Button>
+            )}
           </DialogActions>
         </Dialog>
         <Box sx={{ p: 3 }}>
@@ -1095,9 +1453,9 @@ const CapturaImagenes = () => {
           <Grid container spacing={2}>
             {/* Izquierda: recuadro grande para visualizar imagen a capturar */}
             <Grid item xs={12} md={8}>
-              <Paper variant="outlined" sx={{ height: 600, width: '100%', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f8f9fa' }}>
+              <Paper variant="outlined" sx={{ height: 600, width: 1000, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f8f9fa' }}>
                 {sourceType === 'device' && bridgeAvailable ? (
-                   <img ref={bridgeImgRef} src={bridgeStreamUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="stream-dispositivo" />
+                   <img crossOrigin="anonymous" ref={bridgeImgRef} src={bridgeStreamUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="stream-dispositivo" />
                  ) : cameraAvailable ? (
                    <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted playsInline />
                  ) : (
@@ -1129,6 +1487,7 @@ const CapturaImagenes = () => {
                        <Button size="small" variant="outlined" color="error" onClick={handleBorrarTodas} disabled={capturedImages.length === 0} sx={{ minWidth: 0, px: 1 }}>
                          Borrar todas
                        </Button>
+                       {/*<Typography variant="caption" sx={{ alignSelf: 'center', ml: 1, color: pedalConnected ? 'success.main' : 'text.secondary' }}>Pedal: {pedalConnected ? 'Conectado' : 'No conectado'}</Typography>*/}
                     </Box>
                   </Paper>
                 </Grid>
@@ -1188,7 +1547,10 @@ const CapturaImagenes = () => {
                       )}
                     </Box>
                   </Paper>
+                                  <Typography variant="caption">Para capturar puede presionar el pedal o la tecla "C"</Typography>
+
                 </Grid>
+
               </Grid>
             </Grid>
           </Grid>
