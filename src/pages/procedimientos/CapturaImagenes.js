@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Container, Paper, Box, Typography, Divider, Grid, Button, ImageList, ImageListItem, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Container, Paper, Box, Typography, Divider, Grid, Button, ImageList, ImageListItem, Dialog, DialogTitle, DialogContent, DialogActions, ToggleButtonGroup, ToggleButton, FormControl, Select, MenuItem, InputLabel, FormControlLabel, Switch } from '@mui/material';
 import { PhotoCamera, FiberManualRecord, Stop, Delete as DeleteIcon } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { List } from 'react-window';
 
 // Componente de header de sección, siguiendo patrón existente
-const SectionHeader = ({ title }) => (
+const SectionHeader = ({ title, rightNode }) => (
   <Box
     sx={{
       bgcolor: 'primary.main',
@@ -20,6 +20,8 @@ const SectionHeader = ({ title }) => (
     }}
   >
     <Typography variant="h6" fontWeight="bold">{title}</Typography>
+    {/* Contenido a la derecha del título */}
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>{rightNode}</Box>
   </Box>
 );
 
@@ -38,7 +40,9 @@ const CapturaImagenes = () => {
   const theme = useTheme();
 
   // Ruta base de almacenamiento (configurable por .env)
-  const storageBasePath = process.env.REACT_APP_ALMACENAMIENTO_URL || 'D:\\GastroProcedures\\Capturas';
+   const storageBasePath = process.env.REACT_APP_ALMACENAMIENTO_URL || 'D\\\\GastroProcedures\\\\Capturas';
+   // Puente de captura nativo (opcional)
+   const captureBridgeBaseUrl = process.env.REACT_APP_CAPTURE_BRIDGE_URL || 'http://localhost:8765';
   const [storageFolderPath, setStorageFolderPath] = useState('');
   const [storageFolderName, setStorageFolderName] = useState('');
   // File System Access API
@@ -48,6 +52,12 @@ const CapturaImagenes = () => {
   // Estado de permiso de guardado
   const [canSaveLocally, setCanSaveLocally] = useState(false);
   const [permDialogOpen, setPermDialogOpen] = useState(false);
+
+  // Selección de fuente de video: webcam vs otro dispositivo (videoinput)
+  const [sourceType, setSourceType] = useState('webcam');
+  const [videoDevices, setVideoDevices] = useState([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState('');
+
   // Persistencia de carpeta base (IndexedDB)
   const openIDB = () => new Promise((resolve, reject) => {
     try {
@@ -60,8 +70,95 @@ const CapturaImagenes = () => {
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
-    } catch (e) { reject(e); }
+    } catch (err) {
+      reject(err);
+    }
   });
+
+  const saveHandle = async (key, handle) => {
+    const db = await openIDB();
+    const tx = db.transaction('handles', 'readwrite');
+    tx.objectStore('handles').put(handle, key);
+    await tx.complete;
+    db.close();
+  };
+
+  const loadHandle = async (key) => {
+    const db = await openIDB();
+    const tx = db.transaction('handles', 'readonly');
+    const result = await new Promise((resolve) => {
+      const req = tx.objectStore('handles').get(key);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    });
+    db.close();
+    return result || null;
+  };
+
+  // ... existing code ...
+  // Utilidad: refrescar lista de dispositivos de video
+  const refreshVideoDevices = async () => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const vids = devices.filter((d) => d.kind === 'videoinput');
+      setVideoDevices(vids);
+    } catch (err) {
+      // ignore
+    }
+  };
+
+  const enumerateAllMediaDevices = async () => {
+    setMediaDevicesError('');
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+        setMediaDevicesError('Tu navegador no soporta la enumeración de dispositivos.');
+        setMediaDevicesInfo([]);
+        return;
+      }
+      const isSecure = window.isSecureContext || location.hostname === 'localhost';
+      if (!isSecure) {
+        setMediaDevicesError('Se requiere ejecutar en HTTPS o localhost para acceder a cámara/micrófono.');
+        setMediaDevicesInfo([]);
+        return;
+      }
+      let stream = null;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      } catch (err1) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        } catch (err2) {
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          } catch (err3) {
+            if (err3 && (err3.name === 'NotAllowedError' || err3.name === 'SecurityError')) {
+              setMediaDevicesError('Permisos no concedidos para cámara/micrófono o contexto inseguro. Autoriza en el navegador y reintenta.');
+            }
+          }
+        }
+      }
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      setMediaDevicesInfo(devices || []);
+      if (stream) {
+        stream.getTracks().forEach((t) => t.stop());
+      }
+    } catch (err) {
+      console.error('Error al enumerar dispositivos:', err);
+      const name = (err && err.name) ? err.name : 'Error';
+      setMediaDevicesError(`No se pudieron listar dispositivos: ${name}`);
+      setMediaDevicesInfo([]);
+    }
+  };
+
+  const pickDefaultCaptureDeviceId = (devices) => {
+    const CE310B_REGEX = /avermedia.*ce310b|\bce310b\b/i;
+    const cePref = devices.find((d) => CE310B_REGEX.test(d.label || ''));
+    if (cePref) return cePref.deviceId;
+    const CAPTURE_REGEX = /hdmi|capture|blackmagic|avermedia|aver|live gamer|lgx|extremecap|gc553|gc551|magewell|decklink|elgato|ce310b|pcie/i;
+    const preferred = devices.find((d) => CAPTURE_REGEX.test(d.label || ''));
+    return preferred?.deviceId || (devices[0]?.deviceId || '');
+  };
+
   const idbGet = async (key) => {
     const db = await openIDB();
     return new Promise((resolve, reject) => {
@@ -266,6 +363,15 @@ const CapturaImagenes = () => {
   const streamRef = useRef(null);
   const recorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
+  // Estado y refs para puente nativo (PCI/SDK)
+  const [bridgeAvailable, setBridgeAvailable] = useState(false);
+  const [bridgeStreamUrl, setBridgeStreamUrl] = useState('');
+  const bridgeImgRef = useRef(null);
+  const bridgeVideoRef = useRef(null);
+  const [forceBridge, setForceBridge] = useState(false);
+  const [devicesModalOpen, setDevicesModalOpen] = useState(false);
+  const [mediaDevicesInfo, setMediaDevicesInfo] = useState([]);
+  const [mediaDevicesError, setMediaDevicesError] = useState('');
   useEffect(() => {
     const update = () => {
       if (viewerRef.current) setViewerHeight(viewerRef.current.clientHeight || 0);
@@ -536,8 +642,16 @@ const CapturaImagenes = () => {
         }
         currentStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
         if (videoRef.current) {
-          videoRef.current.srcObject = currentStream;
-          await videoRef.current.play();
+          const v = videoRef.current;
+          v.srcObject = currentStream;
+          v.muted = true;
+          v.playsInline = true;
+          const tryPlay = async () => { try { await v.play(); } catch (e) {} };
+          if (v.readyState >= 2) {
+            tryPlay();
+          } else {
+            v.onloadedmetadata = () => tryPlay();
+          }
         }
         streamRef.current = currentStream;
         setCameraAvailable(true);
@@ -558,24 +672,150 @@ const CapturaImagenes = () => {
         currentStream.getTracks().forEach((t) => t.stop());
       }
       streamRef.current = null;
+      if (videoRef.current) {
+        try { videoRef.current.srcObject = null; } catch {}
+      }
     };
   }, []);
+
+  // Refrescar dispositivos de vídeo cuando la cámara está disponible o se selecciona 'Otro dispositivo'
+  useEffect(() => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+    if (cameraAvailable || sourceType === 'device') refreshVideoDevices();
+  }, [cameraAvailable, sourceType]);
+
+  // Reiniciar stream según la selección de fuente/dispositivo
+  useEffect(() => {
+    const restart = async () => {
+      try {
+        // Skip getUserMedia when forcing bridge in device mode
+        if (sourceType === 'device' && forceBridge) {
+          if (streamRef.current) {
+            try { streamRef.current.getTracks().forEach((t) => t.stop()); } catch {}
+            streamRef.current = null;
+          }
+          if (videoRef.current) {
+            try { videoRef.current.srcObject = null; } catch {}
+          }
+          setCameraAvailable(false);
+          setCameraError(null);
+          return;
+        }
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+        const constraints = { video: sourceType === 'device' && selectedDeviceId ? { deviceId: { exact: selectedDeviceId } } : true, audio: false };
+        // Detener el stream actual si existe
+        if (streamRef.current) {
+          try { streamRef.current.getTracks().forEach((t) => t.stop()); } catch {}
+          streamRef.current = null;
+          if (videoRef.current) {
+            try { videoRef.current.srcObject = null; } catch {}
+          }
+        }
+        const s = await navigator.mediaDevices.getUserMedia(constraints);
+        streamRef.current = s;
+        if (videoRef.current) {
+          const v = videoRef.current;
+          v.srcObject = s;
+          v.muted = true;
+          v.playsInline = true;
+          const tryPlay = async () => { try { await v.play(); } catch (e) {} };
+          if (v.readyState >= 2) {
+            tryPlay();
+          } else {
+            v.onloadedmetadata = () => tryPlay();
+          }
+        }
+        setCameraAvailable(true);
+        setCameraError(null);
+      } catch (err) {
+        setCameraAvailable(false);
+        const msg = err?.name === 'NotAllowedError'
+          ? 'Permiso de cámara denegado'
+          : err?.name === 'NotFoundError'
+          ? (sourceType === 'device' ? 'Tarjeta no conectada' : 'No se encontró dispositivo de video')
+          : 'Dispositivo no disponible';
+        setCameraError(msg);
+      }
+    };
+    // Evita correr si se selecciona "otro dispositivo" pero aún no hay deviceId
+    if (sourceType === 'webcam' || (sourceType === 'device' && selectedDeviceId)) {
+      restart();
+    }
+  }, [sourceType, selectedDeviceId, forceBridge]);
+
+  // Selección automática de dispositivo cuando se elige "Otro dispositivo"
+  useEffect(() => {
+    if (sourceType === 'device' && videoDevices.length > 0 && !selectedDeviceId) {
+      setSelectedDeviceId(pickDefaultCaptureDeviceId(videoDevices));
+    }
+  }, [sourceType, videoDevices, selectedDeviceId]);
+
+  // Mostrar mensaje específico cuando no se detecta dispositivo en modo 'Otro dispositivo'
+  useEffect(() => {
+    if (sourceType !== 'device') return;
+    if (videoDevices.length === 0) {
+      // Detener stream y limpiar visor
+      if (streamRef.current) {
+        try { streamRef.current.getTracks().forEach((t) => t.stop()); } catch {}
+        streamRef.current = null;
+      }
+      if (videoRef.current) {
+        try { videoRef.current.srcObject = null; } catch {}
+      }
+      setSelectedDeviceId('');
+      setCameraAvailable(false);
+      setCameraError('Tarjeta no conectada');
+    }
+  }, [sourceType, videoDevices]);
+
+  // Bridge: conectar a servicio nativo si no hay videoinputs en modo 'Otro dispositivo'
+  useEffect(() => {
+    const connectBridge = async () => {
+      if (sourceType !== 'device') return;
+      if (!forceBridge && videoDevices.length > 0) {
+        setBridgeAvailable(false);
+        setBridgeStreamUrl('');
+        return;
+      }
+      try {
+        const resp = await fetch(`${captureBridgeBaseUrl}/status`, { method: 'GET' });
+        if (resp.ok) {
+          let status = {};
+          try { status = await resp.json(); } catch {}
+          const streamUrl = status?.streamUrl || `${captureBridgeBaseUrl}/stream.mjpeg`;
+          setBridgeStreamUrl(streamUrl);
+          setBridgeAvailable(true);
+          setCameraError(null);
+        } else {
+          setBridgeAvailable(false);
+          setBridgeStreamUrl('');
+          setCameraError('Tarjeta no conectada');
+        }
+      } catch (e) {
+        setBridgeAvailable(false);
+        setBridgeStreamUrl('');
+        setCameraError('Tarjeta no conectada');
+      }
+    };
+    connectBridge();
+  }, [sourceType, videoDevices, captureBridgeBaseUrl, forceBridge]);
 
   const handleCapturar = () => {
     try {
       const video = videoRef.current;
-      if (!video || !cameraAvailable) {
-        const sampleUrl = `https://via.placeholder.com/600x400.png?text=Sin+camara+${capturedImages.length + 1}`;
-        setCapturedImages((prev) => [...prev, { id: Date.now(), src: sampleUrl, fullSrc: sampleUrl, thumbSrc: sampleUrl }]);
-        return;
-      }
-      const width = video.videoWidth || video.clientWidth || 1280;
-      const height = video.videoHeight || video.clientHeight || 720;
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, width, height);
+       let drawEl = (sourceType === 'device' && bridgeAvailable) ? (bridgeVideoRef.current || bridgeImgRef.current) : video;
+       if (!drawEl || (!cameraAvailable && !(sourceType === 'device' && bridgeAvailable))) {
+         const sampleUrl = `https://via.placeholder.com/600x400.png?text=Sin+camara+${capturedImages.length + 1}`;
+         setCapturedImages((prev) => [...prev, { id: Date.now(), src: sampleUrl, fullSrc: sampleUrl, thumbSrc: sampleUrl }]);
+         return;
+       }
+       const width = (drawEl?.videoWidth || drawEl?.naturalWidth || drawEl?.clientWidth || 1280);
+       const height = (drawEl?.videoHeight || drawEl?.naturalHeight || drawEl?.clientHeight || 720);
+       const canvas = document.createElement('canvas');
+       canvas.width = width;
+       canvas.height = height;
+       const ctx = canvas.getContext('2d');
+       ctx.drawImage(drawEl, 0, 0, width, height);
 
       /*
        * Anotaciones/overlay de captura deshabilitadas temporalmente para reuso futuro.
@@ -643,6 +883,10 @@ const CapturaImagenes = () => {
 
   const handleGrabar = () => {
     try {
+      if (sourceType === 'device' && bridgeAvailable) {
+        alert('Modo puente: la grabación de video no está disponible.');
+        return;
+      }
       if (!cameraAvailable || !streamRef.current) {
         alert('No hay cámara disponible para grabar');
         return;
@@ -694,7 +938,92 @@ const CapturaImagenes = () => {
   return (
     <Container maxWidth="lg" sx={{ py: 1, px: 2, maxWidth: '100% !important' }}>
       <Paper elevation={3} sx={{ borderRadius: 2, overflow: 'hidden' }}>
-        <SectionHeader title="Captura de Imágenes" />
+        <SectionHeader title="Captura de Imágenes" rightNode={(
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <ToggleButtonGroup
+              size="small"
+              exclusive
+              value={sourceType}
+              onChange={(e, val) => { if (val) setSourceType(val); }}
+            >
+              <ToggleButton value="webcam">Cámara web</ToggleButton>
+              <ToggleButton value="device">Otro dispositivo</ToggleButton>
+            </ToggleButtonGroup>
+            {sourceType === 'device' && (
+              <FormControlLabel
+                control={<Switch size="small" checked={forceBridge} onChange={(e) => setForceBridge(e.target.checked)} />}
+                label="Forzar puente"
+              />
+            )}
+            {sourceType === 'device' && (
+              <FormControl size="small" sx={{ minWidth: 220 }}>
+                <InputLabel id="dev-select-label">Dispositivo</InputLabel>
+                <Select
+                  labelId="dev-select-label"
+                  label="Dispositivo"
+                  value={selectedDeviceId}
+                  onChange={(e) => setSelectedDeviceId(e.target.value)}
+                  disabled={forceBridge}
+                >
+                  {videoDevices.length === 0 ? (
+                    <MenuItem value="" disabled>Sin dispositivos de video</MenuItem>
+                  ) : (
+                    [...videoDevices].sort((a, b) => {
+                      const re = /hdmi|capture|blackmagic|avermedia|aver|live gamer|lgx|extremecap|gc553|gc551|magewell|decklink|elgato|ce310b|pcie/i;
+                      const ca = re.test(a.label || '');
+                      const cb = re.test(b.label || '');
+                      if (ca && !cb) return -1;
+                      if (!ca && cb) return 1;
+                      return (a.label || '').localeCompare(b.label || '');
+                    }).map((d) => (
+                      <MenuItem key={d.deviceId} value={d.deviceId}>
+                        {(() => {
+                          const lbl = d.label || `Dispositivo ${d.deviceId.slice(-4)}`;
+                          const isCapture = /hdmi|capture|blackmagic|avermedia|aver|live gamer|lgx|extremecap|gc553|gc551|magewell|decklink|elgato|ce310b|pcie/i.test(d.label || '');
+                          return isCapture ? `${lbl} (capturadora)` : lbl;
+                        })()}
+                      </MenuItem>
+                    ))
+                  )}
+                </Select>
+              </FormControl>
+            )}
+          </Box>
+        )} />
+        <Dialog open={devicesModalOpen} onClose={() => setDevicesModalOpen(false)} maxWidth="md" fullWidth>
+          <DialogTitle>Dispositivos de sonido y video</DialogTitle>
+          <DialogContent dividers>
+            {mediaDevicesError ? (
+              <Box>
+                <Typography variant="body2" color="error">{mediaDevicesError}</Typography>
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  Si abres desde otra PC vía IP, usa HTTPS o autoriza cámara/micrófono en el navegador y vuelve a intentar.
+                </Typography>
+              </Box>
+            ) : mediaDevicesInfo.length === 0 ? (
+              <Typography variant="body2">No se pudieron listar dispositivos o no hay permisos.</Typography>
+            ) : (
+              <Box>
+                <Typography variant="subtitle2" sx={{ mt: 1, mb: 0.5 }}>Video (videoinput)</Typography>
+                {mediaDevicesInfo.filter((d) => d.kind === 'videoinput').map((d) => (
+                  <Typography key={`${d.kind}-${d.deviceId}`} variant="body2">• {(d.label || 'Sin nombre')} — id: {String(d.deviceId || '').slice(-8) || '—'}</Typography>
+                ))}
+                <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5 }}>Audio de entrada (audioinput)</Typography>
+                {mediaDevicesInfo.filter((d) => d.kind === 'audioinput').map((d) => (
+                  <Typography key={`${d.kind}-${d.deviceId}`} variant="body2">• {(d.label || 'Sin nombre')} — id: {String(d.deviceId || '').slice(-8) || '—'}</Typography>
+                ))}
+                <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5 }}>Audio de salida (audiooutput)</Typography>
+                {mediaDevicesInfo.filter((d) => d.kind === 'audiooutput').map((d) => (
+                  <Typography key={`${d.kind}-${d.deviceId}`} variant="body2">• {(d.label || 'Sin nombre')} — id: {String(d.deviceId || '').slice(-8) || '—'}</Typography>
+                ))}
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDevicesModalOpen(false)}>Cerrar</Button>
+            <Button variant="outlined" onClick={enumerateAllMediaDevices}>Actualizar</Button>
+          </DialogActions>
+        </Dialog>
         <Box sx={{ p: 3 }}>
           <Grid container spacing={3} sx={{ mb: 1 }}>
 
@@ -705,9 +1034,11 @@ const CapturaImagenes = () => {
 
             </Grid>
             <Grid item xs={12} md={4}>
-
-              <Typography variant="subtitle1" sx={{ color: '#666', mb: 1 }}></Typography>
-
+              <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+                <Button size="small" variant="outlined" onClick={() => { enumerateAllMediaDevices(); setDevicesModalOpen(true); }}>
+                  Ver dispositivos
+                </Button>
+              </Box>
             </Grid>
             <Grid item xs={12} md={6} sx={{ pr: 0 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', height: '100%' }}>
@@ -765,13 +1096,15 @@ const CapturaImagenes = () => {
             {/* Izquierda: recuadro grande para visualizar imagen a capturar */}
             <Grid item xs={12} md={8}>
               <Paper variant="outlined" sx={{ height: 600, width: '100%', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f8f9fa' }}>
-                {cameraAvailable ? (
-                  <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted playsInline />
-                ) : (
-                  <Typography variant="body1" color="text.secondary">
-                    {cameraError || 'Dispositivo no disponible'}
-                  </Typography>
-                )}
+                {sourceType === 'device' && bridgeAvailable ? (
+                   <img ref={bridgeImgRef} src={bridgeStreamUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="stream-dispositivo" />
+                 ) : cameraAvailable ? (
+                   <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted playsInline />
+                 ) : (
+                   <Typography variant="body1" color="text.secondary">
+                     {cameraError || 'Dispositivo no disponible'}
+                   </Typography>
+                 )}
               </Paper>
             </Grid>
 
@@ -781,13 +1114,13 @@ const CapturaImagenes = () => {
                 <Grid item xs={12}>
                   <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                     <Box sx={{ display: 'flex', gap: 0.5, rowGap: 0.5, flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
-                      <Button aria-label="Capturar" size="small" variant="contained" color="primary" startIcon={<PhotoCamera />} onClick={handleCapturar} disabled={!cameraAvailable} sx={{ minWidth: 0, px: 1 }}>
+                      <Button aria-label="Capturar" size="small" variant="contained" color="primary" startIcon={<PhotoCamera />} onClick={handleCapturar} disabled={!(cameraAvailable || (sourceType === 'device' && bridgeAvailable))} sx={{ minWidth: 0, px: 1 }}>
                         <Box component="span" sx={{ display: { xs: 'none', sm: 'none', md: 'inline' } }}>CAPTURAR</Box>
                       </Button>
-                      <Button aria-label="Grabar" size="small" variant="contained" color="success" startIcon={<FiberManualRecord />} onClick={handleGrabar} disabled={isRecording} sx={{ minWidth: 0, px: 1 }}>
+                      <Button aria-label="Grabar" size="small" variant="contained" color="success" startIcon={<FiberManualRecord />} onClick={handleGrabar} disabled={isRecording || (sourceType === 'device' && bridgeAvailable)} sx={{ minWidth: 0, px: 1 }}>
                         <Box component="span" sx={{ display: { xs: 'none', sm: 'none', md: 'inline' } }}>GRABAR</Box>
                       </Button>
-                      <Button aria-label="Terminar" size="small" variant="contained" color="error" startIcon={<Stop />} onClick={handleTerminar} disabled={!isRecording} sx={{ minWidth: 0, px: 1 }}>
+                      <Button aria-label="Terminar" size="small" variant="contained" color="error" startIcon={<Stop />} onClick={handleTerminar} disabled={!isRecording || (sourceType === 'device' && bridgeAvailable)} sx={{ minWidth: 0, px: 1 }}>
                         <Box component="span" sx={{ display: { xs: 'none', sm: 'none', md: 'inline' } }}>DETENER</Box>
                       </Button>
                       <Button aria-label="Guardar todas" size="small" variant="outlined" color="primary" onClick={handleGuardarTodas} disabled={capturedImages.length === 0 || !canSaveLocally} sx={{ minWidth: 0, px: 1 }}>

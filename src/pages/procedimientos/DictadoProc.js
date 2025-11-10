@@ -137,6 +137,7 @@ const DictadoProc = () => {
   const [openCie10Modal, setOpenCie10Modal] = useState(false);
   const [openConfirmPresentModal, setOpenConfirmPresentModal] = useState(false);
   const [selectedProcedimiento, setSelectedProcedimiento] = useState(null);
+  
 
   const [medicosD, setMedicosCargados] = useState([]);
   const [salaD, setSalaCargados] = useState([]);

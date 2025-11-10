@@ -137,6 +137,7 @@ const PreparacionProc = () => {
   const [openCie10Modal, setOpenCie10Modal] = useState(false);
   const [openConfirmPresentModal, setOpenConfirmPresentModal] = useState(false);
   const [selectedProcedimiento, setSelectedProcedimiento] = useState(null);
+  
 
   const [openCambioDictadoModal, setCambioDictadoModal] = useState(false);
 
@@ -550,7 +551,9 @@ const cargarSalas = async () => {
     const fechaEstudio = encodeURIComponent(fechaEstudioRaw || '');
     const edadPaciente = encodeURIComponent(edadPacienteRaw !== '' ? String(edadPacienteRaw) : '');
 
-    const url = `/procedimientos/captura-imagenes?paciente=${paciente}&procedimiento=${estudio}&codigo=${codigo}&centro=${centro}&sala=${sala}&gastro=${gastro}&fechaEstudio=${fechaEstudio}&edadPaciente=${edadPaciente}`;
+    const urlBase = new URL('/procedimientos/captura-imagenes', window.location.origin);
+    urlBase.search = `paciente=${paciente}&procedimiento=${estudio}&codigo=${codigo}&centro=${centro}&sala=${sala}&gastro=${gastro}&fechaEstudio=${fechaEstudio}&edadPaciente=${edadPaciente}`;
+    const url = urlBase.toString();
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 

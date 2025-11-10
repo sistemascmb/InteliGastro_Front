@@ -108,6 +108,31 @@ Sistema de gestión clínica gastroenterológica construido con React y Material
 5. **Abrir en el navegador**
    - Aplicación: [http://localhost:3000](http://localhost:3000)
 
+### Acceso desde otra PC (LAN) con HTTPS
+
+Para que el navegador permita cámara/micrófono al abrir desde otra PC:
+- Asegúrate que `.env` tenga:
+  - `PORT=3001`
+  - `HTTPS=true`
+  - `HOST=0.0.0.0`
+- Reinicia el dev server: `npm start`
+- Accede desde la otra PC: `https://<IP-del-host>:3001/`
+- Si sale aviso de certificado no confiable, acéptalo temporalmente para pruebas o genera un certificado dev confiable con el script:
+  - `powershell -ExecutionPolicy Bypass -File .\\scripts\\generate-dev-cert.ps1`
+  - Luego descomenta en `.env`: `SSL_CRT_FILE=certs/dev-cert.pem` y `SSL_KEY_FILE=certs/dev-key.pem`
+  - Reinicia: `npm start`
+
+Permisos de cámara/micrófono:
+- Al abrir el modal “Ver dispositivos” pulsa “Actualizar”. El navegador pedirá permisos; concédelos.
+- Si ves un mensaje de “Se requiere ejecutar en HTTPS o localhost…”, verifica que entras por `https://`.
+
+Puente de captura (stream.mjpeg):
+- Si usas el puente en una página HTTPS, el stream HTTP (`http://<host>:8765/stream.mjpeg`) puede ser bloqueado por contenido mixto.
+- Opciones:
+  - Ejecutar el puente también en HTTPS y acceder como `https://<host>:8765/stream.mjpeg`.
+  - O, poner un proxy HTTPS (Caddy/Nginx) delante del puente.
+
+
 ## 📁 Estructura del Proyecto
 
 ```
