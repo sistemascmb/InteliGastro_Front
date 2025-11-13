@@ -1,5 +1,6 @@
 import { api } from '../utils/apiClient';
 import { API_ENDPOINTS } from '../constants/api';
+import appointmentsService from './appointmentsService';
 
 // Servicio para el manejo de ArchivoDigitals
 export const archivodigitalService = {
@@ -294,6 +295,12 @@ getAll_Estudio: async (params = {}) => {
 
       const data = await response.json();
       console.log('✅ ArchivoDigital creado exitosamente:', data);
+
+      if (archivoDigitalData.estudioId) {
+        try {
+          await appointmentsService.update_Estado_EsudioTerminiado(archivoDigitalData.estudioId);
+        } catch (e) {}
+      }
 
       return {
         data: data,

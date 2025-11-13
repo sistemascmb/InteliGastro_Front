@@ -306,7 +306,8 @@ const cargarSalas = async () => {
                     //
                     fechaExamen: procedimientoDat.appointmentDate,
                     horaExamen: procedimientoDat.hoursMedicalShedule,
-                    urgente: procedimientoDat.urgenteId == '10059' ?true: false
+                    urgente: procedimientoDat.urgenteId == '10059' ? true : false,
+                    estudioTeminadoId: procedimientoDat.estudioTeminadoId,
 
                   };
                 } catch (error) {
@@ -334,7 +335,8 @@ const cargarSalas = async () => {
                     procedimiento: '',
                     //
                     medicoReferente: '',
-                    gastroenterologo: ''
+                    gastroenterologo: '',
+                    estudioTeminadoId: ''
                   };
                 }
               })
@@ -352,11 +354,31 @@ const cargarSalas = async () => {
       };
     
   useEffect(() => {    
-     cargarProcedimientos();
-     cargarMedicos();
-     cargarRecursos();
-     cargarSalas();
-     cargarEstudios();
+     const runInitialLoads = () => {
+       cargarProcedimientos();
+       cargarMedicos();
+       cargarRecursos();
+       cargarSalas();
+       cargarEstudios();
+     };
+     runInitialLoads();
+     const onStorage = (e) => {
+       if (e.key === 'procedimientosUpdated') {
+         runInitialLoads();
+       }
+     };
+     window.addEventListener('storage', onStorage);
+     const onMessage = (e) => {
+       if (e.origin !== window.location.origin) return;
+       if (e.data && e.data.type === 'EXAM_TERMINATED') {
+         runInitialLoads();
+       }
+     };
+     window.addEventListener('message', onMessage);
+     return () => {
+       window.removeEventListener('storage', onStorage);
+       window.removeEventListener('message', onMessage);
+     };
   }, []);
 
   const [procedimientosAgendados_old, setProcedimientosAgendados_old] = useState([
@@ -550,9 +572,10 @@ const cargarSalas = async () => {
     const edadPacienteRaw = procedimiento.fechaNac ? calcAge(procedimiento.fechaNac, fechaEstudioRaw || new Date()) : '';
     const fechaEstudio = encodeURIComponent(fechaEstudioRaw || '');
     const edadPaciente = encodeURIComponent(edadPacienteRaw !== '' ? String(edadPacienteRaw) : '');
+    const estudioTerminadoId = encodeURIComponent(procedimiento.estudioTeminadoId ?? '');
 
     const urlBase = new URL('/procedimientos/captura-imagenes', window.location.origin);
-    urlBase.search = `paciente=${paciente}&procedimiento=${estudio}&codigo=${codigo}&centro=${centro}&sala=${sala}&gastro=${gastro}&fechaEstudio=${fechaEstudio}&edadPaciente=${edadPaciente}`;
+    urlBase.search = `paciente=${paciente}&procedimiento=${estudio}&codigo=${codigo}&centro=${centro}&sala=${sala}&gastro=${gastro}&fechaEstudio=${fechaEstudio}&edadPaciente=${edadPaciente}&estudioTerminadoId=${estudioTerminadoId}`;
     const url = urlBase.toString();
     window.open(url, '_blank', 'noopener,noreferrer');
   };
@@ -1339,7 +1362,7 @@ const cargarSalas = async () => {
                                 <Assignment />
                               </IconButton>
                             </Box>
-                              {proc.estado === 'En Progreso' ? (
+                              {Number(proc.estudioTeminadoId) === 1 && (
                                 <IconButton
                                   color="secondary"
                                   size="small"
@@ -1347,18 +1370,7 @@ const cargarSalas = async () => {
                                   onClick={() => handlePacienteDictado(proc)}
                                 >
                                   <AssignmentReturn />
-
-                                </IconButton> ) : (
-                              
-                                <IconButton
-                                  color="success"
-                                  size="small"
-                                  title="Inciar Captura de Imágenes"
-                                  onClick={() => handleIniciarCapturaImagenes(proc)}
-                                >
-                                  <ImageSearch />
-                                </IconButton>
-                                )
+                                </IconButton>) 
                               }
 
                             <Box sx={{ display: 'flex', gap: 0.5 }}>

@@ -45,8 +45,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         anotacionesAdicionales: proced.anotacionesAdicionales,
         tipoProcedimientoId: proced.tipoProcedimientoId,
         urgenteId: proced.urgenteId,
-        EstudioTeminadoId: proced.EstudioTeminadoId,
-        PdfGeneradoId: proced.PdfGeneradoId,
+        estudioTeminadoId: proced.estudioTeminadoId,
+        pdfGeneradoId: proced.pdfGeneradoId,
 
         // Auditoría
         createdAt: proced.createdAt,
@@ -106,8 +106,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         anotacionesAdicionales: proced.anotacionesAdicionales,
         tipoProcedimientoId: proced.tipoProcedimientoId,
         urgenteId: proced.urgenteId,
-        EstudioTeminadoId: proced.EstudioTeminadoId,
-        PdfGeneradoId: proced.PdfGeneradoId,
+        estudioTeminadoId: proced.estudioTeminadoId,
+        pdfGeneradoId: proced.pdfGeneradoId,
         // Auditoría
         createdAt: proced.createdAt,
         createdBy: proced.createdBy,
@@ -166,8 +166,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         anotacionesAdicionales: proced.anotacionesAdicionales,
         tipoProcedimientoId: proced.tipoProcedimientoId,
         urgenteId: proced.urgenteId,
-        EstudioTeminadoId: proced.EstudioTeminadoId,
-        PdfGeneradoId: proced.PdfGeneradoId,
+        estudioTeminadoId: proced.estudioTeminadoId,
+        pdfGeneradoId: proced.pdfGeneradoId,
 
         // Auditoría
         createdAt: proced.createdAt,
@@ -227,8 +227,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         anotacionesAdicionales: proced.anotacionesAdicionales,
         tipoProcedimientoId: proced.tipoProcedimientoId,
         urgenteId: proced.urgenteId,
-        EstudioTeminadoId: proced.EstudioTeminadoId,
-        PdfGeneradoId: proced.PdfGeneradoId,
+        estudioTeminadoId: proced.estudioTeminadoId,
+        pdfGeneradoId: proced.pdfGeneradoId,
 
         // Auditoría
         createdAt: proced.createdAt,
@@ -288,8 +288,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         anotacionesAdicionales: proced.anotacionesAdicionales,
         tipoProcedimientoId: proced.tipoProcedimientoId,
         urgenteId: proced.urgenteId,
-        EstudioTeminadoId: proced.EstudioTeminadoId,
-        PdfGeneradoId: proced.PdfGeneradoId,
+        estudioTeminadoId: proced.estudioTeminadoId,
+        pdfGeneradoId: proced.pdfGeneradoId,
         // Auditoría
         createdAt: proced.createdAt,
         createdBy: proced.createdBy,
@@ -434,8 +434,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         anotacionesAdicionales: appointmentData.anotacionesAdicionales,
         tipoProcedimientoId: -1,
         urgenteId: -1,
-        EstudioTeminadoId: 0,
-        PdfGeneradoId: 0,
+        estudioTeminadoId: 0,
+        pdfGeneradoId: 0,
         createdAt: new Date().toISOString(),
         createdBy: 'Arnold' // Usuario de prueba
       };
@@ -507,8 +507,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         anotacionesAdicionales: appointmentData.anotacionesAdicionales,
         tipoProcedimientoId: appointmentData.tipoProcedimientoId,
         urgenteId: appointmentData.urgenteId,
-        EstudioTeminadoId: 0,
-        PdfGeneradoId: 0,
+        estudioTeminadoId: 0,
+        pdfGeneradoId: 0,
 
         createdAt: new Date().toISOString(),
         createdBy: 'Arnold' // Usuario de prueba
@@ -635,8 +635,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         anotacionesAdicionales: dataOrigin.anotacionesAdicionales,
         tipoProcedimientoId: dataOrigin.tipoProcedimientoId,
         urgenteId: dataOrigin.urgenteId,
-        EstudioTeminadoId: dataOrigin.EstudioTeminadoId,
-        PdfGeneradoId: dataOrigin.PdfGeneradoId,
+        estudioTeminadoId: dataOrigin.estudioTeminadoId,
+        pdfGeneradoId: dataOrigin.PdfGeneradoId,
 
         updatedAt: new Date().toISOString(),
         updatedBy: 'Arnold',
@@ -666,6 +666,69 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
       const data = await response.json();
       console.log('✅ Agenda actualizado exitosamente:', data);
 
+      return {
+        data: data,
+        status: 'success'
+      };
+    } catch (error) {
+      console.error('❌ Error al actualizar Agenda:', error);
+      throw error;
+    }
+  },
+  update_Estado_EsudioTerminiado: async (id) => {
+    try {
+      const urlOrigin = `${process.env.REACT_APP_API_URL}/Agenda/${id}`;
+      const responseOrigin = await fetch(urlOrigin);
+      const dataOrigin = await responseOrigin.json();
+
+      if (!id) {
+        throw new Error('ID del Agenda es requerido');
+      }
+
+      const formattedData = {
+        medicalscheduleid: parseInt(id),
+        pacientId: dataOrigin.pacientId,
+        centroId: dataOrigin.centroId,
+        personalId: dataOrigin.personalId,
+        appointmentDate: dataOrigin.appointmentDate,
+        hoursMedicalShedule: dataOrigin.hoursMedicalShedule,
+        otherOrigins: dataOrigin.otherOrigins,
+        typeOfPatient: dataOrigin.typeOfPatient,
+        referral_doctorsId: dataOrigin.referral_doctorsId,
+        centerOfOriginId: dataOrigin.centerOfOriginId,
+        anotherCenter: dataOrigin.anotherCenter,
+        procedureRoomId: dataOrigin.procedureRoomId,
+        resourcesId: dataOrigin.resourcesId,
+        studiesId: dataOrigin.studiesId,
+        insuranceId: dataOrigin.insuranceId,
+        letterOfGuarantee: dataOrigin.letterOfGuarantee,
+        status: dataOrigin.status,
+        typeOfAttention: dataOrigin.typeOfAttention,
+        anotacionesAdicionales: dataOrigin.anotacionesAdicionales,
+        tipoProcedimientoId: dataOrigin.tipoProcedimientoId,
+        urgenteId: dataOrigin.urgenteId,
+        estudioTeminadoId: 1,
+        pdfGeneradoId: dataOrigin.PdfGeneradoId,
+        updatedAt: new Date().toISOString(),
+        updatedBy: 'Arnold',
+        isDeleted: false
+      };
+
+      const url = `${process.env.REACT_APP_API_URL}/Agenda/${id}`;
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formattedData)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error ${response.status}: ${response.statusText} - ${errorText}`);
+      }
+
+      const data = await response.json();
       return {
         data: data,
         status: 'success'
@@ -712,6 +775,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         anotacionesAdicionales: dataOrigin.anotacionesAdicionales,
         tipoProcedimientoId: dataOrigin.tipoProcedimientoId,
         urgenteId: dataOrigin.urgenteId,
+        estudioTeminadoId: 0,
+        pdfGeneradoId: 0,
 
         updatedAt: new Date().toISOString(),
         updatedBy: 'Arnold',

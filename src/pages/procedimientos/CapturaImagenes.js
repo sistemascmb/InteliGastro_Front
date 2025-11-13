@@ -106,7 +106,9 @@ const CapturaImagenes = () => {
   const gastro = query.get('gastro') || '';
   const fechaEstudio = query.get('fechaEstudio') || '';
   const edadPaciente = query.get('edadPaciente') || '';
+  const estudioTerminadoId = query.get('estudioTerminadoId') || '';
   const theme = useTheme();
+  const studyTerminated = estudioTerminadoId === '1';
 
   const sectionRef = useRef(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -945,6 +947,7 @@ const CapturaImagenes = () => {
     }
   };
   const handleEliminarImagen = async (id) => {
+    if (studyTerminated) return;
     const item = capturedImages.find((i) => i.id === id);
     try {
       const fullPath = item?.storedPath || (item?.fileName && storageFolderPath ? `${storageFolderPath}\\${item.fileName}` : null);
@@ -963,6 +966,7 @@ const CapturaImagenes = () => {
   };
 
   const handleBorrarTodas = async () => {
+    if (studyTerminated) return;
     if (capturedImages.length === 0) return;
     try {
       for (const item of capturedImages) {
@@ -1190,6 +1194,7 @@ const CapturaImagenes = () => {
   });
 
   const handleCapturar = async () => {
+    if (studyTerminated) return;
     try {
       // Modo dispositivo con puente: intentar primero snapshot del puente (más robusto)
       if (sourceType === 'device' && bridgeAvailable) {
@@ -1306,6 +1311,7 @@ const CapturaImagenes = () => {
   };
 
   const handleGrabar = () => {
+    if (studyTerminated) return;
     try {
       if (sourceType === 'device' && bridgeAvailable) {
         alert('Modo puente: la grabación de video no está disponible.');
@@ -1352,6 +1358,7 @@ const CapturaImagenes = () => {
   };
 
   const handleTerminar = () => {
+    if (studyTerminated) return;
     try {
       if (recorderRef.current && isRecording) {
         recorderRef.current.stop();
@@ -1428,10 +1435,13 @@ const CapturaImagenes = () => {
   };
 
   const handleTerminarEstudio = async () => {
+    if (studyTerminated) return;
   try {
     const files = capturedImages.slice();
     if (files.length === 0) return;
     const previewItems = [];
+    let procesados = 0;
+    let exitos = 0;
 
 
     for (const item of files) {
@@ -1472,14 +1482,24 @@ const CapturaImagenes = () => {
       try {
         const nuevoUsuario = await archivodigitalService.create_CaptureImagenes(payload);
         console.log('✅ Usuario creado:', nuevoUsuario);
-
+        exitos += 1;
         //await apiService.post('/ArchivoDigital/upload-file', payload);
       } catch (err) {
         console.log('Payload preparado para envío:', payload);
       }
+      procesados += 1;
 
       //const dataUrl = `${mimeType ? `data:${mimeType};base64,` : 'data:application/octet-stream;base64,'}${archive}`;
       //previewItems.push({ nombre, extension, mimeType, kind: item.kind, dataUrl, size });
+    }
+    if (procesados === files.length && exitos === files.length) {
+      try { localStorage.setItem('procedimientosUpdated', String(Date.now())); } catch {}
+      try { if (window.opener) window.opener.postMessage({ type: 'EXAM_TERMINATED' }, window.location.origin); } catch {}
+      alert('SE HA CULMINADO EL EXAMEN CORRECTAMENTE, ACTUALIZA LA LISTA DE PROCEDIMIENTOS PARA REVISAR LOS CAMBIOS');
+      setIsRecording(false);
+      window.close();
+    } else {
+      alert(`Se guardaron ${exitos} de ${files.length} archivos. Verifique y reintente.`);
     }
     //setTerminarPreviewItems(previewItems);
     //setTerminarSelected(previewItems[0] || null);
@@ -1678,7 +1698,7 @@ const CapturaImagenes = () => {
             
             <Grid item xs={12} md={6} sx={{ pr: 0 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', height: '100%' }}>
-                  <Button aria-label="TERMINAR ESTUDIO" variant="contained" color="warning" startIcon={<Stop />} onClick={handleTerminarEstudio} disabled={capturedImages.length === 0} sx={{ minWidth: 0, px: 1 }}>
+                  <Button aria-label="TERMINAR ESTUDIO" variant="contained" color="warning" startIcon={<Stop />} onClick={handleTerminarEstudio} disabled={capturedImages.length === 0 || studyTerminated} sx={{ minWidth: 0, px: 1 }}>
                      <Box component="span" sx={{ display: { xs: 'none', sm: 'none', md: 'inline' } }}>TERMINAR ESTUDIO</Box>
                    </Button>
                 </Box>
@@ -1694,16 +1714,20 @@ const CapturaImagenes = () => {
           <Divider sx={{ mb: 2 }} />
 
           {/* Fila 1 */}
-          <Grid container spacing={2} sx={{ mb: 1 }}>
-            <Grid item xs={12} md={4}>
-              <Typography variant="body2" color="text.secondary">Paciente</Typography>
-              <Typography variant="h6" fontWeight="bold">{paciente || '—'}</Typography>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Typography variant="body2" color="text.secondary">Procedimiento</Typography>
-              <Typography variant="h6" fontWeight="bold">{procedimiento || '—'}</Typography>
-            </Grid>
-          </Grid>
+  <Grid container spacing={2} sx={{ mb: 1 }}>
+    <Grid item xs={12} md={4}>
+      <Typography variant="body2" color="text.secondary">Paciente</Typography>
+      <Typography variant="h6" fontWeight="bold">{paciente || '—'}</Typography>
+    </Grid>
+    <Grid item xs={12} md={4}>
+      <Typography variant="body2" color="text.secondary">Procedimiento</Typography>
+      <Typography variant="h6" fontWeight="bold">{procedimiento || '—'}</Typography>
+    </Grid>
+    <Grid item xs={12} md={4}>
+      <Typography variant="body2" color="text.secondary">Estudio Terminado</Typography>
+      <Typography variant="h6" fontWeight="bold">{estudioTerminadoId === '1' ? 'Sí' : (estudioTerminadoId === '0' ? 'No' : (estudioTerminadoId || '—'))}</Typography>
+    </Grid>
+  </Grid>
           {/* Fila 2 */}
           <Grid container spacing={2} sx={{ mb: 2 }}>
             {/* Centro (Sala) */}
@@ -1757,10 +1781,10 @@ const CapturaImagenes = () => {
                 <Grid item xs={12}>
                   <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                     <Box sx={{ display: 'flex', gap: 0.5, rowGap: 0.5, flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
-                      <Button aria-label="Capturar" size="small" variant="contained" color="primary" startIcon={<PhotoCamera />} onClick={handleCapturar} disabled={!(cameraAvailable || (sourceType === 'device' && bridgeAvailable))} sx={{ minWidth: 0, px: 1 }}>
+                      <Button aria-label="Capturar" size="small" variant="contained" color="primary" startIcon={<PhotoCamera />} onClick={handleCapturar} disabled={!(cameraAvailable || (sourceType === 'device' && bridgeAvailable)) || studyTerminated} sx={{ minWidth: 0, px: 1 }}>
                         <Box component="span" sx={{ display: { xs: 'none', sm: 'none', md: 'inline' } }}>CAPTURAR</Box>
                       </Button>
-                      <Button aria-label="Grabar" size="small" variant="contained" color="success" startIcon={<FiberManualRecord />} onClick={handleGrabar} disabled={isRecording || (sourceType === 'device' && bridgeAvailable)} sx={{ minWidth: 0, px: 1 }}>
+                      <Button aria-label="Grabar" size="small" variant="contained" color="success" startIcon={<FiberManualRecord />} onClick={handleGrabar} disabled={isRecording || (sourceType === 'device' && bridgeAvailable) || studyTerminated} sx={{ minWidth: 0, px: 1 }}>
                         <Box component="span" sx={{ display: { xs: 'none', sm: 'none', md: 'inline' } }}>GRABAR</Box>
                       </Button>
                       {isRecording && (
@@ -1768,7 +1792,7 @@ const CapturaImagenes = () => {
                           <Box component="span" sx={{ display: { xs: 'none', sm: 'none', md: 'inline' } }}>{isPaused ? 'REANUDAR' : 'PAUSAR'}</Box>
                         </Button>
                       )}
-                      <Button aria-label="Terminar" size="small" variant="contained" color="error" startIcon={<Stop />} onClick={handleTerminar} disabled={!isRecording || (sourceType === 'device' && bridgeAvailable)} sx={{ minWidth: 0, px: 1 }}>
+                      <Button aria-label="Terminar" size="small" variant="contained" color="error" startIcon={<Stop />} onClick={handleTerminar} disabled={!isRecording || (sourceType === 'device' && bridgeAvailable) || studyTerminated} sx={{ minWidth: 0, px: 1 }}>
                         <Box component="span" sx={{ display: { xs: 'none', sm: 'none', md: 'inline' } }}>DETENER</Box>
                       </Button>
                       
@@ -1780,7 +1804,7 @@ const CapturaImagenes = () => {
                       {/*<Button aria-label="Guardar todas" size="small" variant="outlined" color="primary" onClick={handleGuardarTodas} disabled={capturedImages.length === 0 || !canSaveLocally} sx={{ minWidth: 0, px: 1 }}>
                         <Box component="span" sx={{ display: { xs: 'none', sm: 'none', md: 'inline' } }}>Guardar todas</Box>
                       </Button>
-                       <Button size="small" variant="outlined" color="error" onClick={handleBorrarTodas} disabled={capturedImages.length === 0} sx={{ minWidth: 0, px: 1 }}>
+                     <Button size="small" variant="outlined" color="error" onClick={handleBorrarTodas} disabled={capturedImages.length === 0 || studyTerminated} sx={{ minWidth: 0, px: 1 }}>
                          Borrar todas
                        </Button>*/}
                        {/*<Typography variant="caption" sx={{ alignSelf: 'center', ml: 1, color: pedalConnected ? 'success.main' : 'text.secondary' }}>Pedal: {pedalConnected ? 'Conectado' : 'No conectado'}</Typography>*/}
@@ -1830,10 +1854,11 @@ const CapturaImagenes = () => {
                                  color="error"
                                  startIcon={<DeleteIcon />}
                                  onClick={() => handleEliminarImagen(item.id)}
+                                 disabled={studyTerminated}
                                  sx={{ position: 'absolute', top: 6, right: 6, bgcolor: 'background.paper' }}
                                >
-                                 Eliminar
-                               </Button>
+                                  Eliminar
+                                 </Button>
                              </Box>
                            );
                          }}
@@ -1843,7 +1868,7 @@ const CapturaImagenes = () => {
                       )}
                     </Box>
                     <Divider sx={{ my: 1 }} />
-                    <Button size="small" variant="outlined" color="error" onClick={handleBorrarTodas} disabled={capturedImages.length === 0} sx={{ minWidth: 0, px: 1 }}>
+                    <Button size="small" variant="outlined" color="error" onClick={handleBorrarTodas} disabled={capturedImages.length === 0 || studyTerminated} sx={{ minWidth: 0, px: 1 }}>
                          Borrar todas
                        </Button>
                   </Paper>
