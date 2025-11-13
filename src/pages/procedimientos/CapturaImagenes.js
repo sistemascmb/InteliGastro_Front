@@ -4,8 +4,66 @@ import { Container, Paper, Box, Typography, Divider, Grid, Button, ImageList, Im
 import { PhotoCamera, FiberManualRecord, Stop, Delete as DeleteIcon, Fullscreen, FullscreenExit } from '@mui/icons-material';
 import PauseIcon from '@mui/icons-material/Pause';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import apiService from '../../shared/services/api-client';
 import { useTheme } from '@mui/material/styles';
 import { List } from 'react-window';
+import { fileUtils as itemToBlob } from '../../services/fileUtils';
+
+function getExtensionFromMime(mimeType) {
+  if (!mimeType) return 'bin';
+
+  const mimeToExt = {
+    // Imágenes
+    'image/jpeg': 'jpg',
+    'image/jpg': 'jpg',
+    'image/png': 'png',
+    'image/gif': 'gif',
+    'image/webp': 'webp',
+    'image/svg+xml': 'svg',
+    'image/bmp': 'bmp',
+    'image/tiff': 'tiff',
+    
+    // Videos
+    'video/mp4': 'mp4',
+    'video/webm': 'webm',
+    'video/ogg': 'ogv',
+    'video/quicktime': 'mov',
+    
+    // PDF y documentos
+    'application/pdf': 'pdf',
+    'application/msword': 'doc',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+    
+    // Otros
+    'application/octet-stream': 'bin',
+    'application/zip': 'zip',
+  };
+
+  return mimeToExt[mimeType.toLowerCase()] || 'bin';
+}
+//base 16
+function toHexFromUint8(u8Array) {
+  if (!u8Array || u8Array.length === 0) return '';
+  return Array.from(u8Array, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+
+/**
+ * Convierte Uint8Array → Base64 (cadena pura, sin prefijo)
+ */
+function toBase64FromUint8(u8) {
+  if (!u8 || u8.length === 0) return '';
+  return btoa(String.fromCharCode(...u8));
+}
+
+/**
+ * Convierte Base64 (puro) → Uint8Array
+ */
+function toUint8FromBase64(base64) {
+  if (!base64) return new Uint8Array(0);
+  const binary = atob(base64);
+  return Uint8Array.from(binary, c => c.charCodeAt(0));
+}
 
 // Componente de header de sección, siguiendo patrón existente
 const SectionHeader = ({ title, leftNode, rightNode }) => (
@@ -1299,6 +1357,122 @@ const CapturaImagenes = () => {
     }
   };
 
+  const handleTerminarEstudio_old = async () => {
+    try {
+      const files = capturedImages.slice();
+      if (files.length === 0) return;
+      for (const item of files) {
+
+        let nombre = item.fileName || `FILE_${codigo}_${Date.now()}`;
+        let extension = 'jpg';
+        let archivo = '';
+        let blob;
+        {/*
+        if (item.kind === 'video') {
+          let blob = item.videoBlob;
+          if (!blob && item.videoSrc) {
+            const resp = await fetch(item.videoSrc);
+            blob = await resp.blob();
+          }
+          archivo = await blobToBase64(blob);
+          extension = getExtensionFromMime(item.mimeType || blob.type || 'video/mp4');
+          if (!/\.(mp4|webm)$/i.test(nombre)) nombre = `${nombre}.${extension}`;
+        } else {
+          const dataUrl = item.fullSrc || item.src || '';
+          archivo = dataUrlToBase64(dataUrl);
+          const mimeMatch = (dataUrl || '').match(/^data:(.+);base64,/);
+          const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+          extension = getExtensionFromMime(mime);
+          if (!/\.(jpg|jpeg|png|gif)$/i.test(nombre)) nombre = `${nombre}.${extension}`;
+        }
+          */}
+
+          if (item.kind === 'video') {
+            blob = item.videoBlob;
+            if (!blob && item.videoSrc) {
+              const res = await fetch(item.videoSrc);
+              blob = await res.blob();
+            }
+          } else {
+            const dataUrl = item.fullSrc || item.src;
+            if (!dataUrl) continue;
+            blob = await fetch(dataUrl).then(r => r.blob());
+          }
+
+          if (!blob) continue;
+
+          const mimeType = blob.type || (item.kind === 'image' ? 'image/jpeg' : 'video/mp4');
+          extension = getExtensionFromMime(mimeType);
+          const size = blob.size;
+          const u8 = new Uint8Array(await blob.arrayBuffer());
+          archivo = toHexFromUint8(u8); // o toBase64FromUint8(u8)
+
+        const payload = { nombre, extension, archivo };
+        try {
+          await apiService.post('/ArchivoDigital/upload-file', payload);
+        } catch (err) {
+          console.log('Payload preparado para envío:', payload);
+        }
+      }
+    } catch (e) {}
+  };
+
+  const handleTerminarEstudio = async () => {
+  try {
+    const files = capturedImages.slice();
+    if (files.length === 0) return;
+
+    //const aesKey = await deriveAesGcmKey(String(codigo || ''), 'InteliGastro_Archivo');
+
+    for (const item of files) {
+      // ✅ Conversión unificada a Blob
+      const blob = await itemToBlob(item);
+
+      // Ahora trabajas con el Blob (igual para imagen y video)
+      const mimeType = blob.type || (item.kind === 'image' ? 'image/jpeg' : 'video/mp4');
+      const extension = getExtensionFromMime(mimeType);
+      const size = blob.size;
+
+      //const u8 = new Uint8Array(await blob.arrayBuffer());
+      //const archivo = toHexFromUint8(u8); // o toBase64FromUint8(u8)
+
+      // ✅ Convertir a Base64 puro (sin prefijo)
+      const u8 = new Uint8Array(await blob.arrayBuffer());
+      const archivo = toBase64FromUint8(u8); // ← Base64 puro
+
+      // Cifrar
+      //const encRes = await encryptBytesAesGcm(u8, aesKey);
+      //const archivoCifrado = toBase64FromUint8(encRes.ciphertext);
+      //const iv = toBase64FromUint8(encRes.iv);
+
+      // Nombre
+      let nombre = item.fileName || `FILE_${codigo}_${Date.now()}`;
+        const validExts = item.kind === 'video' 
+          ? ['mp4', 'webm'] 
+          : ['jpg', 'jpeg', 'png', 'gif'];
+      const hasValidExt = new RegExp(`\\.(${validExts.join('|')})$`, 'i').test(nombre);
+        if (!hasValidExt) nombre = `${nombre}.${extension}`;
+
+      const payload = {
+        nombre,
+        extension,
+        archivo,           // hex o base64
+        //archivoCifrado,
+        //iv,
+        mimeType,
+        size,
+        kind: item.kind,
+        estudioId: codigo || null,
+        createdAt: new Date().toISOString(),
+      };
+
+      await archivodigitalService.uploadStudyFile(payload);
+    }
+  } catch (error) {
+    console.error('Error en handleTerminarEstudio:', error);
+  }
+};
+
   const handlePausarReanudar = () => {
     try {
       if (!recorderRef.current || !isRecording) return;
@@ -1491,7 +1665,15 @@ const CapturaImagenes = () => {
                      <Box component="span" sx={{ display: { xs: 'none', sm: 'none', md: 'inline' } }}>Cerrar Examen</Box>
                    </Button>
                 </Box>
-              </Grid>
+            </Grid>
+            
+            <Grid item xs={12} md={6} sx={{ pr: 0 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', height: '100%' }}>
+                  <Button aria-label="Terminar Estudio" size="small" variant="contained" color="warning" onClick={handleTerminarEstudio} disabled={capturedImages.length === 0} sx={{ minWidth: 0, px: 1 }}>
+                        <Box component="span" sx={{ display: { xs: 'none', sm: 'none', md: 'inline' } }}>TERMINAR ESTUDIO</Box>
+                      </Button>
+                </Box>
+            </Grid>
           </Grid>
           <Divider sx={{ mb: 2 }} />
 
@@ -1573,6 +1755,7 @@ const CapturaImagenes = () => {
                       <Button aria-label="Terminar" size="small" variant="contained" color="error" startIcon={<Stop />} onClick={handleTerminar} disabled={!isRecording || (sourceType === 'device' && bridgeAvailable)} sx={{ minWidth: 0, px: 1 }}>
                         <Box component="span" sx={{ display: { xs: 'none', sm: 'none', md: 'inline' } }}>DETENER</Box>
                       </Button>
+                      
                       {isRecording && (
                         <Typography variant="subtitle2" sx={{ alignSelf: 'center', ml: 1, fontWeight: 'bold', color: isPaused ? 'warning.main' : 'success.main' }}>
                           {formatElapsed(recordingElapsedMs)}

@@ -1,5 +1,5 @@
-import { apiClient } from '@/core/config/api';
-import { API_ENDPOINTS } from '@/core/constants/api-endpoints';
+import { apiClient } from '../../core/config/api';
+import { API_ENDPOINTS } from '../../core/constants/api-endpoints';
 
 export class ApiClient {
   constructor() {
