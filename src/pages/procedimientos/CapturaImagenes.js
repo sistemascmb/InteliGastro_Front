@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Container, Paper, Box, Typography, Divider, Grid, Button, ImageList, ImageListItem, Dialog, DialogTitle, DialogContent, DialogActions, ToggleButtonGroup, ToggleButton, FormControl, Select, MenuItem, InputLabel, FormControlLabel, Switch, IconButton } from '@mui/material';
 import { PhotoCamera, FiberManualRecord, Stop, Delete as DeleteIcon, Fullscreen, FullscreenExit } from '@mui/icons-material';
+import PauseIcon from '@mui/icons-material/Pause';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { useTheme } from '@mui/material/styles';
 import { List } from 'react-window';
 
@@ -382,6 +384,12 @@ const CapturaImagenes = () => {
       reject(e);
     }
   });
+  const formatElapsed = (ms) => {
+    const total = Math.max(0, Math.floor((ms || 0) / 1000));
+    const mm = String(Math.floor(total / 60)).padStart(2, '0');
+    const ss = String(total % 60).padStart(2, '0');
+    return `${mm}:${ss}`;
+  };
   const deleteFileFromStorage = async (fullPathOrName) => {
     try {
       if (!studyDirHandle) return;
@@ -395,6 +403,10 @@ const CapturaImagenes = () => {
 
   const [capturedImages, setCapturedImages] = useState([]);
   const [isRecording, setIsRecording] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [recordingElapsedMs, setRecordingElapsedMs] = useState(0);
+  const recordingStartRef = useRef(0);
+  const recordingTimerRef = useRef(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   // cámara: referencia y estado
@@ -1258,6 +1270,13 @@ const CapturaImagenes = () => {
       recorderRef.current = rec;
       rec.start();
       setIsRecording(true);
+      setIsPaused(false);
+      recordingStartRef.current = Date.now();
+      setRecordingElapsedMs(0);
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingElapsedMs(Date.now() - recordingStartRef.current);
+      }, 1000);
     } catch (err) {
       console.error('No se pudo iniciar grabación:', err);
       alert('No se pudo iniciar la grabación');
@@ -1271,7 +1290,39 @@ const CapturaImagenes = () => {
       }
     } finally {
       setIsRecording(false);
+      setIsPaused(false);
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+      setRecordingElapsedMs(0);
     }
+  };
+
+  const handlePausarReanudar = () => {
+    try {
+      if (!recorderRef.current || !isRecording) return;
+      if (!isPaused) {
+        if (recorderRef.current.state === 'recording' && recorderRef.current.pause) {
+          recorderRef.current.pause();
+          setIsPaused(true);
+          if (recordingTimerRef.current) {
+            clearInterval(recordingTimerRef.current);
+            recordingTimerRef.current = null;
+          }
+        }
+      } else {
+        if (recorderRef.current.state === 'paused' && recorderRef.current.resume) {
+          recorderRef.current.resume();
+          setIsPaused(false);
+          recordingStartRef.current = Date.now() - recordingElapsedMs;
+          if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+          recordingTimerRef.current = setInterval(() => {
+            setRecordingElapsedMs(Date.now() - recordingStartRef.current);
+          }, 1000);
+        }
+      }
+    } catch {}
   };
 
   const handleTerminarExamen = () => {
@@ -1436,8 +1487,8 @@ const CapturaImagenes = () => {
             </Grid>
             <Grid item xs={12} md={6} sx={{ pr: 0 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', height: '100%' }}>
-                  <Button aria-label="Terminar Examen" variant="contained" color="error" startIcon={<Stop />} onClick={handleTerminarExamen}>
-                     <Box component="span" sx={{ display: { xs: 'none', sm: 'none', md: 'inline' } }}>Terminar Examen</Box>
+                  <Button aria-label="Cerrar Examen" variant="contained" color="error" startIcon={<Stop />} onClick={handleTerminarExamen}>
+                     <Box component="span" sx={{ display: { xs: 'none', sm: 'none', md: 'inline' } }}>Cerrar Examen</Box>
                    </Button>
                 </Box>
               </Grid>
@@ -1514,9 +1565,19 @@ const CapturaImagenes = () => {
                       <Button aria-label="Grabar" size="small" variant="contained" color="success" startIcon={<FiberManualRecord />} onClick={handleGrabar} disabled={isRecording || (sourceType === 'device' && bridgeAvailable)} sx={{ minWidth: 0, px: 1 }}>
                         <Box component="span" sx={{ display: { xs: 'none', sm: 'none', md: 'inline' } }}>GRABAR</Box>
                       </Button>
+                      {isRecording && (
+                        <Button aria-label={isPaused ? 'Reanudar' : 'Pausar'} size="small" variant="contained" color={isPaused ? 'primary' : 'warning'} startIcon={isPaused ? <PlayArrowIcon /> : <PauseIcon />} onClick={handlePausarReanudar} sx={{ minWidth: 0, px: 1 }}>
+                          <Box component="span" sx={{ display: { xs: 'none', sm: 'none', md: 'inline' } }}>{isPaused ? 'REANUDAR' : 'PAUSAR'}</Box>
+                        </Button>
+                      )}
                       <Button aria-label="Terminar" size="small" variant="contained" color="error" startIcon={<Stop />} onClick={handleTerminar} disabled={!isRecording || (sourceType === 'device' && bridgeAvailable)} sx={{ minWidth: 0, px: 1 }}>
                         <Box component="span" sx={{ display: { xs: 'none', sm: 'none', md: 'inline' } }}>DETENER</Box>
                       </Button>
+                      {isRecording && (
+                        <Typography variant="subtitle2" sx={{ alignSelf: 'center', ml: 1, fontWeight: 'bold', color: isPaused ? 'warning.main' : 'success.main' }}>
+                          {formatElapsed(recordingElapsedMs)}
+                        </Typography>
+                      )}
                       {/*<Button aria-label="Guardar todas" size="small" variant="outlined" color="primary" onClick={handleGuardarTodas} disabled={capturedImages.length === 0 || !canSaveLocally} sx={{ minWidth: 0, px: 1 }}>
                         <Box component="span" sx={{ display: { xs: 'none', sm: 'none', md: 'inline' } }}>Guardar todas</Box>
                       </Button>
