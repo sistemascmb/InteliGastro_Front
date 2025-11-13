@@ -45,6 +45,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         anotacionesAdicionales: proced.anotacionesAdicionales,
         tipoProcedimientoId: proced.tipoProcedimientoId,
         urgenteId: proced.urgenteId,
+        EstudioTeminadoId: proced.EstudioTeminadoId,
+        PdfGeneradoId: proced.PdfGeneradoId,
 
         // Auditoría
         createdAt: proced.createdAt,
@@ -104,7 +106,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         anotacionesAdicionales: proced.anotacionesAdicionales,
         tipoProcedimientoId: proced.tipoProcedimientoId,
         urgenteId: proced.urgenteId,
-
+        EstudioTeminadoId: proced.EstudioTeminadoId,
+        PdfGeneradoId: proced.PdfGeneradoId,
         // Auditoría
         createdAt: proced.createdAt,
         createdBy: proced.createdBy,
@@ -163,6 +166,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         anotacionesAdicionales: proced.anotacionesAdicionales,
         tipoProcedimientoId: proced.tipoProcedimientoId,
         urgenteId: proced.urgenteId,
+        EstudioTeminadoId: proced.EstudioTeminadoId,
+        PdfGeneradoId: proced.PdfGeneradoId,
 
         // Auditoría
         createdAt: proced.createdAt,
@@ -222,6 +227,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         anotacionesAdicionales: proced.anotacionesAdicionales,
         tipoProcedimientoId: proced.tipoProcedimientoId,
         urgenteId: proced.urgenteId,
+        EstudioTeminadoId: proced.EstudioTeminadoId,
+        PdfGeneradoId: proced.PdfGeneradoId,
 
         // Auditoría
         createdAt: proced.createdAt,
@@ -281,7 +288,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         anotacionesAdicionales: proced.anotacionesAdicionales,
         tipoProcedimientoId: proced.tipoProcedimientoId,
         urgenteId: proced.urgenteId,
-
+        EstudioTeminadoId: proced.EstudioTeminadoId,
+        PdfGeneradoId: proced.PdfGeneradoId,
         // Auditoría
         createdAt: proced.createdAt,
         createdBy: proced.createdBy,
@@ -426,6 +434,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         anotacionesAdicionales: appointmentData.anotacionesAdicionales,
         tipoProcedimientoId: -1,
         urgenteId: -1,
+        EstudioTeminadoId: 0,
+        PdfGeneradoId: 0,
         createdAt: new Date().toISOString(),
         createdBy: 'Arnold' // Usuario de prueba
       };
@@ -497,6 +507,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         anotacionesAdicionales: appointmentData.anotacionesAdicionales,
         tipoProcedimientoId: appointmentData.tipoProcedimientoId,
         urgenteId: appointmentData.urgenteId,
+        EstudioTeminadoId: 0,
+        PdfGeneradoId: 0,
 
         createdAt: new Date().toISOString(),
         createdBy: 'Arnold' // Usuario de prueba
@@ -623,6 +635,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         anotacionesAdicionales: dataOrigin.anotacionesAdicionales,
         tipoProcedimientoId: dataOrigin.tipoProcedimientoId,
         urgenteId: dataOrigin.urgenteId,
+        EstudioTeminadoId: dataOrigin.EstudioTeminadoId,
+        PdfGeneradoId: dataOrigin.PdfGeneradoId,
 
         updatedAt: new Date().toISOString(),
         updatedBy: 'Arnold',

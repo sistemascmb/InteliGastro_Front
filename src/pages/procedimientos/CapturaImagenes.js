@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Container, Paper, Box, Typography, Divider, Grid, Button, ImageList, ImageListItem, Dialog, DialogTitle, DialogContent, DialogActions, ToggleButtonGroup, ToggleButton, FormControl, Select, MenuItem, InputLabel, FormControlLabel, Switch, IconButton } from '@mui/material';
-import { PhotoCamera, FiberManualRecord, Stop, Delete as DeleteIcon, Fullscreen, FullscreenExit } from '@mui/icons-material';
+import { PhotoCamera, FiberManualRecord, Stop, Delete as DeleteIcon, Fullscreen, FullscreenExit, ExitToApp } from '@mui/icons-material';
 import PauseIcon from '@mui/icons-material/Pause';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import apiService from '../../shared/services/api-client';
 import { useTheme } from '@mui/material/styles';
 import { List } from 'react-window';
 import { fileUtils as itemToBlob } from '../../services/fileUtils';
+import { archivodigitalService } from 'services/archivodigitalService';
 
 function getExtensionFromMime(mimeType) {
   if (!mimeType) return 'bin';
@@ -53,7 +54,13 @@ function toHexFromUint8(u8Array) {
  */
 function toBase64FromUint8(u8) {
   if (!u8 || u8.length === 0) return '';
-  return btoa(String.fromCharCode(...u8));
+  let binary = '';
+  const CHUNK = 0x8000;
+  for (let i = 0; i < u8.length; i += CHUNK) {
+    const sub = u8.subarray(i, Math.min(i + CHUNK, u8.length));
+    binary += String.fromCharCode.apply(null, sub);
+  }
+  return btoa(binary);
 }
 
 /**
@@ -476,6 +483,9 @@ const CapturaImagenes = () => {
   const streamRef = useRef(null);
   const recorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
+  const [terminarPreviewOpen, setTerminarPreviewOpen] = useState(false);
+  const [terminarPreviewItems, setTerminarPreviewItems] = useState([]);
+  const [terminarSelected, setTerminarSelected] = useState(null);
   // Estado y refs para puente nativo (PCI/SDK)
   const [bridgeAvailable, setBridgeAvailable] = useState(false);
   const [bridgeStreamUrl, setBridgeStreamUrl] = useState('');
@@ -1421,8 +1431,8 @@ const CapturaImagenes = () => {
   try {
     const files = capturedImages.slice();
     if (files.length === 0) return;
+    const previewItems = [];
 
-    //const aesKey = await deriveAesGcmKey(String(codigo || ''), 'InteliGastro_Archivo');
 
     for (const item of files) {
       // ✅ Conversión unificada a Blob
@@ -1433,17 +1443,9 @@ const CapturaImagenes = () => {
       const extension = getExtensionFromMime(mimeType);
       const size = blob.size;
 
-      //const u8 = new Uint8Array(await blob.arrayBuffer());
-      //const archivo = toHexFromUint8(u8); // o toBase64FromUint8(u8)
-
       // ✅ Convertir a Base64 puro (sin prefijo)
       const u8 = new Uint8Array(await blob.arrayBuffer());
-      const archivo = toBase64FromUint8(u8); // ← Base64 puro
-
-      // Cifrar
-      //const encRes = await encryptBytesAesGcm(u8, aesKey);
-      //const archivoCifrado = toBase64FromUint8(encRes.ciphertext);
-      //const iv = toBase64FromUint8(encRes.iv);
+      const archive = toBase64FromUint8(u8); // ← Base64 puro
 
       // Nombre
       let nombre = item.fileName || `FILE_${codigo}_${Date.now()}`;
@@ -1454,20 +1456,34 @@ const CapturaImagenes = () => {
         if (!hasValidExt) nombre = `${nombre}.${extension}`;
 
       const payload = {
+        date: new Date().toISOString(),
+        hour: new Date().getHours() + ':'+ new Date().getMinutes(),
         nombre,
         extension,
-        archivo,           // hex o base64
-        //archivoCifrado,
-        //iv,
+        archive,
         mimeType,
         size,
         kind: item.kind,
         estudioId: codigo || null,
+        status: true,
         createdAt: new Date().toISOString(),
       };
 
-      await archivodigitalService.uploadStudyFile(payload);
+      try {
+        const nuevoUsuario = await archivodigitalService.create_CaptureImagenes(payload);
+        console.log('✅ Usuario creado:', nuevoUsuario);
+
+        //await apiService.post('/ArchivoDigital/upload-file', payload);
+      } catch (err) {
+        console.log('Payload preparado para envío:', payload);
+      }
+
+      //const dataUrl = `${mimeType ? `data:${mimeType};base64,` : 'data:application/octet-stream;base64,'}${archive}`;
+      //previewItems.push({ nombre, extension, mimeType, kind: item.kind, dataUrl, size });
     }
+    //setTerminarPreviewItems(previewItems);
+    //setTerminarSelected(previewItems[0] || null);
+    //setTerminarPreviewOpen(true);
   } catch (error) {
     console.error('Error en handleTerminarEstudio:', error);
   }
@@ -1655,23 +1671,23 @@ const CapturaImagenes = () => {
             <Grid item xs={12} md={4}>
               <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
                 <Button size="small" variant="outlined" onClick={() => { enumerateAllMediaDevices(); setDevicesModalOpen(true); }}>
-                  Ver dispositivos
+                  oo
                 </Button>
               </Box>
-            </Grid>
-            <Grid item xs={12} md={6} sx={{ pr: 0 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', height: '100%' }}>
-                  <Button aria-label="Cerrar Examen" variant="contained" color="error" startIcon={<Stop />} onClick={handleTerminarExamen}>
-                     <Box component="span" sx={{ display: { xs: 'none', sm: 'none', md: 'inline' } }}>Cerrar Examen</Box>
-                   </Button>
-                </Box>
             </Grid>
             
             <Grid item xs={12} md={6} sx={{ pr: 0 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', height: '100%' }}>
-                  <Button aria-label="Terminar Estudio" size="small" variant="contained" color="warning" onClick={handleTerminarEstudio} disabled={capturedImages.length === 0} sx={{ minWidth: 0, px: 1 }}>
-                        <Box component="span" sx={{ display: { xs: 'none', sm: 'none', md: 'inline' } }}>TERMINAR ESTUDIO</Box>
-                      </Button>
+                  <Button aria-label="TERMINAR ESTUDIO" variant="contained" color="warning" startIcon={<Stop />} onClick={handleTerminarEstudio} disabled={capturedImages.length === 0} sx={{ minWidth: 0, px: 1 }}>
+                     <Box component="span" sx={{ display: { xs: 'none', sm: 'none', md: 'inline' } }}>TERMINAR ESTUDIO</Box>
+                   </Button>
+                </Box>
+            </Grid>
+            <Grid item xs={12} md={6} sx={{ pr: 0 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', height: '100%' }}>
+                  <Button aria-label="Cerrar Examen" variant="contained" color="secondary" startIcon={<ExitToApp />} onClick={handleTerminarExamen}>
+                     <Box component="span" sx={{ display: { xs: 'none', sm: 'none', md: 'inline' } }}>Cerrar Examen</Box>
+                   </Button>
                 </Box>
             </Grid>
           </Grid>
@@ -1865,6 +1881,50 @@ const CapturaImagenes = () => {
                   )}
                 </>
               )}
+            </DialogActions>
+          </Dialog>
+
+          {/* Modal: Archivos codificados del Terminar Estudio */}
+          <Dialog open={terminarPreviewOpen} onClose={() => setTerminarPreviewOpen(false)} maxWidth="md" fullWidth>
+            <DialogTitle>Archivos preparados (base64)</DialogTitle>
+            <DialogContent dividers>
+              {terminarPreviewItems.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">No hay archivos para mostrar</Typography>
+              ) : (
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={4}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      {terminarPreviewItems.map((it, idx) => (
+                        <Button key={idx} variant={terminarSelected?.nombre === it.nombre ? 'contained' : 'outlined'} onClick={() => setTerminarSelected(it)} sx={{ justifyContent: 'flex-start' }}>
+                          {it.nombre}
+                        </Button>
+                      ))}
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} md={8}>
+                    <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                      {terminarSelected && (
+                        terminarSelected.kind === 'video' ? (
+                          <video src={terminarSelected.dataUrl} controls style={{ maxWidth: '100%', maxHeight: isFullscreen ? '90vh' : '70vh', objectFit: 'contain' }} />
+                        ) : (
+                          <img src={terminarSelected.dataUrl} alt={terminarSelected.nombre} style={{ maxWidth: '100%', maxHeight: isFullscreen ? '90vh' : '70vh', objectFit: 'contain' }} />
+                        )
+                      )}
+                    </Box>
+                    {terminarSelected && (
+                      <Box sx={{ mt: 2 }}>
+                        <Typography variant="body2">Nombre: {terminarSelected.nombre}</Typography>
+                        <Typography variant="body2">Extensión: {terminarSelected.extension}</Typography>
+                        <Typography variant="body2">MIME: {terminarSelected.mimeType}</Typography>
+                        <Typography variant="body2">Tamaño: {terminarSelected.size} bytes</Typography>
+                      </Box>
+                    )}
+                  </Grid>
+                </Grid>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setTerminarPreviewOpen(false)}>Cerrar</Button>
             </DialogActions>
           </Dialog>
 
