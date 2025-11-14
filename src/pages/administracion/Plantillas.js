@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, useCallback, memo, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -39,9 +39,12 @@ import {
   Search,
   Visibility,
   Description,
-  Assignment
+  Assignment,
+  ArrowBack
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import JoditEditor from 'jodit-react';
+import 'jodit/es2018/jodit.min.css';
 // import ReactQuill from 'react-quill';
 // import 'react-quill/dist/quill.snow.css';
 
@@ -102,213 +105,329 @@ const FieldRow = memo(({ children }) => (
 // Agregar displayName para mejor debugging
 FieldRow.displayName = 'FieldRow';
 
-// Componente Editor de Texto Rico Simple
+// Componente Editor de Texto con Jodit
 const RichTextEditor = memo(({ value, onChange, placeholder = "Escriba aquí..." }) => {
   const editorRef = React.useRef(null);
+  const headerInputRef = React.useRef(null);
+  const footerInputRef = React.useRef(null);
+  const mmToPx = (mm) => Math.round(mm * 96 / 25.4);
+  const pageWidthPx = mmToPx(210);
+  const pageHeightPx = mmToPx(297);
+  const [pageMargin, setPageMargin] = useState(20);
+  const [openPreview, setOpenPreview] = useState(false);
+  const [previewHeader, setPreviewHeader] = useState('');
+  const [previewFooter, setPreviewFooter] = useState('');
+  const [singlePage, setSinglePage] = useState(true);
+  const [showGuides, setShowGuides] = useState(false);
+  const [fontFamily, setFontFamily] = useState('Arial, sans-serif');
+  const [fontSize, setFontSize] = useState(14);
 
-  const handleFormat = (command, value = null) => {
-    document.execCommand(command, false, value);
-    editorRef.current?.focus();
+  const variableList = React.useMemo(() => [
+    { label: 'Título', value: '{{titulo}}' },
+    { label: 'N° Estudio', value: '{{numeroEstudio}}' },
+    { label: 'Nombres', value: '{{nombres}}' },
+    { label: 'Edad', value: '{{edad}}' },
+    { label: 'Sexo', value: '{{sexo}}' },
+    { label: 'Instrumento', value: '{{instrumento}}' },
+    { label: 'Médico', value: '{{medico}}' },
+    { label: 'Historia Clínica', value: '{{historiaClinica}}' },
+    { label: 'Aseguradora', value: '{{aseguradora}}' },
+    { label: 'Fecha de Estudio', value: '{{fechaEstudio}}' },
+    { label: 'Motivo', value: '{{motivo}}' },
+    { label: 'Cabecera', value: '{{cabecera}}' },
+    { label: 'Pie de Página', value: '{{pie}}' }
+  ], []);
+
+  
+
+  const joditConfig = React.useMemo(() => ({
+    readonly: false,
+    height: singlePage ? pageHeightPx + pageMargin * 2 : 500,
+    width: pageWidthPx,
+    toolbar: true,
+    toolbarAdaptive: true,
+    toolbarSticky: true,
+    toolbarButtonSize: 'large',
+    buttons: [
+      'undo', 'redo', '|',
+      'cut', 'copy', 'paste', '|',
+      'bold', 'italic', 'underline', 'strikethrough', 'superscript', 'subscript', '|',
+      'font', 'fontsize', 'brush', 'paragraph', '|',
+      'align', 'outdent', 'indent', '|',
+      'ul', 'ol', '|',
+      'link', 'image', 'video', 'table', 'symbols', 'emoji', '|',
+      'hr', 'cleanHtml', 'find', 'selectall', '|',
+      'source', 'preview', 'print', 'fullsize'
+    ],
+    showCharsCounter: true,
+    showWordsCounter: true,
+    uploader: {
+      insertImageAsBase64URI: true
+    },
+    placeholder,
+    language: 'es',
+    style: `body{font-family:${fontFamily}; font-size:${fontSize}px; color:#333} h1,h2,h3{color:#1976d2} a{color:#1976d2} blockquote{border-left:4px solid #1976d2; padding-left:8px; color:#555}`,
+    iframe: true,
+    iframeStyle: `@page{size:A4;margin:${pageMargin}px} html{margin:0;padding:0;min-height:100%;} body{box-sizing:border-box;line-height:1.6;background:#fff;color:#333;position:relative;z-index:2;user-select:auto;outline:none;max-width:${pageWidthPx}px;min-height:${pageHeightPx}px;margin:0 auto;padding:${pageMargin}px;overflow:auto;} @media print{html,body{max-width:none!important;width:auto!important;padding:0!important;margin:0!important;min-height:auto!important;overflow:visible!important;} body::before{display:none!important;}} table{width:100%;border-collapse:collapse;empty-cells:show;max-width:100%;table-layout:fixed;border:1px solid #999;} th,td{vertical-align:top;border:1px solid #999;padding:0;} td p, th p{margin:0;} p:empty{display:none;} p:has(> img:only-child){line-height:0;margin:0;} img+br{display:none;} figure{margin:0;display:flex;justify-content:center;align-items:center;} img{max-width:100%;height:auto;display:block;object-fit:contain;margin:0 auto;} td img, th img{max-width:100%;height:auto;margin:0 auto;} ${showGuides ? `body::before{content:'';position:fixed;z-index:2147483647;top:${pageMargin}px;left:calc(50% - ${pageWidthPx / 2 - pageMargin}px);width:${pageWidthPx - pageMargin * 2}px;height:${pageHeightPx - pageMargin * 2}px;border:1px dashed #999;background:transparent;pointer-events:none;}` : ''}`
+  }), [pageMargin, singlePage, showGuides, fontFamily, fontSize]);
+
+  useEffect(() => {
+    const inst = editorRef.current?.editor;
+    if (!inst) return;
+    if (typeof value === 'string' && value !== inst.value) {
+      inst.value = value || '';
+    }
+
+    const removeEnterAfterImage = (node) => {
+      try {
+        const img = node && (node.tagName === 'IMG' ? node : node.querySelector && node.querySelector('img'));
+        if (!img) return;
+        img.style.display = 'block';
+        img.style.margin = '0 auto';
+        img.style.objectFit = 'contain';
+        img.style.height = 'auto';
+        img.style.maxWidth = '100%';
+
+        const wrap = img.parentElement;
+        if (wrap && (wrap.tagName === 'P' || wrap.tagName === 'FIGURE')) {
+          if (wrap.childElementCount === 1) {
+            wrap.style.lineHeight = '0';
+            wrap.style.margin = '0';
+          }
+        }
+
+        let next = img.nextSibling;
+        while (next && (next.nodeName === 'BR' || (next.nodeName === 'P' && next.textContent.trim() === ''))) {
+          const rem = next;
+          next = next.nextSibling;
+          rem.parentNode && rem.parentNode.removeChild(rem);
+        }
+
+        const closestCell = img.closest ? img.closest('td,th') : (function (n) {
+          while (n && n.nodeType === 1 && n.tagName !== 'TD' && n.tagName !== 'TH') {
+            n = n.parentElement;
+          }
+          return n;
+        })(img);
+        if (closestCell) {
+          const cw = closestCell.clientWidth || 0;
+          const ch = closestCell.clientHeight || 0;
+          if (cw > 0) img.style.maxWidth = `${cw}px`;
+          if (ch > 0) img.style.maxHeight = `${ch}px`;
+        }
+        let targetCell = closestCell && closestCell.nextElementSibling;
+        if (!targetCell && closestCell) {
+          const row = closestCell.parentElement;
+          if (row && row.nextElementSibling) {
+            targetCell = row.nextElementSibling.querySelector('td,th');
+          }
+        }
+        if (targetCell) {
+          try {
+            if (inst.s && typeof inst.s.setCursorIn === 'function') {
+              inst.s.setCursorIn(targetCell, true);
+            } else {
+              const doc = inst.ownerDocument || document;
+              const range = doc.createRange();
+              range.selectNodeContents(targetCell);
+              range.collapse(true);
+              const sel = doc.getSelection();
+              sel.removeAllRanges();
+              sel.addRange(range);
+            }
+          } catch {}
+        }
+      } catch {}
+    };
+
+    const normalizeTableInsertion = (node) => {
+      try {
+        const table = node && (node.tagName === 'TABLE' ? node : node.querySelector && node.querySelector('table'));
+        if (!table) return;
+        let next = table.nextSibling;
+        while (next && (next.nodeName === 'BR' || (next.nodeName === 'P' && next.textContent.trim() === ''))) {
+          const rem = next;
+          next = next.nextSibling;
+          rem.parentNode && rem.parentNode.removeChild(rem);
+        }
+        table.querySelectorAll('td,th').forEach((cell) => {
+          const kids = Array.from(cell.childNodes);
+          kids.forEach((ch) => {
+            if (ch.nodeType === 1 && ch.nodeName === 'P' && ch.textContent.trim() === '') {
+              ch.remove();
+            } else if (ch.nodeType === 1 && ch.nodeName === 'BR') {
+              ch.remove();
+            } else if (ch.nodeType === 3 && ch.textContent.trim() === '') {
+              ch.remove();
+            }
+          });
+        });
+        const firstCell = table.querySelector('td,th');
+        if (firstCell) {
+          try {
+            if (inst.s && typeof inst.s.setCursorIn === 'function') {
+              inst.s.setCursorIn(firstCell, true);
+            } else {
+              const doc = inst.ownerDocument || document;
+              const range = doc.createRange();
+              range.selectNodeContents(firstCell);
+              range.collapse(true);
+              const sel = doc.getSelection();
+              sel.removeAllRanges();
+              sel.addRange(range);
+            }
+          } catch {}
+        }
+      } catch {}
+    };
+
+    inst.events && inst.events.on('afterInsertImage', removeEnterAfterImage);
+    inst.events && inst.events.on('afterInsertNode', removeEnterAfterImage);
+    inst.events && inst.events.on('afterInsertNode', normalizeTableInsertion);
+
+    return () => {
+      inst.events && inst.events.off('afterInsertImage', removeEnterAfterImage);
+      inst.events && inst.events.off('afterInsertNode', removeEnterAfterImage);
+      inst.events && inst.events.off('afterInsertNode', normalizeTableInsertion);
   };
+  }, [value]);
 
-  const handleImageInsert = () => {
-    const url = prompt('Ingrese la URL de la imagen:');
-    if (url) {
-      handleFormat('insertImage', url);
-    }
-  };
+  const previewHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"/><style>@page{size:A4;margin:${pageMargin}px}body{font-family:Arial, sans-serif;color:#333} .page{width:${pageWidthPx}px;min-height:${pageHeightPx}px;margin:0 auto;background:white} .header{margin-bottom:16px;text-align:center} .content{min-height:${pageHeightPx - pageMargin * 2 - 80}px} .footer{position:fixed;bottom:0;left:0;right:0;text-align:center;border-top:1px solid #ddd;padding-top:8px;background:white} table{width:100%;border-collapse:collapse;table-layout:fixed;border:1px solid #999} th,td{vertical-align:top;border:1px solid #999;padding:0} td p, th p{margin:0;} p:empty{display:none;} p:has(> img:only-child){line-height:0;margin:0;} img+br{display:none} figure{margin:0;display:flex;justify-content:center;align-items:center} img{max-width:100%;height:auto;object-fit:contain;display:block;margin:0 auto} @media print{.page{width:auto;min-height:auto;box-shadow:none}} </style></head><body><div class="page"><div class="header">${previewHeader || ''}</div><div class="content">${value || ''}</div></div><div class="footer">${previewFooter || ''}</div></body></html>`;
 
-  const handleLinkInsert = () => {
-    const url = prompt('Ingrese la URL del enlace:');
-    if (url) {
-      const text = window.getSelection().toString() || url;
-      handleFormat('insertHTML', `<a href="${url}" target="_blank">${text}</a>`);
-    }
-  };
-
-  const handleTableInsert = () => {
-    const rows = parseInt(prompt('Número de filas:') || '2');
-    const cols = parseInt(prompt('Número de columnas:') || '2');
-
-    let tableHTML = '<table style="border-collapse: collapse; width: 100%; border: 1px solid #ccc; margin: 10px 0;">';
-
-    // Crear encabezado
-    tableHTML += '<thead><tr>';
-    for (let j = 0; j < cols; j++) {
-      tableHTML += '<th style="border: 1px solid #ccc; padding: 8px; background-color: #f5f5f5; font-weight: bold;">Encabezado ' + (j + 1) + '</th>';
-    }
-    tableHTML += '</tr></thead>';
-
-    // Crear cuerpo
-    tableHTML += '<tbody>';
-    for (let i = 0; i < rows - 1; i++) {
-      tableHTML += '<tr>';
-      for (let j = 0; j < cols; j++) {
-        tableHTML += '<td style="border: 1px solid #ccc; padding: 8px;">Celda ' + (i + 1) + ',' + (j + 1) + '</td>';
-      }
-      tableHTML += '</tr>';
-    }
-    tableHTML += '</tbody></table><br/>';
-
-    handleFormat('insertHTML', tableHTML);
-  };
-
-  const handleInput = () => {
-    if (editorRef.current) {
-      onChange(editorRef.current.innerHTML);
-    }
+  const handlePrint = () => {
+    const win = window.open('');
+    if (!win) return;
+    win.document.write(previewHtml);
+    win.document.close();
+    win.focus();
+    win.print();
+    win.close();
   };
 
   return (
-    <Box sx={{ border: '1px solid #ccc', borderRadius: 1 }}>
-      {/* Barra de herramientas */}
-      <Box sx={{
-        display: 'flex',
-        gap: 1,
-        p: 1,
-        borderBottom: '1px solid #eee',
-        flexWrap: 'wrap',
-        backgroundColor: '#f8f9fa'
-      }}>
-        {/* Formato de texto */}
-        <IconButton
+    <Box>
+      <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+        <TextField
           size="small"
-          onClick={() => handleFormat('bold')}
-          title="Negrita"
-          sx={{ '&:hover': { backgroundColor: '#e0e0e0' } }}
-        >
-          <Typography sx={{ fontWeight: 'bold', fontSize: '14px' }}>B</Typography>
-        </IconButton>
-        <IconButton
-          size="small"
-          onClick={() => handleFormat('italic')}
-          title="Cursiva"
-          sx={{ '&:hover': { backgroundColor: '#e0e0e0' } }}
-        >
-          <Typography sx={{ fontStyle: 'italic', fontSize: '14px' }}>I</Typography>
-        </IconButton>
-        <IconButton
-          size="small"
-          onClick={() => handleFormat('underline')}
-          title="Subrayado"
-          sx={{ '&:hover': { backgroundColor: '#e0e0e0' } }}
-        >
-          <Typography sx={{ textDecoration: 'underline', fontSize: '14px' }}>U</Typography>
-        </IconButton>
-
-        {/* Separador */}
-        <Box sx={{ width: '1px', height: '24px', backgroundColor: '#ccc', my: 'auto' }} />
-
-        {/* Listas */}
-        <IconButton
-          size="small"
-          onClick={() => handleFormat('insertOrderedList')}
-          title="Lista numerada"
-          sx={{ '&:hover': { backgroundColor: '#e0e0e0' } }}
-        >
-          <Typography sx={{ fontSize: '12px' }}>1.</Typography>
-        </IconButton>
-        <IconButton
-          size="small"
-          onClick={() => handleFormat('insertUnorderedList')}
-          title="Lista con viñetas"
-          sx={{ '&:hover': { backgroundColor: '#e0e0e0' } }}
-        >
-          <Typography sx={{ fontSize: '12px' }}>•</Typography>
-        </IconButton>
-
-        {/* Separador */}
-        <Box sx={{ width: '1px', height: '24px', backgroundColor: '#ccc', my: 'auto' }} />
-
-        {/* Enlaces e imágenes */}
-        <IconButton
-          size="small"
-          onClick={handleLinkInsert}
-          title="Insertar enlace"
-          sx={{ '&:hover': { backgroundColor: '#e0e0e0' } }}
-        >
-          <Typography sx={{ fontSize: '12px' }}>🔗</Typography>
-        </IconButton>
-        <IconButton
-          size="small"
-          onClick={handleImageInsert}
-          title="Insertar imagen"
-          sx={{ '&:hover': { backgroundColor: '#e0e0e0' } }}
-        >
-          <Typography sx={{ fontSize: '12px' }}>🖼️</Typography>
-        </IconButton>
-        <IconButton
-          size="small"
-          onClick={handleTableInsert}
-          title="Insertar tabla"
-          sx={{ '&:hover': { backgroundColor: '#e0e0e0' } }}
-        >
-          <Typography sx={{ fontSize: '12px' }}>📊</Typography>
-        </IconButton>
-
-        {/* Separador */}
-        <Box sx={{ width: '1px', height: '24px', backgroundColor: '#ccc', my: 'auto' }} />
-
-        {/* Encabezados */}
-        <Button
-          size="small"
-          onClick={() => handleFormat('formatBlock', 'h1')}
-          title="Encabezado 1"
-          sx={{ minWidth: 'auto', px: 1, fontSize: '12px' }}
-        >
-          H1
-        </Button>
-        <Button
-          size="small"
-          onClick={() => handleFormat('formatBlock', 'h2')}
-          title="Encabezado 2"
-          sx={{ minWidth: 'auto', px: 1, fontSize: '12px' }}
-        >
-          H2
-        </Button>
-        <Button
-          size="small"
-          onClick={() => handleFormat('formatBlock', 'h3')}
-          title="Encabezado 3"
-          sx={{ minWidth: 'auto', px: 1, fontSize: '12px' }}
-        >
-          H3
-        </Button>
+          type="number"
+          label="Margen"
+          value={pageMargin}
+          disabled
+          sx={{ width: 120 }}
+        />
+        {/*<Button variant="outlined" size="small" onClick={() => setOpenPreview(true)}>Vista previa</Button>*/}
+        <FormControlLabel control={<Checkbox checked={singlePage} onChange={(e) => setSinglePage(e.target.checked)} />} label="Una página" />
+        {/*<FormControlLabel control={<Checkbox checked={showGuides} onChange={(e) => setShowGuides(e.target.checked)} />} label="Guías" />
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <Select value={fontFamily} onChange={(e) => setFontFamily(e.target.value)} displayEmpty>
+            <MenuItem value={'Arial, sans-serif'}>Arial</MenuItem>
+            <MenuItem value={'Roboto, Arial, sans-serif'}>Roboto</MenuItem>
+            <MenuItem value={'"Times New Roman", serif'}>Times New Roman</MenuItem>
+            <MenuItem value={'Calibri, Arial, sans-serif'}>Calibri</MenuItem>
+          </Select>
+        </FormControl>
+        <FormControl size="small" sx={{ minWidth: 100 }}>
+          <Select value={fontSize} onChange={(e) => setFontSize(parseInt(e.target.value))} displayEmpty>
+            <MenuItem value={12}>12</MenuItem>
+            <MenuItem value={14}>14</MenuItem>
+            <MenuItem value={16}>16</MenuItem>
+            <MenuItem value={18}>18</MenuItem>
+          </Select>
+        </FormControl>*/}
+        {variableList.map((v) => (
+          <Chip
+            key={v.value}
+            label={v.label}
+            size="small"
+            color="secondary"
+            onClick={() => {
+              try {
+                const active = document.activeElement;
+                if (headerInputRef.current && active === headerInputRef.current) {
+                  const el = headerInputRef.current;
+                  const start = typeof el.selectionStart === 'number' ? el.selectionStart : (previewHeader?.length || 0);
+                  const end = typeof el.selectionEnd === 'number' ? el.selectionEnd : start;
+                  const newVal = (previewHeader || '').slice(0, start) + v.value + (previewHeader || '').slice(end);
+                  setPreviewHeader(newVal);
+                  setTimeout(() => {
+                    el.focus();
+                    const pos = start + v.value.length;
+                    if (typeof el.setSelectionRange === 'function') el.setSelectionRange(pos, pos);
+                  }, 0);
+                  return;
+                }
+                if (footerInputRef.current && active === footerInputRef.current) {
+                  const el = footerInputRef.current;
+                  const start = typeof el.selectionStart === 'number' ? el.selectionStart : (previewFooter?.length || 0);
+                  const end = typeof el.selectionEnd === 'number' ? el.selectionEnd : start;
+                  const newVal = (previewFooter || '').slice(0, start) + v.value + (previewFooter || '').slice(end);
+                  setPreviewFooter(newVal);
+                  setTimeout(() => {
+                    el.focus();
+                    const pos = start + v.value.length;
+                    if (typeof el.setSelectionRange === 'function') el.setSelectionRange(pos, pos);
+                  }, 0);
+                  return;
+                }
+                const inst = editorRef.current?.editor;
+                if (!inst) return;
+                if (inst.s && typeof inst.s.focus === 'function') inst.s.focus();
+                else if (typeof inst.focus === 'function') inst.focus();
+                setTimeout(() => {
+                  try {
+                    if (inst.s && typeof inst.s.insertHTML === 'function') {
+                      inst.s.insertHTML(v.value);
+                      return;
+                    }
+                    if (inst.selection && typeof inst.selection.insertHTML === 'function') {
+                      inst.selection.insertHTML(v.value);
+                      return;
+                    }
+                    if (typeof inst.execCommand === 'function') {
+                      inst.execCommand('insertHTML', v.value);
+                      return;
+                    }
+                    const doc = inst.editorDocument || inst.ownerDocument || document;
+                    const sel = doc.getSelection();
+                    if (sel && sel.rangeCount) {
+                      const range = sel.getRangeAt(0);
+                      range.deleteContents();
+                      range.insertNode(doc.createTextNode(v.value));
+                    } else {
+                      inst.value = (inst.value || '') + v.value;
+                    }
+                  } catch {}
+                }, 0);
+              } catch {}
+            }}
+            sx={{ cursor: 'pointer' }}
+          />
+        ))}
+        
       </Box>
-
-      {/* Área de edición */}
-      <Box
-        ref={editorRef}
-        contentEditable
-        suppressContentEditableWarning
-        onInput={handleInput}
-        sx={{
-          minHeight: '200px',
-          p: 2,
-          outline: 'none',
-          backgroundColor: 'white',
-          '&:empty::before': {
-            content: `"${placeholder}"`,
-            color: '#999',
-            fontStyle: 'italic'
-          },
-          '& table': {
-            borderCollapse: 'collapse',
-            width: '100%',
-            margin: '10px 0'
-          },
-          '& th, & td': {
-            border: '1px solid #ccc',
-            padding: '8px',
-            textAlign: 'left'
-          },
-          '& th': {
-            backgroundColor: '#f5f5f5',
-            fontWeight: 'bold'
-          }
-        }}
-        dangerouslySetInnerHTML={{ __html: value }}
-      />
+      <Box sx={{ width: `${pageWidthPx}px`, minHeight: `${pageHeightPx}px`, bgcolor: 'white', mx: 'auto', boxShadow: 2, p: 0 }}>
+        <JoditEditor
+          ref={editorRef}
+          config={joditConfig}
+          onChange={(content) => onChange?.(content)}
+        />
+      </Box>
+      <Dialog open={openPreview} onClose={() => setOpenPreview(false)} maxWidth="lg" fullWidth>
+        <DialogTitle>Vista previa</DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+            <TextField label="Cabecera" value={previewHeader} onChange={(e) => setPreviewHeader(e.target.value)} fullWidth size="small" inputRef={headerInputRef} />
+            <TextField label="Pie de página" value={previewFooter} onChange={(e) => setPreviewFooter(e.target.value)} fullWidth size="small" inputRef={footerInputRef} />
+          </Box>
+          <Box sx={{ border: '1px solid #ddd', borderRadius: 1, overflow: 'hidden' }}>
+            <iframe title="preview" srcDoc={previewHtml} style={{ width: '100%', minHeight: `${pageHeightPx + pageMargin * 2}px`, border: 'none' }} />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenPreview(false)}>Cerrar</Button>
+          <Button onClick={handlePrint} variant="contained">Imprimir</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 });
@@ -628,10 +747,19 @@ const Plantillas = () => {
         <Typography color="text.primary">Plantillas</Typography>
       </Breadcrumbs>
 
-      {/* Título Principal */}
-      <Typography variant="h4" fontWeight="bold" sx={{ mb: 4 }}>
-        Gestión de Plantillas
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
+        <Button
+          variant="text"
+          startIcon={<ArrowBack />}
+          onClick={() => navigate(-1)}
+          sx={{ textTransform: 'none' }}
+        >
+          Regresar
+        </Button>
+        <Typography variant="h4" fontWeight="bold">
+          Gestión de Plantillas
+        </Typography>
+      </Box>
 
       {/* Tabs Deslizables */}
       <Paper sx={{ boxShadow: 2, mb: 3 }}>
@@ -668,7 +796,7 @@ const Plantillas = () => {
         {activeTab === 1 && (
           <Box sx={{ p: 4 }}>
             {/* Subtabs para tipos de plantilla */}
-            <Paper sx={{ mb: 3, backgroundColor: '#f8f9fa' }}>
+            {/*<Paper sx={{ mb: 3, backgroundColor: '#f8f9fa' }}>
               <Tabs
                 value={createTab}
                 onChange={handleCreateTabChange}
@@ -691,12 +819,12 @@ const Plantillas = () => {
                   iconPosition="start"
                 />
               </Tabs>
-            </Paper>
+            </Paper>*/}
 
             <form onSubmit={handleCreatePlantilla}>
               <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f8f9fa' }}>
                 <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
-                  {createTab === 0 ? 'Información de Cabecera de Reporte' : 'Información de Plantilla'}
+                  {createTab === 1 ? 'Información de Cabecera de Reporte' : 'Información de Plantilla'}
                 </Typography>
 
                 {/* Campos comunes */}
@@ -705,7 +833,7 @@ const Plantillas = () => {
                     <TextField
                       fullWidth
                       required
-                      placeholder={createTab === 0 ? "Ej: Cabecera CMB Gastroenterología" : "Ej: Plantilla Endoscopia"}
+                      placeholder={createTab === 1 ? "Ej: Cabecera CMB Gastroenterología" : "Ej: Plantilla Endoscopia"}
                       value={formData.nombre}
                       onChange={(e) => handleInputChange('nombre', e.target.value)}
                       error={!!errors.nombre}
@@ -716,7 +844,7 @@ const Plantillas = () => {
                 </FieldRow>
 
                 {/* Campo descripción solo para plantillas */}
-                {createTab === 1 && (
+                {createTab === 0 && (
                   <FieldRow>
                     <ResponsiveField label="Descripción" required>
                       <TextField
@@ -790,7 +918,7 @@ const Plantillas = () => {
                 )}
 
                 {/* Campo plantilla de procedimiento solo para plantillas */}
-                {createTab === 1 && (
+                {createTab === 0 && (
                   <FieldRow>
                     <ResponsiveField label="Plantilla por defecto del Procedimiento" required>
                       <FormControl fullWidth size="small" error={!!errors.plantillaProcedimiento}>
@@ -819,17 +947,17 @@ const Plantillas = () => {
                 {/* Editor de texto rico */}
                 <FieldRow>
                   <ResponsiveField
-                    label={createTab === 0 ? "Plantilla de cabecera del Reporte" : "Contenido de la Plantilla"}
+                    label={createTab === 1 ? "Plantilla de cabecera del Reporte" : "Contenido de la Plantilla"}
                     required
                   >
                     <RichTextEditor
-                      value={createTab === 0 ? formData.plantillaCabecera : formData.plantilla}
-                      onChange={(value) => handleInputChange(createTab === 0 ? 'plantillaCabecera' : 'plantilla', value)}
-                      placeholder={createTab === 0 ? "Diseñe la cabecera del reporte..." : "Diseñe el contenido de la plantilla..."}
+                      value={createTab === 1 ? formData.plantillaCabecera : formData.plantilla}
+                      onChange={(value) => handleInputChange(createTab === 1 ? 'plantillaCabecera' : 'plantilla', value)}
+                      placeholder={createTab === 1 ? "Diseñe la cabecera del reporte..." : "Diseñe el contenido de la plantilla..."}
                     />
-                    {((createTab === 0 && errors.plantillaCabecera) || (createTab === 1 && errors.plantilla)) && (
+                    {((createTab === 1 && errors.plantillaCabecera) || (createTab === 1 && errors.plantilla)) && (
                       <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
-                        {createTab === 0 ? errors.plantillaCabecera : errors.plantilla}
+                        {createTab === 1 ? errors.plantillaCabecera : errors.plantilla}
                       </Typography>
                     )}
                   </ResponsiveField>
@@ -852,7 +980,7 @@ const Plantillas = () => {
                     py: 1.5
                   }}
                 >
-                  {createTab === 0 ? 'Crear Cabecera' : 'Crear Plantilla'}
+                  {createTab === 1 ? 'Crear Cabecera' : 'Crear Plantilla'}
                 </Button>
               </Box>
             </form>
