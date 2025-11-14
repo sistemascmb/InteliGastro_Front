@@ -25,7 +25,10 @@ import {
   DialogContent,
   DialogActions,
   Grid,
-  Divider
+  Divider,
+  ImageList,
+  ImageListItem,
+  CircularProgress
 } from '@mui/material';
 import {
   NavigateNext,
@@ -46,7 +49,10 @@ import {
   ImageSearch,
   FactCheckRounded,
   BedroomChild,
-  AssignmentReturn
+  AssignmentReturn,
+  PlayArrow,
+  OpenInNew,
+  Download
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { appointmentsService, patientsService, staff, staffService } from 'services';
@@ -56,6 +62,7 @@ import estudiosService from 'services/estudiosService';
 import salasService from 'services/salasService';
 import recursosService from 'services/recursosService';
 import medicosRefService from 'services/medicosRefService';
+import archivodigitalService from 'services/archivodigitalService';
 import segurosService from 'services/segurosService';
 
 // Componente de header de sección
@@ -254,6 +261,11 @@ const cargarSalas = async () => {
 
   // Estado para los procedimientos agendados
   const [procedimientosAgendados, setProcedimientosAgendados] = useState([]);
+  const [openStudyImagesModal, setOpenStudyImagesModal] = useState(false);
+  const [studyImages, setStudyImages] = useState([]);
+  const [selectedStudyImage, setSelectedStudyImage] = useState(null);
+  const [studyImagesLoading, setStudyImagesLoading] = useState(false);
+  const [selectedProc, setSelectedProc] = useState(null);
 
   const cargarProcedimientos = async () => {
         try {
@@ -353,25 +365,26 @@ const cargarSalas = async () => {
         }
       };
     
+  const runInitialLoads = () => {
+    cargarProcedimientos();
+    cargarMedicos();
+    cargarRecursos();
+    cargarSalas();
+    cargarEstudios();
+  };
+
   useEffect(() => {    
-     const runInitialLoads = () => {
-       cargarProcedimientos();
-       cargarMedicos();
-       cargarRecursos();
-       cargarSalas();
-       cargarEstudios();
-     };
      runInitialLoads();
      const onStorage = (e) => {
        if (e.key === 'procedimientosUpdated') {
-         runInitialLoads();
+          runInitialLoads();
        }
      };
      window.addEventListener('storage', onStorage);
      const onMessage = (e) => {
        if (e.origin !== window.location.origin) return;
        if (e.data && e.data.type === 'EXAM_TERMINATED') {
-         runInitialLoads();
+          runInitialLoads();
        }
      };
      window.addEventListener('message', onMessage);
@@ -543,7 +556,7 @@ const cargarSalas = async () => {
 
   // Función para buscar procedimientos
   const handleBuscarProcedimientos = () => {
-    console.log('Buscando procedimientos con filtros:', filters);
+    runInitialLoads();
   };
 
   // Abrir nueva ventana para captura de imágenes con datos
@@ -578,6 +591,49 @@ const cargarSalas = async () => {
     urlBase.search = `paciente=${paciente}&procedimiento=${estudio}&codigo=${codigo}&centro=${centro}&sala=${sala}&gastro=${gastro}&fechaEstudio=${fechaEstudio}&edadPaciente=${edadPaciente}&estudioTerminadoId=${estudioTerminadoId}`;
     const url = urlBase.toString();
     window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleVerImagenesEstudio = async (procedimiento) => {
+    if (!procedimiento) return;
+    setSelectedProc(procedimiento);
+    setOpenStudyImagesModal(true);
+    setStudyImagesLoading(true);
+    try {
+      const res = await archivodigitalService.searchByEstudioId(procedimiento.codigo);
+      const codigo = String(procedimiento.codigo || '');
+      const imgs = (res?.data || []).filter((f) => String(f.medical_ScheduleId || '') === codigo).map((f) => ({
+        id: f.id,
+        description: f.description,
+        mimeType: f.typeArchive,
+        dataUrl: `data:${f.typeArchive};base64,${f.archive}`,
+        date: f.date,
+        hour: f.hour
+      }));
+      setStudyImages(imgs);
+      setSelectedStudyImage(imgs[0] || null);
+    } catch (e) {
+      setStudyImages([]);
+      setSelectedStudyImage(null);
+    } finally {
+      setStudyImagesLoading(false);
+    }
+  };
+
+  const handleDownloadSelectedImage = () => {
+    if (!selectedStudyImage) return;
+    const a = document.createElement('a');
+    a.href = selectedStudyImage.dataUrl;
+    const ext = (selectedStudyImage.mimeType || '').split('/')[1] || 'dat';
+    const name = `${selectedStudyImage.description || 'archivo'}.${ext}`;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const handleOpenSelectedImage = () => {
+    if (!selectedStudyImage) return;
+    window.open(selectedStudyImage.dataUrl, '_blank', 'noopener,noreferrer');
   };
 
   // Filtrar procedimientos basado en los filtros (comparando fechas con Date y fin de día inclusivo)
@@ -1088,7 +1144,7 @@ const cargarSalas = async () => {
                 fullWidth
                 placeholder="Buscar por nombre del paciente..."
                 value={filters.searchTerm}
-                onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
+                onChange={useEffect}
                 size="small"
                 InputProps={{
                   startAdornment: (
@@ -1176,7 +1232,21 @@ const cargarSalas = async () => {
                               >
                                 <AddCircle />
                               </IconButton>
+
+                              {Number(proc.estudioTeminadoId) === 1 && (
+                                <IconButton
+                                  color="error"
+                                  size="small"
+                                  title="Ver imágenes de estudio."
+                                  onClick={() => handleVerImagenesEstudio(proc)}
+                                >
+                                  <PlayArrow />
+                                </IconButton>) 
+                              }
+
+                            <Box sx={{ display: 'flex', gap: 0.5 }}></Box>
                           </Box>
+                          
                         </TableCell>
                         <TableCell>
                           <Box>
@@ -1528,6 +1598,98 @@ const cargarSalas = async () => {
             Cerrar
           </Button>
         </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={openStudyImagesModal}
+        onClose={() => setOpenStudyImagesModal(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 2 } }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#2184be', color: 'white' }}>
+          <Typography variant="h6" fontWeight="bold">Imágenes del Estudio</Typography>
+          <Box>
+            <IconButton onClick={handleOpenSelectedImage} sx={{ color: 'white' }} disabled={!selectedStudyImage}>
+              <OpenInNew />
+            </IconButton>
+            <IconButton onClick={handleDownloadSelectedImage} sx={{ color: 'white' }} disabled={!selectedStudyImage}>
+              <Download />
+            </IconButton>
+            <IconButton onClick={() => setOpenStudyImagesModal(false)} sx={{ color: 'white' }}>
+              <Close />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 3 }}>
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid item xs={12} md={3}>
+              <Typography variant="body2" color="text.secondary">Paciente</Typography>
+              <Typography variant="h6" fontWeight="bold">{selectedProc?.nombre || '—'}</Typography>
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <Typography variant="body2" color="text.secondary">Edad</Typography>
+              <Typography variant="h6" fontWeight="bold">{(() => {
+                const b = selectedProc?.fechaNac ? new Date(selectedProc.fechaNac) : null;
+                const r = selectedProc?.fechaExamen ? new Date(selectedProc.fechaExamen) : new Date();
+                if (!b) return '—';
+                let age = r.getFullYear() - b.getFullYear();
+                const m = r.getMonth() - b.getMonth();
+                if (m < 0 || (m === 0 && r.getDate() < b.getDate())) age--;
+                return String(age);
+              })()}</Typography>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <Typography variant="body2" color="text.secondary">Procedimiento</Typography>
+              <Typography variant="h6" fontWeight="bold">{selectedProc?.procedimiento || '—'}</Typography>
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <Typography variant="body2" color="text.secondary">Médico</Typography>
+              <Typography variant="h6" fontWeight="bold">{selectedProc?.gastroenterologo || '—'}</Typography>
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <Typography variant="body2" color="text.secondary">Nº Examen</Typography>
+              <Typography variant="h6" fontWeight="bold">{selectedProc?.codigo || '—'}</Typography>
+            </Grid>
+          </Grid>
+
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box sx={{ minHeight: 360, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+              {studyImagesLoading ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <CircularProgress size={24} />
+                  <Typography variant="body2">Cargando imágenes...</Typography>
+                </Box>
+              ) : selectedStudyImage ? (
+                selectedStudyImage?.mimeType?.startsWith('image/') ? (
+                  <Box sx={{ maxWidth: '100%', maxHeight: 500 }}>
+                    <img src={selectedStudyImage.dataUrl} alt={selectedStudyImage.description || ''} style={{ maxWidth: '100%', maxHeight: '500px', display: 'block' }} />
+                  </Box>
+                ) : (
+                  <Box sx={{ width: '100%' }}>
+                    <video src={selectedStudyImage.dataUrl} controls style={{ width: '100%' }} />
+                  </Box>
+                )
+              ) : (
+                <Typography variant="body2" color="text.secondary">No hay imágenes para mostrar</Typography>
+              )}
+            </Box>
+
+            <Box>
+              <ImageList cols={6} gap={8} sx={{ width: '100%', maxHeight: 180 }}>
+                {studyImages.map((img) => (
+                  <ImageListItem key={img.id} onClick={() => setSelectedStudyImage(img)} sx={{ cursor: 'pointer', border: selectedStudyImage?.id === img.id ? '2px solid #2184be' : '1px solid #ddd', borderRadius: 1, overflow: 'hidden' }}>
+                    {img.mimeType?.startsWith('image/') ? (
+                      <img src={img.dataUrl} alt={img.description || ''} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <video src={img.dataUrl} muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    )}
+                  </ImageListItem>
+                ))}
+              </ImageList>
+            </Box>
+          </Box>
+        </DialogContent>
       </Dialog>
 
       {/* Modal para Historial del Examen */}

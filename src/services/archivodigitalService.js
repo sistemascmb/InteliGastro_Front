@@ -184,6 +184,47 @@ getAll_Estudio: async (params = {}) => {
     }
   },
 
+  searchByEstudioId: async (estudioId) => {
+    if (!estudioId) {
+      throw new Error('ID del estudio es requerido');
+    }
+    try {
+      //const url = `http://192.168.1.55:8090/api/ArchivoDigital/search?value1=${encodeURIComponent(estudioId)}`;
+      const url = `${process.env.REACT_APP_API_URL}/ArchivoDigital/search?value1=${estudioId}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      const rawData = await response.json();
+      const activos = (Array.isArray(rawData) ? rawData : []).filter(item => item.isDeleted === false);
+      const mappedData = activos.map(ArchivoDigital => ({
+        id: ArchivoDigital.digitalfileid,
+        digitalfileid: ArchivoDigital.digitalfileid,
+        date: ArchivoDigital.date,
+        hour: ArchivoDigital.hour,
+        desktop: ArchivoDigital.desktop,
+        archive: ArchivoDigital.archive,
+        description: ArchivoDigital.description,
+        typeArchive: ArchivoDigital.typeArchive,
+        medical_ScheduleId: ArchivoDigital.medical_ScheduleId,
+        estado: ArchivoDigital.status ? 'activo' : 'inactivo',
+        status: ArchivoDigital.status ? '10007' : '10008',
+        createdAt: ArchivoDigital.createdAt,
+        createdBy: ArchivoDigital.createdBy,
+        updatedAt: ArchivoDigital.updatedAt,
+        updatedBy: ArchivoDigital.updatedBy,
+        isDeleted: ArchivoDigital.isDeleted
+      }));
+      return {
+        data: mappedData,
+        status: 'success'
+      };
+    } catch (error) {
+      console.error('❌ Error al buscar archivos por estudio:', error);
+      throw error;
+    }
+  },
+
   // Crear nuevo ArchivoDigital
   create: async (archivoDigitalData) => {
     try {
@@ -413,49 +454,7 @@ getAll_Estudio: async (params = {}) => {
     }
   },
 
-  // Cambiar estado del ArchivoDigital (activar/desactivar)
-  changeStatus: async (id, status) => {
-    if (!id) {
-      throw new Error('ID del ArchivoDigital es requerido');
-    }
-
-    const validStatuses = ['active', 'inactive'];
-    if (!validStatuses.includes(status)) {
-      throw new Error(`Estado inválido. Debe ser uno de: ${validStatuses.join(', ')}`);
-    }
-
-    return await api.patch(API_ENDPOINTS.PATIENTS.BY_ID(id), { status });
-  },
-
-  // Buscar ArchivoDigitals por término
-  search: async (searchTerm, params = {}) => {
-    if (!searchTerm || searchTerm.trim() === '') {
-      return await this.getAll(params);
-    }
-
-    const queryParams = {
-      q: searchTerm.trim(),
-      page: params.page || 1,
-      limit: params.limit || 10,
-      ...params
-    };
-
-    return await api.get(API_ENDPOINTS.PATIENTS.SEARCH, { params: queryParams });
-  },
-
-  // Exportar lista de ArchivoDigitals
-  export: async (format = 'xlsx', filters = {}) => {
-    const validFormats = ['xlsx', 'csv', 'pdf'];
-    if (!validFormats.includes(format)) {
-      throw new Error(`Formato inválido. Debe ser uno de: ${validFormats.join(', ')}`);
-    }
-
-    return await api.get(API_ENDPOINTS.PATIENTS.EXPORT, {
-      params: { format, ...filters },
-      responseType: 'blob' // Para descargas de archivos
-    });
-  },
-
+  
 
 };
 

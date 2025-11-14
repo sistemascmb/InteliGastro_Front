@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Container, Paper, Box, Typography, Divider, Grid, Button, ImageList, ImageListItem, Dialog, DialogTitle, DialogContent, DialogActions, ToggleButtonGroup, ToggleButton, FormControl, Select, MenuItem, InputLabel, FormControlLabel, Switch, IconButton } from '@mui/material';
+import { Container, Paper, Box, Typography, Divider, Grid, Button, ImageList, ImageListItem, Dialog, DialogTitle, DialogContent, DialogActions, ToggleButtonGroup, ToggleButton, FormControl, Select, MenuItem, InputLabel, FormControlLabel, Switch, IconButton, CircularProgress } from '@mui/material';
 import { PhotoCamera, FiberManualRecord, Stop, Delete as DeleteIcon, Fullscreen, FullscreenExit, ExitToApp } from '@mui/icons-material';
 import PauseIcon from '@mui/icons-material/Pause';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -488,6 +488,9 @@ const CapturaImagenes = () => {
   const [terminarPreviewOpen, setTerminarPreviewOpen] = useState(false);
   const [terminarPreviewItems, setTerminarPreviewItems] = useState([]);
   const [terminarSelected, setTerminarSelected] = useState(null);
+  const [terminarProcessingOpen, setTerminarProcessingOpen] = useState(false);
+  const [terminarSuccessOpen, setTerminarSuccessOpen] = useState(false);
+  const [terminarSuccessInfo, setTerminarSuccessInfo] = useState({ codigo: '', guardados: 0, total: 0 });
   // Estado y refs para puente nativo (PCI/SDK)
   const [bridgeAvailable, setBridgeAvailable] = useState(false);
   const [bridgeStreamUrl, setBridgeStreamUrl] = useState('');
@@ -1437,6 +1440,7 @@ const CapturaImagenes = () => {
   const handleTerminarEstudio = async () => {
     if (studyTerminated) return;
   try {
+    setTerminarProcessingOpen(true);
     const files = capturedImages.slice();
     if (files.length === 0) return;
     const previewItems = [];
@@ -1493,12 +1497,11 @@ const CapturaImagenes = () => {
       //previewItems.push({ nombre, extension, mimeType, kind: item.kind, dataUrl, size });
     }
     if (procesados === files.length && exitos === files.length) {
-      try { localStorage.setItem('procedimientosUpdated', String(Date.now())); } catch {}
-      try { if (window.opener) window.opener.postMessage({ type: 'EXAM_TERMINATED' }, window.location.origin); } catch {}
-      alert('SE HA CULMINADO EL EXAMEN CORRECTAMENTE, ACTUALIZA LA LISTA DE PROCEDIMIENTOS PARA REVISAR LOS CAMBIOS');
-      setIsRecording(false);
-      window.close();
+      setTerminarSuccessInfo({ codigo: codigo || '', guardados: exitos, total: files.length });
+      setTerminarProcessingOpen(false);
+      setTerminarSuccessOpen(true);
     } else {
+      setTerminarProcessingOpen(false);
       alert(`Se guardaron ${exitos} de ${files.length} archivos. Verifique y reintente.`);
     }
     //setTerminarPreviewItems(previewItems);
@@ -1508,6 +1511,18 @@ const CapturaImagenes = () => {
     console.error('Error en handleTerminarEstudio:', error);
   }
 };
+
+  useEffect(() => {
+    if (terminarSuccessOpen) {
+      const t = setTimeout(() => {
+        try { localStorage.setItem('procedimientosUpdated', String(Date.now())); } catch {}
+        try { if (window.opener) window.opener.postMessage({ type: 'EXAM_TERMINATED' }, window.location.origin); } catch {}
+        setIsRecording(false);
+        window.close();
+      }, 1200);
+      return () => clearTimeout(t);
+    }
+  }, [terminarSuccessOpen]);
 
   const handlePausarReanudar = () => {
     try {
@@ -1950,6 +1965,25 @@ const CapturaImagenes = () => {
             </DialogContent>
             <DialogActions>
               <Button onClick={() => setTerminarPreviewOpen(false)}>Cerrar</Button>
+            </DialogActions>
+          </Dialog>
+          <Dialog open={terminarProcessingOpen} onClose={() => {}} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
+            <DialogTitle sx={{ bgcolor: 'primary.main', color: 'primary.contrastText' }}>Procesando estudio</DialogTitle>
+            <DialogContent dividers>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 1 }}>
+                <CircularProgress size={24} color="primary" />
+                <Typography variant="body2">SE ESTA PROCESANDO LA CARGA DEL ESTUDIO A LA BASE DE DATOS, POR FAVOR ESPERE UN MOMENTO</Typography>
+              </Box>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={terminarSuccessOpen} onClose={() => setTerminarSuccessOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
+            <DialogTitle sx={{ bgcolor: 'primary.main', color: 'primary.contrastText' }}>Guardado correctamente</DialogTitle>
+            <DialogContent dividers>
+              <Typography variant="body2">Estudio EX-Nº {terminarSuccessInfo.codigo || '—'}</Typography>
+              <Typography variant="body2">Se guardaron {terminarSuccessInfo.guardados} de {terminarSuccessInfo.total} archivos.</Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button variant="contained" color="primary" onClick={() => setTerminarSuccessOpen(false)}>Aceptar</Button>
             </DialogActions>
           </Dialog>
 
