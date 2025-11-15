@@ -26,8 +26,10 @@ import {
   Tab,
   Chip,
   Grid,
+  Divider,
   Checkbox,
-  FormControlLabel
+  FormControlLabel,
+  Switch
 } from '@mui/material';
 import {
   NavigateNext,
@@ -45,6 +47,10 @@ import {
 import { useNavigate } from 'react-router-dom';
 import JoditEditor from 'jodit-react';
 import 'jodit/es2018/jodit.min.css';
+import { staffService } from '../../services/staffService';
+import { plantillaService }from '../../services/plantillasService';
+import { estudiosService } from '../../services/estudiosService';
+
 // import ReactQuill from 'react-quill';
 // import 'react-quill/dist/quill.snow.css';
 
@@ -105,6 +111,18 @@ const FieldRow = memo(({ children }) => (
 // Agregar displayName para mejor debugging
 FieldRow.displayName = 'FieldRow';
 
+const DEFAULT_TEMPLATE_HTML = `<table style="border-collapse: collapse; width: 763px; height: 136px;"><tbody>
+<tr>
+	<td style="width: 100%; text-align: center; line-height: 1;">{{cabecera}}<br></td></tr></tbody></table><p style="text-align: center; line-height: 1;"><span style="font-size: 16px;"><strong>{{titulo}}</strong></span></p><table style="border-collapse: collapse; width: 100%; line-height: 1;"><tbody>
+<tr>
+	<td style="width: 62.5%; line-height: 1.1;"><span style="font-family: Arial, Helvetica, sans-serif; font-size: 14px;"> <span style="font-size: 14px;"><strong>Exame</strong><strong>n: </strong>{{numeroEstudio}} <br>   <strong>Instrument</strong>o: {{instrumento}} <br>   <strong>Preparacion</strong>:&nbsp;<br>  <strong>Nombre</strong>: {{nombres}}&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;      <br> <strong>Edad</strong>: {{edad}}&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;    <br> <strong>Asegurador</strong>a: {{aseguradora}} <br>   <strong>Motivo:&nbsp;</strong><br>   <strong>Fecha:</strong> {{fechaEstudio}}</span><br></span></td><td style="width: 37.367%; line-height: 1.1;"><span style="font-family: Arial, Helvetica, sans-serif; font-size: 14px;"><br><br><br><strong>HCL: </strong>{{historiaClinica}}<br><strong>Sexo:</strong>&nbsp;{{sexo}}<br></span></td></tr></tbody></table><br><table style="border-collapse: collapse; width: 762px; height: 220px;"><tbody>
+<tr>
+	<td style="width: 33.3333%;"><br></td>
+	<td style="width: 33.3333%;"><br></td>
+	<td style="width: 33.3333%;"><br></td></tr></tbody></table><br><br><table style="border-collapse: collapse; width: 100%; text-align: justify;"><tbody>
+<tr>
+	<td style="width: 66.3564%; border-color: rgb(61, 133, 198); line-height: 1;"><span style="font-size: 14px;"><strong style="font-family: Arial, Helvetica, sans-serif;">TITULO 1: <br></strong><span style="font-family: Arial, Helvetica, sans-serif;">Texto de contenido para plantillas generales.</span><strong style="font-family: Arial, Helvetica, sans-serif;"><br>TITULO 2: <br></strong><span style="font-family: Arial, Helvetica, sans-serif;">Texto de contenido para plantillas generales.</span><strong style="font-family: Arial, Helvetica, sans-serif;"><br> TITULO 3: Texto de contenido para plantillas generales.<br></strong><strong style="font-family: Arial, Helvetica, sans-serif;"> <br>DIAGNÓSTICO XXXXXXX: <br>  1.ABC&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <br> 2.DEF<br>  3.GHI</strong></span><br></td><td style="width: 33.5106%; text-align: center; vertical-align: middle;">&nbsp;&nbsp;<span style="color: rgb(71, 139, 147); font-size: 14pt;"><strong><span style="color: #000000;"><span style="font-size: 14pt;">[##FIRMA_MEDICO##]</span></span></strong></span><br></td></tr></tbody></table><p>Av. Hoyos Rubio 2397, Cajamarca</p>`;
+
 // Componente Editor de Texto con Jodit
 const RichTextEditor = memo(({ value, onChange, placeholder = "Escriba aquí..." }) => {
   const editorRef = React.useRef(null);
@@ -135,7 +153,8 @@ const RichTextEditor = memo(({ value, onChange, placeholder = "Escriba aquí..."
     { label: 'Fecha de Estudio', value: '{{fechaEstudio}}' },
     { label: 'Motivo', value: '{{motivo}}' },
     { label: 'Cabecera', value: '{{cabecera}}' },
-    { label: 'Pie de Página', value: '{{pie}}' }
+    { label: 'Pie de Página', value: '{{pie}}' },
+    { label: 'Preparación', value: '{{preparacion}}' }
   ], []);
 
   
@@ -308,16 +327,18 @@ const RichTextEditor = memo(({ value, onChange, placeholder = "Escriba aquí..."
     <Box>
       <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center', flexWrap: 'wrap' }}>
         <TextField
+          show = "false"
           size="small"
           type="number"
           label="Margen"
           value={pageMargin}
           disabled
-          sx={{ width: 120 }}
+          sx={{ width: 60 }}
         />
         {/*<Button variant="outlined" size="small" onClick={() => setOpenPreview(true)}>Vista previa</Button>*/}
-        <FormControlLabel control={<Checkbox checked={singlePage} onChange={(e) => setSinglePage(e.target.checked)} />} label="Una página" />
-        {/*<FormControlLabel control={<Checkbox checked={showGuides} onChange={(e) => setShowGuides(e.target.checked)} />} label="Guías" />
+        <FormControlLabel control={<Checkbox checked={singlePage} onChange={(e) => setSinglePage(e.target.checked)} disabled />} label="" />
+        {/*  Una página
+        <FormControlLabel control={<Checkbox checked={showGuides} onChange={(e) => setShowGuides(e.target.checked)} />} label="Guías" />
         <FormControl size="small" sx={{ minWidth: 160 }}>
           <Select value={fontFamily} onChange={(e) => setFontFamily(e.target.value)} displayEmpty>
             <MenuItem value={'Arial, sans-serif'}>Arial</MenuItem>
@@ -409,6 +430,7 @@ const RichTextEditor = memo(({ value, onChange, placeholder = "Escriba aquí..."
         <JoditEditor
           ref={editorRef}
           config={joditConfig}
+          value={value || ''}
           onChange={(content) => onChange?.(content)}
         />
       </Box>
@@ -439,10 +461,10 @@ const Plantillas = () => {
 
   // Lista de personal para asignaciones
   const [personalList] = useState([
-    { id: 1, nombre: 'Dr. Juan Pérez' },
-    { id: 2, nombre: 'Dra. María García' },
-    { id: 3, nombre: 'Dr. Carlos López' },
-    { id: 4, nombre: 'Dra. Ana Martínez' }
+    { id: 1, name: 'Dr. Juan Pérez' },
+    { id: 2, name: 'Dra. María García' },
+    { id: 3, name: 'Dr. Carlos López' },
+    { id: 4, name: 'Dra. Ana Martínez' }
   ]);
 
   // Lista de plantillas de procedimientos
@@ -457,48 +479,79 @@ const Plantillas = () => {
   ]);
 
   // Estado para la lista de plantillas
-  const [plantillas, setPlantillas] = useState([
-    {
-      id: 1,
-      tipo: 'cabecera',
-      nombre: 'Cabecera Estándar CMB',
-      asignadoA: 'todos',
-      plantillaCabecera: '<h2>CLINICA MARIA BELEN</h2><p>Reporte Médico Especializado</p>',
-      fechaCreacion: '2024-01-15T10:30:00',
-      creadoPor: 'Sistema'
-    },
-    {
-      id: 2,
-      tipo: 'plantilla',
-      nombre: 'Endoscopia Digestiva Alta',
-      descripcion: 'Plantilla para procedimientos de endoscopia digestiva alta',
-      asignadoA: [1, 2],
-      plantillaProcedimiento: 'Videoendoscopia digestiva alta',
-      plantilla: '<p><strong>Indicación:</strong></p><p><strong>Preparación:</strong></p><p><strong>Hallazgos:</strong></p>',
-      fechaCreacion: '2024-02-10T14:20:00',
-      creadoPor: 'Dr. Juan Pérez'
-    }
-  ]);
+  const [plantillas, setPlantillas] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [PersonalD, setPersonalCargados] = useState([]);
+  const [EstudiosD, setEstudiosCargados] = useState([]);
+  const [filteredPlantillasN, setFilteredPlantillas] = useState([]);
 
   // Estados para modales
   const [openEditModal, setOpenEditModal] = useState(false);
+  const [openDetailModal, setOpenDetailModal] = useState(false);
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
   const [openDetailsModal, setOpenDetailsModal] = useState(false);
   const [selectedPlantilla, setSelectedPlantilla] = useState(null);
 
+const cargarPersonal = async () => {
+          try {
+            const responseSystemParameter = await staffService.getAll();
+            console.log('✅ Respuesta de Personal:', responseSystemParameter);
+            setPersonalCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                             responseSystemParameter?.data || []);
+          } catch (error) {
+            console.error('❌ Error al cargar Personal:', error);
+            setError(`Error al cargar Personal: ${error.message}`);
+          }
+        };
+
+  const cargarEstudios = async () => {
+          try {
+            const responseSystemParameter = await estudiosService.getAll();
+            console.log('✅ Respuesta de Estudios:', responseSystemParameter);
+            setEstudiosCargados(Array.isArray(responseSystemParameter) ? responseSystemParameter : 
+                             responseSystemParameter?.data || []);
+          } catch (error) {
+            console.error('❌ Error al cargar Estudios:', error);
+            setError(`Error al cargar Estudios: ${error.message}`);
+          }
+        };
+
   // Estado para el formulario
   const [formData, setFormData] = useState({
-    tipo: 'cabecera',
-    nombre: '',
-    descripcion: '',
+    name: '',
+    description: '',
+    plantilla: '',
+    personalId : '',
+    examsId: '',
+    status: true,
+    allPersonalMed: '',
+
+    tipo: 'plantilla',
     asignadoA: 'todos',
     personalSeleccionado: [],
     plantillaProcedimiento: '',
     plantillaCabecera: '',
-    plantilla: ''
   });
 
+  const [editFormData, setEditFormData] = useState({
+      name: '',
+      description: '',
+      plantilla: '',
+      personalId : '',
+      examsId: '',
+      status: true,
+      allPersonalMed: '',
+
+      asignadoA: 'todos',
+      tipo: 'cabecera',
+      personalSeleccionado: [],
+      plantillaProcedimiento: '',
+      plantillaCabecera: '',
+    });
+
   const [errors, setErrors] = useState({});
+  const [selectAllPersonal, setSelectAllPersonal] = useState(false);
 
   // Estado para búsqueda
   const [searchTerm, setSearchTerm] = useState('');
@@ -509,20 +562,111 @@ const Plantillas = () => {
   // Estado para subtabs de creación
   const [createTab, setCreateTab] = useState(0);
 
+  const [useDefaultTemplateCreate, setUseDefaultTemplateCreate] = useState(false);
+  const [useDefaultTemplateEdit, setUseDefaultTemplateEdit] = useState(false);
+
+  const loadPlantillas = async () => {
+      try {
+        setLoading(true);
+        setError('');
+  
+        console.log('🔄 Cargando Plantillas desde el backend...');
+        const response = await plantillaService.getAll();
+        
+        if (!response || !response.data) {
+          throw new Error('No se recibieron datos de plantillas válidos');
+        }
+  
+        const plantillasListCarga = await Promise.all(
+          (response.data || []).map(async (plantillas) => {
+            try {
+              if (plantillas?.personalId && plantillas.personalId !== -1) {
+                const personalDatos = await staffService.getById(plantillas.personalId);
+                const estudios = await estudiosService.getById(plantillas.examsId);
+
+                return {
+                  ...plantillas,
+                  nombrePersonal: personalDatos?.data?.nombres && personalDatos?.data?.apellidos
+                    ? `${personalDatos.data.nombres} ${personalDatos.data.apellidos}`
+                    : 'Sin asignar',
+                  nombreEstudios: estudios?.data?.name 
+                    ? `${personalDatos.data.name}`
+                    : 'Sin asignar',
+                    fechaCreacion: plantillas.createdAt
+                };
+              }
+              return {
+                ...plantillas,
+                nombrePersonal: plantillas.personalId === -1 ? 'Todos' : 'Sin asignar',
+                nombreEstudios: plantillas.examsId === -1 ? 'Todos' : 'Sin asignar',
+              };
+            } catch (error) {
+              console.error(`Error al obtener personal ${plantillas?.personalId}:`, error);
+                              return {
+                                 ...(plantillas || {}),
+                                 nombrePersonal: 'Error al cargar personal',
+                                 nombreEstudios: 'Error al cargar estudios',
+                              };
+                            }
+                          })
+                        );
+  
+  
+        setPlantillas(plantillasListCarga);
+        setFilteredPlantillas(plantillasListCarga);
+        console.log('✅ Plantillas cargados:', plantillasListCarga);
+      } catch (error) {
+        console.error('❌ Error al cargar Plantillas:', error);
+        setError(`Error al cargar Plantillas: ${error.message}`);
+        setPlantillas([]);
+        setFilteredPlantillas([]);
+      } finally {
+        setLoading(false);
+      }
+          };
+    useEffect(() => {
+  const cargarDatosIniciales = async () => {
+        setLoading(true);
+        try {
+          await Promise.all([
+            loadPlantillas(),
+            cargarPersonal(),
+            cargarEstudios(),
+
+          ]);
+          
+        } catch (error) {
+          console.error('❌ Error al cargar datos iniciales:', error);
+          setError(`Error al cargar datos iniciales: ${error.message}`);
+        } finally {
+          setLoading(false);
+        }
+      };
+  
+      cargarDatosIniciales();
+    }, []);
+
   // Función para limpiar el formulario
   const clearForm = () => {
     setFormData({
-      tipo: 'cabecera',
-      nombre: '',
-      descripcion: '',
+      name: '',
+      description: '',
+      plantilla: '',
+      personalId : '',
+      examsId: '',
+      status: true,
+      allPersonalMed: '',
+
       asignadoA: 'todos',
+      tipo: 'cabecera',
       personalSeleccionado: [],
       plantillaProcedimiento: '',
       plantillaCabecera: '',
-      plantilla: ''
     });
     setErrors({});
   };
+
+  
 
   // Función genérica para manejar cambios en campos de texto
   const handleInputChange = useCallback((field, value) => {
@@ -532,6 +676,25 @@ const Plantillas = () => {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
   }, [errors]);
+
+    const MemoizedTextField = memo(({
+        value,
+        onChange,
+        error,
+        helperText,
+        ...props
+      }) => (
+        <TextField
+          {...props}
+          value={value}
+          onChange={onChange}
+          error={error}
+          helperText={helperText}
+          size="small"
+        />
+      ));
+    
+     MemoizedTextField.displayName = 'MemoizedTextField';
 
   // Función para manejar cambios en asignación de personal
   const handlePersonalChange = useCallback((personalId) => {
@@ -555,41 +718,70 @@ const Plantillas = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.nombre.trim()) {
-      newErrors.nombre = 'Nombre es obligatorio';
+    if (!formData.name.trim()) {
+      newErrors.name = 'Nombre es obligatorio';
     }
 
-    if (formData.tipo === 'plantilla') {
-      if (!formData.descripcion.trim()) {
-        newErrors.descripcion = 'Descripción es obligatoria';
+    //if (formData.tipo === 'plantilla') {
+      if (!formData.description.trim()) {
+        newErrors.description = 'Descripción es obligatoria';
       }
-      if (!formData.plantillaProcedimiento) {
-        newErrors.plantillaProcedimiento = 'Plantilla de procedimiento es obligatoria';
-      }
+     
       if (!formData.plantilla.trim()) {
         newErrors.plantilla = 'Contenido de la plantilla es obligatorio';
       }
-    } else {
-      if (!formData.plantillaCabecera.trim()) {
-        newErrors.plantillaCabecera = 'Contenido de la cabecera es obligatorio';
-      }
-    }
+    //} else {
+    //  if (!formData.plantillaCabecera.trim()) {
+    //    newErrors.plantillaCabecera = 'Contenido de la cabecera es obligatorio';
+    // }
+    
 
-    if (formData.asignadoA === 'seleccionar' && formData.personalSeleccionado.length === 0) {
+    //if (formData.asignadoA === 'seleccionar' && formData.personalSeleccionado.length === 0) {
       newErrors.personalSeleccionado = 'Debe seleccionar al menos un miembro del personal';
-    }
+    //}
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
+  const validateEditForm = () => {
+    const newErrors = {};
+
+    if (!editFormData.name.trim()) {
+      newErrors.name = 'Nombre es obligatorio';
+    }
+
+    //if (formData.tipo === 'plantilla') {
+      if (!editFormData.description.trim()) {
+        newErrors.description = 'Descripción es obligatoria';
+      }
+      
+      if (!editFormData.plantilla.trim()) {
+        newErrors.plantilla = 'Contenido de la plantilla es obligatorio';
+      }
+    //} else {
+    //  if (!formData.plantillaCabecera.trim()) {
+    //    newErrors.plantillaCabecera = 'Contenido de la cabecera es obligatorio';
+    // }
+    
+
+    //if (formData.asignadoA === 'seleccionar' && formData.personalSeleccionado.length === 0) {
+      newErrors.personalSeleccionado = 'Debe seleccionar al menos un miembro del personal';
+    //}
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+  
+  
 
   // Funciones para manejar modales
   const handleOpenEditModal = (plantilla) => {
     setSelectedPlantilla(plantilla);
     setFormData({
       tipo: plantilla.tipo,
-      nombre: plantilla.nombre,
-      descripcion: plantilla.descripcion || '',
+      name: plantilla.name,
+      description: plantilla.description || '',
       asignadoA: plantilla.asignadoA === 'todos' ? 'todos' : 'seleccionar',
       personalSeleccionado: Array.isArray(plantilla.asignadoA) ? plantilla.asignadoA : [],
       plantillaProcedimiento: plantilla.plantillaProcedimiento || '',
@@ -633,8 +825,8 @@ const Plantillas = () => {
       const newPlantilla = {
         id: Math.max(...plantillas.map(p => p.id)) + 1,
         tipo: formData.tipo,
-        nombre: formData.nombre.trim(),
-        descripcion: formData.descripcion.trim(),
+        name: formData.name.trim(),
+        description: formData.description.trim(),
         asignadoA: formData.asignadoA === 'todos' ? 'todos' : formData.personalSeleccionado,
         plantillaProcedimiento: formData.plantillaProcedimiento,
         plantillaCabecera: formData.plantillaCabecera,
@@ -660,8 +852,8 @@ const Plantillas = () => {
           ? {
               ...p,
               tipo: formData.tipo,
-              nombre: formData.nombre.trim(),
-              descripcion: formData.descripcion.trim(),
+              name: formData.name.trim(),
+              description: formData.description.trim(),
               asignadoA: formData.asignadoA === 'todos' ? 'todos' : formData.personalSeleccionado,
               plantillaProcedimiento: formData.plantillaProcedimiento,
               plantillaCabecera: formData.plantillaCabecera,
@@ -681,14 +873,14 @@ const Plantillas = () => {
 
   // Filtrar plantillas basado en la búsqueda
   const filteredPlantillas = plantillas.filter(plantilla =>
-    plantilla.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (plantilla.descripcion && plantilla.descripcion.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    plantilla.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (plantilla.description && plantilla.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
     plantilla.tipo.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Función para obtener el color del tipo
   const getTipoColor = (tipo) => {
-    return tipo === 'cabecera' ? 'primary' : 'secondary';
+    return tipo === 'cabecera' ? 'warning' : 'success';
   };
 
   // Función para formatear fecha
@@ -705,7 +897,7 @@ const Plantillas = () => {
     if (asignadoA === 'todos') {
       return 'Todos';
     } else if (Array.isArray(asignadoA)) {
-      const nombres = asignadoA.map(id => personalList.find(p => p.id === id)?.nombre || 'Desconocido');
+      const nombres = asignadoA.map(id => personalList.find(p => p.id === id)?.name || 'Desconocido');
       return nombres.join(', ');
     }
     return 'No asignado';
@@ -834,10 +1026,10 @@ const Plantillas = () => {
                       fullWidth
                       required
                       placeholder={createTab === 1 ? "Ej: Cabecera CMB Gastroenterología" : "Ej: Plantilla Endoscopia"}
-                      value={formData.nombre}
-                      onChange={(e) => handleInputChange('nombre', e.target.value)}
-                      error={!!errors.nombre}
-                      helperText={errors.nombre}
+                      value={formData.name}
+                      onChange={(e) => handleInputChange('name', e.target.value)}
+                      error={!!errors.name}
+                      helperText={errors.name}
                       size="small"
                     />
                   </ResponsiveField>
@@ -853,10 +1045,10 @@ const Plantillas = () => {
                         multiline
                         rows={2}
                         placeholder="Descripción de la plantilla"
-                        value={formData.descripcion}
-                        onChange={(e) => handleInputChange('descripcion', e.target.value)}
-                        error={!!errors.descripcion}
-                        helperText={errors.descripcion}
+                        value={formData.description}
+                        onChange={(e) => handleInputChange('description', e.target.value)}
+                        error={!!errors.description}
+                        helperText={errors.description}
                         size="small"
                       />
                     </ResponsiveField>
@@ -868,7 +1060,7 @@ const Plantillas = () => {
                   <ResponsiveField label="Asignar a" required>
                     <FormControl fullWidth size="small">
                       <Select
-                        value={formData.asignadoA}
+                        value={formData.nombrePersonal}
                         onChange={(e) => handleInputChange('asignadoA', e.target.value)}
                       >
                         <MenuItem value="todos">Todos</MenuItem>
@@ -903,7 +1095,7 @@ const Plantillas = () => {
                                 onChange={() => handlePersonalChange(personal.id)}
                               />
                             }
-                            label={personal.nombre}
+                            label={personal.name}
                             sx={{ display: 'block', ml: 2 }}
                           />
                         ))}
@@ -941,6 +1133,19 @@ const Plantillas = () => {
                         </Typography>
                       )}
                     </ResponsiveField>
+                  </FieldRow>
+                )}
+
+                {createTab === 0 && (
+                  <FieldRow>
+                    <FormControlLabel
+                      control={<Switch checked={useDefaultTemplateCreate} onChange={(e) => {
+                        const checked = e.target.checked;
+                        setUseDefaultTemplateCreate(checked);
+                        handleInputChange('plantilla', checked ? DEFAULT_TEMPLATE_HTML : '');
+                      }} />}
+                      label="Plantilla predeterminada"
+                    />
                   </FieldRow>
                 )}
 
@@ -995,7 +1200,7 @@ const Plantillas = () => {
               <TextField
                 fullWidth
                 size="small"
-                placeholder="Buscar por nombre, descripción o tipo..."
+                placeholder="Buscar por name, descripción o tipo..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 InputProps={{
@@ -1051,13 +1256,13 @@ const Plantillas = () => {
                       <TableRow key={plantilla.id} hover>
                         <TableCell>
                           <Typography variant="body2" fontWeight="bold">
-                            {plantilla.nombre}
+                            {plantilla.name}
                           </Typography>
-                          {plantilla.descripcion && (
+                          {plantilla.description && (
                             <Typography variant="caption" color="text.secondary">
-                              {plantilla.descripcion.length > 50
-                                ? `${plantilla.descripcion.substring(0, 50)}...`
-                                : plantilla.descripcion
+                              {plantilla.description.length > 50
+                                ? `${plantilla.description.substring(0, 50)}...`
+                                : plantilla.description
                               }
                             </Typography>
                           )}
@@ -1070,9 +1275,23 @@ const Plantillas = () => {
                           />
                         </TableCell>
                         <TableCell>
-                          <Typography variant="body2">
-                            {getAsignacionTexto(plantilla.asignadoA)}
-                          </Typography>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {plantilla?.personalId === -1 ? (
+                              <Chip
+                                label="Todos"
+                                size="small"
+                                color="primary"
+                                variant="outlined"
+                              />
+                              ) : (
+                                <Chip
+                                  label={plantilla?.nombrePersonal || 'Sin asignar'} 
+                                  size="small"
+                                  color="primary"
+                                  variant="outlined"
+                                />
+                            )}
+                          </Box>
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2">
@@ -1168,10 +1387,10 @@ const Plantillas = () => {
                     fullWidth
                     required
                     placeholder="Nombre de la plantilla"
-                    value={formData.nombre}
-                    onChange={(e) => handleInputChange('nombre', e.target.value)}
-                    error={!!errors.nombre}
-                    helperText={errors.nombre}
+                    value={formData.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    error={!!errors.name}
+                    helperText={errors.name}
                     size="small"
                   />
                 </ResponsiveField>
@@ -1186,10 +1405,10 @@ const Plantillas = () => {
                       multiline
                       rows={2}
                       placeholder="Descripción de la plantilla"
-                      value={formData.descripcion}
-                      onChange={(e) => handleInputChange('descripcion', e.target.value)}
-                      error={!!errors.descripcion}
-                      helperText={errors.descripcion}
+                      value={formData.description}
+                      onChange={(e) => handleInputChange('description', e.target.value)}
+                      error={!!errors.description}
+                      helperText={errors.description}
                       size="small"
                     />
                   </ResponsiveField>
@@ -1234,7 +1453,7 @@ const Plantillas = () => {
                               onChange={() => handlePersonalChange(personal.id)}
                             />
                           }
-                          label={personal.nombre}
+                          label={personal.name}
                           sx={{ display: 'block', ml: 2 }}
                         />
                       ))}
@@ -1261,6 +1480,19 @@ const Plantillas = () => {
                       </Select>
                     </FormControl>
                   </ResponsiveField>
+                </FieldRow>
+              )}
+
+              {formData.tipo === 'plantilla' && (
+                <FieldRow>
+                  <FormControlLabel
+                    control={<Switch checked={useDefaultTemplateEdit} onChange={(e) => {
+                      const checked = e.target.checked;
+                      setUseDefaultTemplateEdit(checked);
+                      handleInputChange('plantilla', checked ? DEFAULT_TEMPLATE_HTML : '');
+                    }} />}
+                    label="Plantilla predeterminada"
+                  />
                 </FieldRow>
               )}
 
@@ -1338,7 +1570,7 @@ const Plantillas = () => {
               <Grid container spacing={3}>
                 <Grid item xs={12} md={6}>
                   <Typography variant="body1">
-                    <strong>Nombre:</strong> {selectedPlantilla.nombre}
+                    <strong>Nombre:</strong> {selectedPlantilla.name}
                   </Typography>
                 </Grid>
                 <Grid item xs={12} md={6}>
@@ -1346,10 +1578,10 @@ const Plantillas = () => {
                     <strong>Tipo:</strong> {selectedPlantilla.tipo === 'cabecera' ? 'Cabecera de Reporte' : 'Plantilla'}
                   </Typography>
                 </Grid>
-                {selectedPlantilla.descripcion && (
+                {selectedPlantilla.description && (
                   <Grid item xs={12}>
                     <Typography variant="body1">
-                      <strong>Descripción:</strong> {selectedPlantilla.descripcion}
+                      <strong>Descripción:</strong> {selectedPlantilla.description}
                     </Typography>
                   </Grid>
                 )}
@@ -1409,7 +1641,7 @@ const Plantillas = () => {
         <DialogContent sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="body1">
             ¿Está seguro de que desea eliminar la plantilla{' '}
-            <strong>"{selectedPlantilla?.nombre}"</strong>?
+            <strong>"{selectedPlantilla?.name}"</strong>?
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
             Esta acción no se puede deshacer.
