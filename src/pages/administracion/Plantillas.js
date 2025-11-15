@@ -115,7 +115,7 @@ const DEFAULT_TEMPLATE_HTML = `<table style="border-collapse: collapse; width: 7
 <tr>
 	<td style="width: 100%; text-align: center; line-height: 1;">{{cabecera}}<br></td></tr></tbody></table><p style="text-align: center; line-height: 1;"><span style="font-size: 16px;"><strong>{{titulo}}</strong></span></p><table style="border-collapse: collapse; width: 100%; line-height: 1;"><tbody>
 <tr>
-	<td style="width: 62.5%; line-height: 1.1;"><span style="font-family: Arial, Helvetica, sans-serif; font-size: 14px;"> <span style="font-size: 14px;"><strong>Exame</strong><strong>n: </strong>{{numeroEstudio}} <br>   <strong>Instrument</strong>o: {{instrumento}} <br>   <strong>Preparacion</strong>:&nbsp;<br>  <strong>Nombre</strong>: {{nombres}}&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;      <br> <strong>Edad</strong>: {{edad}}&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;    <br> <strong>Asegurador</strong>a: {{aseguradora}} <br>   <strong>Motivo:&nbsp;</strong><br>   <strong>Fecha:</strong> {{fechaEstudio}}</span><br></span></td><td style="width: 37.367%; line-height: 1.1;"><span style="font-family: Arial, Helvetica, sans-serif; font-size: 14px;"><br><br><br><strong>HCL: </strong>{{historiaClinica}}<br><strong>Sexo:</strong>&nbsp;{{sexo}}<br></span></td></tr></tbody></table><br><table style="border-collapse: collapse; width: 762px; height: 220px;"><tbody>
+	<td style="width: 62.5%; line-height: 1.1;"><span style="font-family: Arial, Helvetica, sans-serif; font-size: 14px;"> <span style="font-size: 14px;"><strong>Exame</strong><strong>n: </strong>{{numeroEstudio}} <br>   <strong>Instrument</strong>o: {{instrumento}} <br>   <strong>Preparacion</strong>:&nbsp;{{preparacion}}<br>  <strong>Nombre</strong>: {{nombres}}&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;      <br> <strong>Edad</strong>: {{edad}}&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;    <br> <strong>Asegurador</strong>a: {{aseguradora}} <br>   <strong>Motivo:&nbsp;</strong><br>   <strong>Fecha:</strong> {{fechaEstudio}}</span><br></span></td><td style="width: 37.367%; line-height: 1.1;"><span style="font-family: Arial, Helvetica, sans-serif; font-size: 14px;"><br><br><br><strong>HCL: </strong>{{historiaClinica}}<br><strong>Sexo:</strong>&nbsp;{{sexo}}<br></span></td></tr></tbody></table><br><table style="border-collapse: collapse; width: 762px; height: 220px;"><tbody>
 <tr>
 	<td style="width: 33.3333%;"><br></td>
 	<td style="width: 33.3333%;"><br></td>
@@ -193,9 +193,6 @@ const RichTextEditor = memo(({ value, onChange, placeholder = "Escriba aquí..."
   useEffect(() => {
     const inst = editorRef.current?.editor;
     if (!inst) return;
-    if (typeof value === 'string' && value !== inst.value) {
-      inst.value = value || '';
-    }
 
     const removeEnterAfterImage = (node) => {
       try {
@@ -309,6 +306,23 @@ const RichTextEditor = memo(({ value, onChange, placeholder = "Escriba aquí..."
       inst.events && inst.events.off('afterInsertNode', removeEnterAfterImage);
       inst.events && inst.events.off('afterInsertNode', normalizeTableInsertion);
   };
+  }, []);
+
+  useEffect(() => {
+    const inst = editorRef.current?.editor;
+    if (!inst) return;
+    if (typeof value === 'string' && value !== inst.value) {
+      try {
+        const sel = inst.iframe?.contentWindow?.getSelection ? inst.iframe.contentWindow.getSelection() : window.getSelection();
+        const anchor = sel && sel.anchorNode;
+        const isInside = inst.editor && typeof inst.editor.contains === 'function' ? inst.editor.contains(anchor) : false;
+        if (!isInside) {
+          inst.value = value || '';
+        }
+      } catch {
+        inst.value = value || '';
+      }
+    }
   }, [value]);
 
   const previewHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"/><style>@page{size:A4;margin:${pageMargin}px}body{font-family:Arial, sans-serif;color:#333} .page{width:${pageWidthPx}px;min-height:${pageHeightPx}px;margin:0 auto;background:white} .header{margin-bottom:16px;text-align:center} .content{min-height:${pageHeightPx - pageMargin * 2 - 80}px} .footer{position:fixed;bottom:0;left:0;right:0;text-align:center;border-top:1px solid #ddd;padding-top:8px;background:white} table{width:100%;border-collapse:collapse;table-layout:fixed;border:1px solid #999} th,td{vertical-align:top;border:1px solid #999;padding:0} td p, th p{margin:0;} p:empty{display:none;} p:has(> img:only-child){line-height:0;margin:0;} img+br{display:none} figure{margin:0;display:flex;justify-content:center;align-items:center} img{max-width:100%;height:auto;object-fit:contain;display:block;margin:0 auto} @media print{.page{width:auto;min-height:auto;box-shadow:none}} </style></head><body><div class="page"><div class="header">${previewHeader || ''}</div><div class="content">${value || ''}</div></div><div class="footer">${previewFooter || ''}</div></body></html>`;
@@ -430,7 +444,6 @@ const RichTextEditor = memo(({ value, onChange, placeholder = "Escriba aquí..."
         <JoditEditor
           ref={editorRef}
           config={joditConfig}
-          value={value || ''}
           onChange={(content) => onChange?.(content)}
         />
       </Box>
@@ -664,6 +677,8 @@ const cargarPersonal = async () => {
       plantillaCabecera: '',
     });
     setErrors({});
+    setSelectAllPersonal(false);
+
   };
 
   
@@ -676,6 +691,14 @@ const cargarPersonal = async () => {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
   }, [errors]);
+
+  const handleEditInputChange = useCallback((field, value) => {
+            setEditFormData(prev => ({ ...prev, [field]: value }));
+            // Limpiar error si existe
+            if (errors[field]) {
+              setErrors(prev => ({ ...prev, [field]: '' }));
+            }
+    }, [errors]);
 
     const MemoizedTextField = memo(({
         value,
@@ -704,15 +727,43 @@ const cargarPersonal = async () => {
         ? prev.personalSeleccionado.filter(id => id !== personalId)
         : [...prev.personalSeleccionado, personalId]
     }));
+        setSelectAllPersonal(value.length === personales.length);
+
   }, []);
 
   // Función para seleccionar/deseleccionar todo el personal
-  const handleSelectAllPersonal = useCallback((selectAll) => {
-    setFormData(prev => ({
-      ...prev,
-      personalSeleccionado: selectAll ? personalList.map(p => p.id) : []
-    }));
-  }, [personalList]);
+  //const handleSelectAllPersonal = useCallback((selectAll) => {
+  //  setFormData(prev => ({
+  //    ...prev,
+  //    personalSeleccionado: selectAll ? personalList.map(p => p.id) : []
+  //  }));
+  //}, [personalList]);
+
+  const handleSelectAllPersonal = (event) => {
+    const checked = event.target.checked;
+    setSelectAllPersonal(checked);
+
+    if (checked) {
+      // Si se marca "Seleccionar todos", limpiamos la selección de personal y establecemos selectAll en true
+      setFormData(prev => ({
+        ...prev,
+        asignadoIds: [],
+        personalId: '',
+        allPersonalMed: true
+      }));
+    } else {
+      // Si se desmarca, solo reseteamos selectAll
+      setFormData(prev => ({
+        ...prev,
+        allPersonalMed: false
+      }));
+    }
+
+    // Limpiar error si existe
+    if (errors.asignadoIds) {
+      setErrors(prev => ({ ...prev, asignadoIds: '' }));
+    }
+  };
 
   // Validación del formulario
   const validateForm = () => {
@@ -737,7 +788,7 @@ const cargarPersonal = async () => {
     
 
     //if (formData.asignadoA === 'seleccionar' && formData.personalSeleccionado.length === 0) {
-      newErrors.personalSeleccionado = 'Debe seleccionar al menos un miembro del personal';
+    // newErrors.personalSeleccionado = 'Debe seleccionar al menos un miembro del personal';
     //}
 
     setErrors(newErrors);
@@ -766,7 +817,7 @@ const cargarPersonal = async () => {
     
 
     //if (formData.asignadoA === 'seleccionar' && formData.personalSeleccionado.length === 0) {
-      newErrors.personalSeleccionado = 'Debe seleccionar al menos un miembro del personal';
+    //  newErrors.personalSeleccionado = 'Debe seleccionar al menos un miembro del personal';
     //}
 
     setErrors(newErrors);
@@ -778,7 +829,22 @@ const cargarPersonal = async () => {
   // Funciones para manejar modales
   const handleOpenEditModal = (plantilla) => {
     setSelectedPlantilla(plantilla);
-    setFormData({
+
+    const allPersonalMed = plantilla.personalId === -1;
+    const initialFormData = {
+      name: plantilla.name,
+      description: plantilla.description,
+      personalId: allPersonalMed ? '' : plantilla.personalId,
+      plantilla: plantilla.plantilla,
+      allPersonalMed: allPersonalMed,
+      examsId: plantilla.examsId,
+    };
+    setEditFormData(initialFormData);
+    setSelectAllPersonal(allPersonalMed);
+    setOpenEditModal(true);
+
+
+    {/*setFormData({
       tipo: plantilla.tipo,
       name: plantilla.name,
       description: plantilla.description || '',
@@ -788,13 +854,23 @@ const cargarPersonal = async () => {
       plantillaCabecera: plantilla.plantillaCabecera || '',
       plantilla: plantilla.plantilla || ''
     });
-    setOpenEditModal(true);
+    setOpenEditModal(true);*/}
   };
 
   const handleCloseEditModal = () => {
     setOpenEditModal(false);
     setSelectedPlantilla(null);
-    clearForm();
+    setSelectAllPersonal(false);
+    setEditFormData({
+      templatesid: '',
+      name: '',
+      description: '',
+      personalId: '',
+      plantilla: '',
+      allPersonalMed: false,
+      examsId:'',
+    });
+    setErrors({});
   };
 
   const handleOpenDeleteConfirm = (plantilla) => {
@@ -818,6 +894,40 @@ const cargarPersonal = async () => {
   };
 
   // Función para crear plantilla
+  const handleCreatePlantilla = async (e) => {
+    //if (e && typeof e.preventDefault === 'function') e.preventDefault();
+              e.preventDefault();
+    
+            if (validateForm()) {
+              try {
+                setLoading(true);
+                console.log('📤 Creando Plantilla...');
+        
+                // Asegurarse de que estado sea un ID numérico
+                const plantillaData = {
+                  ...formData,
+                  personalId: formData.personalId === "" ? -1 : formData.personalId 
+                };
+        
+                const nuevoPlantilla = await plantillaService.create(plantillaData);
+                console.log('✅ Plantilla creado:', nuevoPlantilla);
+        
+                // Recargar la lista de Plantilla
+                await loadPlantillas();
+        
+                clearForm();
+                // Cambiar automáticamente al tab de lista
+                setActiveTab(0);
+        
+              } catch (error) {
+                console.error('❌ Error al crear Plantilla:', error);
+                setError(`Error al crear Plantilla: ${error.message}`);
+              } finally {
+                setLoading(false);
+              }
+            }
+          };
+  {/*
   const handleCreatePlantilla = (e) => {
     e.preventDefault();
 
@@ -841,12 +951,42 @@ const cargarPersonal = async () => {
       setActiveTab(1);
     }
   };
-
+*/}
   // Función para editar plantilla
-  const handleEditPlantilla = (e) => {
+  const handleEditPlantilla = async (e) => {
+            e.preventDefault();
+        
+            if (validateEditForm()) {
+              try {
+                setLoading(true);
+                console.log('📤 Editando Plantilla...');
+        
+                // Asegurarse de que estado sea un booleano
+                const formDataToSend = {
+                  ...editFormData,
+                  personalId: editFormData.allPersonalMed === true ? -1 : editFormData.personalId 
+                };
+                const salaActualizado = await plantillaService.update(selectedPlantilla.id, formDataToSend);
+                console.log('✅ Plantilla actualizado:', salaActualizado);
+        
+                // Recargar la lista de Plantilla
+                await loadPlantillas();
+        
+                handleCloseEditModal();
+        
+              } catch (error) {
+                console.error('❌ Error al editar Plantilla:', error);
+                setError(`Error al editar Plantilla: ${error.message}`);
+              } finally {
+                setLoading(false);
+              }
+            }
+          };
+  
+  {/*const handleEditPlantilla = (e) => {
     e.preventDefault();
 
-    if (validateForm()) {
+    if (validateEditForm()) {
       setPlantillas(prev => prev.map(p =>
         p.id === selectedPlantilla.id
           ? {
@@ -864,18 +1004,33 @@ const cargarPersonal = async () => {
       handleCloseEditModal();
     }
   };
-
+*/}
   // Función para eliminar plantilla
-  const handleDeletePlantilla = () => {
-    setPlantillas(prev => prev.filter(p => p.id !== selectedPlantilla.id));
-    handleCloseDeleteConfirm();
-  };
+  const handleDeletePlantilla = async () => {
+            try {
+              setLoading(true);
+              console.log('📤 Eliminando Plantilla...');
+        
+              await plantillaService.delete(selectedPlantilla.id);
+              console.log('✅ Plantilla eliminado');
+        
+              // Recargar la lista de Plantilla
+              await loadPlantillas();
+        
+              handleCloseDeleteConfirm();
+        
+            } catch (error) {
+              console.error('❌ Error al eliminar Plantilla:', error);
+              setError(`Error al eliminar Plantilla: ${error.message}`);
+            } finally {
+              setLoading(false);
+            }
+          };
 
   // Filtrar plantillas basado en la búsqueda
   const filteredPlantillas = plantillas.filter(plantilla =>
     plantilla.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (plantilla.description && plantilla.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    plantilla.tipo.toLowerCase().includes(searchTerm.toLowerCase())
+    (plantilla.description && plantilla.description.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   // Función para obtener el color del tipo
@@ -1055,7 +1210,53 @@ const cargarPersonal = async () => {
                   </FieldRow>
                 )}
 
-                {/* Asignación de personal */}
+                <FieldRow>
+                  <ResponsiveField label="Asignar a Personal" required sx={{ flex: 1 }}>
+                    <Box sx={{ mb: 1 }}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            value={formData.allPersonalMed}
+                            checked={selectAllPersonal}
+                            onChange={handleSelectAllPersonal}
+                            
+                            color="primary"
+                          />
+                        }
+                        label="Seleccionar todos"
+                      />
+                    </Box>
+
+                    <FormControl fullWidth required error={!!errors.personalId} size="small">
+                      <Select
+                        value={formData.personalId}
+                        onChange={(e) => handleInputChange('personalId', e.target.value)}
+                        disabled={selectAllPersonal}
+                        displayEmpty
+                        sx={{
+                          '& .MuiSelect-select': {
+                          color: formData.personalId ? '#000' : '#999'
+                          }
+                        }}
+                      >
+                      <MenuItem value="">Seleccionar personal</MenuItem>
+                      {Array.isArray(PersonalD) && PersonalD.map(personal => (
+                        <MenuItem key={personal.id} value={personal.id}>
+                          {personal.nombres + ' ' + personal.apellidos || ''}
+                        </MenuItem>
+                      ))}
+                      </Select>
+                    </FormControl>
+                     
+                    {errors.asignadoIds && (
+                      <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
+                        {errors.asignadoIds}
+                      </Typography>
+                    )}
+                  </ResponsiveField>
+                </FieldRow>
+
+                {/* Asignación de personal 
                 <FieldRow>
                   <ResponsiveField label="Asignar a" required>
                     <FormControl fullWidth size="small">
@@ -1070,7 +1271,8 @@ const cargarPersonal = async () => {
                   </ResponsiveField>
                 </FieldRow>
 
-                {/* Selección de personal específico */}
+                
+                {/* Selección de personal específico 
                 {formData.asignadoA === 'seleccionar' && (
                   <FieldRow>
                     <ResponsiveField label="Personal seleccionado" required>
@@ -1107,36 +1309,32 @@ const cargarPersonal = async () => {
                       )}
                     </ResponsiveField>
                   </FieldRow>
-                )}
+                )}*/}
 
-                {/* Campo plantilla de procedimiento solo para plantillas */}
-                {createTab === 0 && (
+                {/* Campo plantilla de procedimiento solo para plantillas 
+                {createTab === 0 && (*/}
                   <FieldRow>
                     <ResponsiveField label="Plantilla por defecto del Procedimiento" required>
-                      <FormControl fullWidth size="small" error={!!errors.plantillaProcedimiento}>
+                      <FormControl fullWidth size="small" error={!!errors.examsId}>
                         <Select
-                          value={formData.plantillaProcedimiento}
-                          onChange={(e) => handleInputChange('plantillaProcedimiento', e.target.value)}
+                          value={formData.examsId}
+                          onChange={(e) => handleInputChange('examsId', e.target.value)}
                           displayEmpty
                         >
-                          <MenuItem value="">Seleccionar plantilla de procedimiento</MenuItem>
-                          {procedimientosPlantillas.map((plantilla) => (
-                            <MenuItem key={plantilla} value={plantilla}>
-                              {plantilla}
+                          <MenuItem value="">Seleccionar procedimiento para plantilla.</MenuItem>
+                          {Array.isArray(EstudiosD) && EstudiosD.map(plantilla => (
+                              <MenuItem key={plantilla.id} value={plantilla.id}>
+                              {plantilla.name}
                             </MenuItem>
                           ))}
                         </Select>
                       </FormControl>
-                      {errors.plantillaProcedimiento && (
-                        <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
-                          {errors.plantillaProcedimiento}
-                        </Typography>
-                      )}
+                      
                     </ResponsiveField>
                   </FieldRow>
-                )}
+                
 
-                {createTab === 0 && (
+                {/*{createTab === 0 && (*/}
                   <FieldRow>
                     <FormControlLabel
                       control={<Switch checked={useDefaultTemplateCreate} onChange={(e) => {
@@ -1147,7 +1345,7 @@ const cargarPersonal = async () => {
                       label="Plantilla predeterminada"
                     />
                   </FieldRow>
-                )}
+                {/*)}*/}
 
                 {/* Editor de texto rico */}
                 <FieldRow>
@@ -1366,7 +1564,7 @@ const cargarPersonal = async () => {
                 Información de la Plantilla
               </Typography>
 
-              {/* Campos del formulario de edición */}
+              {/* Campos del formulario de edición 
               <FieldRow>
                 <ResponsiveField label="Tipo">
                   <FormControl fullWidth size="small">
@@ -1379,7 +1577,7 @@ const cargarPersonal = async () => {
                     </Select>
                   </FormControl>
                 </ResponsiveField>
-              </FieldRow>
+              </FieldRow>*/}
 
               <FieldRow>
                 <ResponsiveField label="Nombre" required>
@@ -1387,8 +1585,8 @@ const cargarPersonal = async () => {
                     fullWidth
                     required
                     placeholder="Nombre de la plantilla"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    value={editFormData.name}
+                    onChange={(e) => handleEditInputChange('name', e.target.value)}
                     error={!!errors.name}
                     helperText={errors.name}
                     size="small"
@@ -1396,7 +1594,6 @@ const cargarPersonal = async () => {
                 </ResponsiveField>
               </FieldRow>
 
-              {formData.tipo === 'plantilla' && (
                 <FieldRow>
                   <ResponsiveField label="Descripción" required>
                     <TextField
@@ -1405,16 +1602,67 @@ const cargarPersonal = async () => {
                       multiline
                       rows={2}
                       placeholder="Descripción de la plantilla"
-                      value={formData.description}
-                      onChange={(e) => handleInputChange('description', e.target.value)}
+                      value={editFormData.description}
+                      onChange={(e) => handleEditInputChange('description', e.target.value)}
                       error={!!errors.description}
                       helperText={errors.description}
                       size="small"
                     />
                   </ResponsiveField>
                 </FieldRow>
-              )}
+              
+              <FieldRow>
+                                <ResponsiveField label="Asignar a Personal" required sx={{ flex: 1 }}>
+                                  <Box sx={{ mb: 1 }}>
+                                    <FormControlLabel
+                                      control={
+                                        <Checkbox
+                                          checked={editFormData.allPersonalMed || false}
+                                          onChange={(e) => {
+                                            setEditFormData({
+                                              ...editFormData,
+                                              allPersonalMed: e.target.checked,
+                                              personalId: e.target.checked ? '' : editFormData.personalId
+                                            });
+                                            setSelectAllPersonal(e.target.checked);
+                                          }}
+                                          color="primary"
+                                        />
+                                      }
+                                      label="Seleccionar todos"
+                                    />
+                                  </Box>
+              
+                                  <FormControl fullWidth required error={!!errors.personalId} size="small">
+                                    <Select
+                                      value={editFormData.personalId}
+                                      onChange={(e) => handleEditInputChange('personalId', e.target.value)}
+                                      disabled={selectAllPersonal}
+                                      displayEmpty
+                                      sx={{
+                                        '& .MuiSelect-select': {
+                                        color: editFormData.personalId ? '#000' : '#999'
+                                        }
+                                      }}
+                                    >
+                                    <MenuItem value="">Seleccionar personal</MenuItem>
+                                    {Array.isArray(PersonalD) && PersonalD.map(personal => (
+                                      <MenuItem key={personal.id} value={personal.id}>
+                                        {personal.nombres + ' ' + personal.apellidos || ''}
+                                      </MenuItem>
+                                    ))}
+                                    </Select>
+                                  </FormControl>
+              
+                                  {errors.asignadoIds && (
+                                    <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
+                                      {errors.asignadoIds}
+                                    </Typography>
+                                  )}
+                                </ResponsiveField>
+                              </FieldRow>
 
+              {/*
               <FieldRow>
                 <ResponsiveField label="Asignar a" required>
                   <FormControl fullWidth size="small">
@@ -1461,49 +1709,51 @@ const cargarPersonal = async () => {
                   </ResponsiveField>
                 </FieldRow>
               )}
+                */}
 
-              {formData.tipo === 'plantilla' && (
                 <FieldRow>
                   <ResponsiveField label="Plantilla por defecto del Procedimiento" required>
-                    <FormControl fullWidth size="small" error={!!errors.plantillaProcedimiento}>
-                      <Select
-                        value={formData.plantillaProcedimiento}
-                        onChange={(e) => handleInputChange('plantillaProcedimiento', e.target.value)}
-                        displayEmpty
-                      >
-                        <MenuItem value="">Seleccionar plantilla de procedimiento</MenuItem>
-                        {procedimientosPlantillas.map((plantilla) => (
-                          <MenuItem key={plantilla} value={plantilla}>
-                            {plantilla}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                    <FormControl fullWidth required error={!!errors.examsId} size="small">
+                                          <Select
+                                            value={editFormData.examsId}
+                                            onChange={(e) => handleEditInputChange('examsId', e.target.value)}
+                                            displayEmpty
+                                            sx={{
+                                              '& .MuiSelect-select': {
+                                              color: editFormData.examsId ? '#000' : '#999'
+                                              }
+                                            }}
+                                          >
+                                          <MenuItem value="">Seleccionar plantilla para procedimiento</MenuItem>
+                                          {Array.isArray(EstudiosD) && EstudiosD.map(estudio => (
+                                            <MenuItem key={estudio.id} value={estudio.id}>
+                                              {estudio.name || ''}
+                                            </MenuItem>
+                                          ))}
+                                          </Select>
+                                        </FormControl>
                   </ResponsiveField>
                 </FieldRow>
-              )}
-
-              {formData.tipo === 'plantilla' && (
+                {/*
                 <FieldRow>
                   <FormControlLabel
                     control={<Switch checked={useDefaultTemplateEdit} onChange={(e) => {
-                      const checked = e.target.checked;
+                      const checked = false;
                       setUseDefaultTemplateEdit(checked);
-                      handleInputChange('plantilla', checked ? DEFAULT_TEMPLATE_HTML : '');
+                      handleEditInputChange('plantilla', checked ? DEFAULT_TEMPLATE_HTML : '');
                     }} />}
                     label="Plantilla predeterminada"
                   />
                 </FieldRow>
-              )}
-
+                */}
               <FieldRow>
                 <ResponsiveField
-                  label={formData.tipo === 'cabecera' ? "Plantilla de cabecera del Reporte" : "Contenido de la Plantilla"}
+                  label={editFormData.tipo === 'cabecera' ? "Plantilla de cabecera del Reporte" : "Contenido de la Plantilla"}
                   required
                 >
                   <RichTextEditor
-                    value={formData.tipo === 'cabecera' ? formData.plantillaCabecera : formData.plantilla}
-                    onChange={(value) => handleInputChange(formData.tipo === 'cabecera' ? 'plantillaCabecera' : 'plantilla', value)}
+                    value={editFormData.tipo === 'cabecera' ? editFormData.plantillaCabecera : editFormData.plantilla}
+                    onChange={(value) => handleInputChange(editFormData.tipo === 'cabecera' ? 'plantillaCabecera' : 'plantilla', value)}
                     placeholder="Diseñe el contenido..."
                   />
                 </ResponsiveField>
@@ -1563,52 +1813,73 @@ const cargarPersonal = async () => {
         </DialogTitle>
         <DialogContent dividers sx={{ p: 4 }}>
           {selectedPlantilla && (
-            <Paper sx={{ p: 3, backgroundColor: '#f8f9fa' }}>
-              <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2196f3' }}>
-                Información de la Plantilla
-              </Typography>
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="body1">
-                    <strong>Nombre:</strong> {selectedPlantilla.name}
-                  </Typography>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="body1">
-                    <strong>Tipo:</strong> {selectedPlantilla.tipo === 'cabecera' ? 'Cabecera de Reporte' : 'Plantilla'}
-                  </Typography>
-                </Grid>
-                {selectedPlantilla.description && (
-                  <Grid item xs={12}>
-                    <Typography variant="body1">
-                      <strong>Descripción:</strong> {selectedPlantilla.description}
-                    </Typography>
-                  </Grid>
-                )}
-                <Grid item xs={12} md={6}>
-                  <Typography variant="body1">
-                    <strong>Asignado a:</strong> {getAsignacionTexto(selectedPlantilla.asignadoA)}
-                  </Typography>
-                </Grid>
-                {selectedPlantilla.plantillaProcedimiento && (
+            <>
+              <Paper sx={{ p: 3, backgroundColor: '#f8f9fa' }}>
+                <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2196f3' }}>
+                  Información de la Plantilla
+                </Typography>
+                <Grid container spacing={3}>
                   <Grid item xs={12} md={6}>
                     <Typography variant="body1">
-                      <strong>Plantilla de Procedimiento:</strong> {selectedPlantilla.plantillaProcedimiento}
+                      <strong>Nombre:</strong> {selectedPlantilla.name}
                     </Typography>
                   </Grid>
-                )}
-                <Grid item xs={12} md={6}>
-                  <Typography variant="body1">
-                    <strong>Fecha de Creación:</strong> {formatDate(selectedPlantilla.fechaCreacion)}
-                  </Typography>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body1">
+                      <strong>Tipo:</strong> {selectedPlantilla.tipo === 'cabecera' ? 'Cabecera de Reporte' : 'Plantilla'}
+                    </Typography>
+                  </Grid>
+                  {selectedPlantilla.description && (
+                    <Grid item xs={12}>
+                      <Typography variant="body1">
+                        <strong>Descripción:</strong> {selectedPlantilla.description}
+                      </Typography>
+                    </Grid>
+                  )}
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body1">
+                      <strong>Asignado a:</strong> {selectedPlantilla.nombrePersonal || 'Sin asignar'}
+                    </Typography>
+                  </Grid>
+                  {selectedPlantilla.plantillaProcedimiento && (
+                    <Grid item xs={12} md={6}>
+                      <Typography variant="body1">
+                        <strong>Plantilla de Procedimiento:</strong> {selectedPlantilla.plantillaProcedimiento}
+                      </Typography>
+                    </Grid>
+                  )}
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body1">
+                      <strong>Fecha de Creación:</strong> {formatDate(selectedPlantilla.fechaCreacion)}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body1">
+                      <strong>Creado por:</strong> {selectedPlantilla.createdBy}
+                    </Typography>
+                  </Grid>
                 </Grid>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="body1">
-                    <strong>Creado por:</strong> {selectedPlantilla.creadoPor}
-                  </Typography>
-                </Grid>
-              </Grid>
-            </Paper>
+              </Paper>
+
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, color: '#2196f3' }}>
+                  Vista previa del contenido
+                </Typography>
+                <Paper sx={{ p: 2, border: '1px solid #e0e0e0' }}>
+                  <Box sx={{ maxHeight: 500, overflow: 'auto', backgroundColor: 'white' }}>
+                    <style>{`
+                      .details-html-preview table{border-collapse:collapse;table-layout:fixed;border:1px solid #999}
+                      .details-html-preview th,.details-html-preview td{border:1px solid #999}
+                      .details-html-preview img{max-width:100%;height:auto;display:block;object-fit:contain}
+                    `}</style>
+                    <div
+                      className="details-html-preview"
+                      dangerouslySetInnerHTML={{ __html: selectedPlantilla.plantilla || '' }}
+                    />
+                  </Box>
+                </Paper>
+              </Box>
+            </>
           )}
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>

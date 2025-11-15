@@ -141,7 +141,7 @@ export const plantillaService = {
         personalId: plantillaData.personalId,
         examsId: plantillaData.examsId,
         allPersonalMed: plantillaData.allPersonalMed,
-        plantila: plantillaData.plantilla,
+        plantilla: plantillaData.plantilla,
         status: true,
      
         createdAt: new Date().toISOString(),
@@ -197,7 +197,7 @@ export const plantillaService = {
         examsId: plantilla.examsId,
         allPersonalMed: plantilla.allPersonalMed,
         plantilla: plantilla.plantilla,
-        status: plantilla.status,
+        status: true,
 
         updatedAt: new Date().toISOString(),
         updatedBy: 'Arnold',
