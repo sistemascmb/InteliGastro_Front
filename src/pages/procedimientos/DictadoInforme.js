@@ -403,12 +403,11 @@ export default class DictadoInforme extends React.Component {
                   sx={{ 
                     display: 'flex',
                     flexDirection: 'column',
-                    maxHeight: 900, // ← Altura máxima para forzar el scroll
+                    flex: '1 1 auto',
+                    maxHeight: 900,
                     minHeight: 0,
-                    p: 2,
-                    overflowY: 'auto',
-                    overflowX: 'hidden',
-                    // Estilos de scrollbar (solo necesarios aquí, no en el hijo)
+                    p: 1,
+                    overflow: 'hidden',
                     scrollbarWidth: 'thin',
                     scrollbarColor: '#bdbdbd transparent',
                     '&::-webkit-scrollbar': { width: '10px' },
@@ -424,8 +423,9 @@ export default class DictadoInforme extends React.Component {
                 >
 
 
-                  <ImageList cols={1}  sx={{ width: '100%', maxHeight: 180 }}>
-                    {this.state.images.map((img, idx) => (
+                  <Box sx={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto' }}>
+                    <ImageList cols={1} gap={8} sx={{ width: '70%', height: '70%' }}>
+                      {this.state.images.map((img, idx) => (
                       <ImageListItem key={img.id || `${img.description || 'item'}-${idx}`} sx={{ border: '1px solid #ddd', borderRadius: 1, overflow: 'hidden', p: 1 }}>
                         {img.mimeType?.startsWith('image/') ? (
                           <img src={img.dataUrl || this.buildDataUrlFromItem(img) || this.resolveImageSrc(img)} alt={img.description || ''} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => this.handleMediaError(idx)} />
@@ -441,8 +441,9 @@ export default class DictadoInforme extends React.Component {
                           </Button>
                         </Box>
                       </ImageListItem>
-                    ))}
-                  </ImageList>
+                      ))}
+                    </ImageList>
+                  </Box>
                 </AccordionDetails>
               </Accordion>
             </Box>
@@ -451,7 +452,7 @@ export default class DictadoInforme extends React.Component {
         <Dialog open={this.state.mediaPreviewOpen} onClose={() => this.setState({ mediaPreviewOpen: false, mediaPreviewItem: null })} maxWidth="md" fullWidth>
           <DialogTitle>Vista de archivo</DialogTitle>
           <DialogContent dividers>
-            <Box sx={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', bgcolor: '#000', borderRadius: 1 }}>
+            <Box sx={{ position: 'relative', width: '100%', aspectRatio: '2 / 1', bgcolor: '#000', borderRadius: 1 }}>
               {this.state.mediaPreviewItem && this.state.mediaPreviewItem.mimeType?.startsWith('image/') ? (
                 <img src={this.state.mediaPreviewItem?.dataUrl || ''} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain' }} />
               ) : (
