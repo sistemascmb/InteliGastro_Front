@@ -1,5 +1,5 @@
 import React from 'react';
-import { Container, Paper, Breadcrumbs, Link, Box, Typography, Button, Divider, Accordion, AccordionSummary, AccordionDetails, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Container, Paper, Breadcrumbs, Link, Box, Typography, Button, Divider, Accordion, AccordionSummary, AccordionDetails, Dialog, DialogTitle, DialogContent, DialogActions, ImageList, ImageListItem, CircularProgress } from '@mui/material';
 import { NavigateNext, Assignment, ExpandMore } from '@mui/icons-material';
 import { RichTextEditor } from '../administracion/Plantillas';
 import { plantillaService } from 'services/plantillasService';
@@ -34,25 +34,72 @@ export default class DictadoInforme extends React.Component {
       accordionImagesExpanded: true,
       accordionTemplatesExpanded: true,
       mediaPreviewOpen: false,
-      mediaPreviewItem: null
+      mediaPreviewItem: null,
+      imagesLoading: false
     };
   }
 
   resolveImageSrc = (item) => {
-    const sRaw = item && item.archive ? String(item.archive) : '';
+    const a = item && item.archive;
     const t = item && item.typeArchive ? String(item.typeArchive).toLowerCase() : '';
-    if (!sRaw) return '';
-    if (sRaw.startsWith('data:') || sRaw.startsWith('blob:') || sRaw.startsWith('http') || sRaw.startsWith('/')) return sRaw;
-    const mime = this.getMimeFromItem(item);
-    const isBase64Likely = sRaw.startsWith('/9j/') || sRaw.startsWith('iVBOR') || sRaw.startsWith('R0lGOD') || /^[A-Za-z0-9+/=]+$/.test(sRaw);
-    if (isBase64Likely) return `data:${mime};base64,${sRaw}`;
-    const cleanedHex = sRaw.replace(/[^0-9a-fA-F]/g, '');
-    const isHex = cleanedHex.length > 16 && /^[0-9a-fA-F]+$/.test(cleanedHex);
-    if (isHex) {
-      const b64 = this.hexToBase64(cleanedHex);
+    if (!a && a !== 0) return '';
+    if (typeof a === 'string') {
+      const s0 = a.trim();
+      if (!s0) return '';
+      if (s0.startsWith('data:') || s0.startsWith('blob:') || s0.startsWith('http') || s0.startsWith('/')) return s0;
+      const mime = this.getMimeFromItem(item);
+      const sClean = s0.replace(/\s+/g, '');
+      if (/^\s*\d+(?:\s*,\s*\d+)+\s*$/.test(s0)) {
+        const nums = s0.split(',').map(x => parseInt(x.trim(), 10)).filter(n => !Number.isNaN(n));
+        const bytes = new Uint8Array(nums);
+        let binary = '';
+        const chunk = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunk) binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+        const b64 = btoa(binary);
+        return `data:${mime};base64,${b64}`;
+      }
+      const sHex = s0.replace(/0x/gi, '').replace(/[^0-9a-fA-F]/g, '');
+      if (sHex.length > 16 && sHex.length % 2 === 0 && /^[0-9a-fA-F]+$/.test(sHex)) {
+        const b64 = this.hexToBase64(sHex);
+        return `data:${mime};base64,${b64}`;
+      }
+      return `data:${mime};base64,${sClean}`;
+    }
+    if (Array.isArray(a)) {
+      const mime = this.getMimeFromItem(item);
+      const bytes = new Uint8Array(a);
+      let binary = '';
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+      const b64 = btoa(binary);
       return `data:${mime};base64,${b64}`;
     }
-    return sRaw;
+    if (a && typeof a === 'object' && Array.isArray(a.data)) {
+      const mime = this.getMimeFromItem(item);
+      const bytes = new Uint8Array(a.data);
+      let binary = '';
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+      const b64 = btoa(binary);
+      return `data:${mime};base64,${b64}`;
+    }
+    return '';
+  };
+
+  normalizeSrc = (s, item) => {
+    try {
+      if (!s) return '';
+      if (typeof s === 'string') {
+        const v = s.trim();
+        if (!v) return '';
+        if (v.startsWith('data:') || v.startsWith('blob:') || v.startsWith('http') || v.startsWith('/')) return v;
+        const mime = this.getMimeFromItem(item || {});
+        const b = v.replace(/\s+/g, '');
+        if (b.startsWith('/9j/') || b.startsWith('iVBOR') || b.startsWith('R0lGOD') || /^[A-Za-z0-9+/=]+$/.test(b)) return `data:${mime};base64,${b}`;
+        return v;
+      }
+      return s;
+    } catch { return ''; }
   };
 
   hexToBase64 = (hex) => {
@@ -82,18 +129,78 @@ export default class DictadoInforme extends React.Component {
     return 'image/jpeg';
   };
 
+  buildDataUrlFromItem = (item) => {
+    try {
+      const mime = this.getMimeFromItem(item || {});
+      const a = item && item.archive;
+      if (typeof a !== 'string') return '';
+      const s = a.replace(/\s+/g, '').trim();
+      if (!s) return '';
+      if (s.startsWith('data:') || s.startsWith('blob:') || s.startsWith('http') || s.startsWith('/')) return s;
+      return `data:${mime};base64,${s}`;
+    } catch { return ''; }
+  };
+
   handleMediaError = (idx) => {
     try {
       const list = [...this.state.images];
       const it = list[idx];
       if (!it) return;
       const mime = this.getMimeFromItem(it);
-      const s = String(it.archive || '').replace(/[^0-9a-fA-F]/g, '');
-      if (s.length > 16) {
-        const b64 = this.hexToBase64(s);
-        list[idx] = { ...it, _src: `data:${mime};base64,${b64}` };
+      const raw = it.archive;
+      if (typeof raw === 'string') {
+        const s0 = raw.trim();
+        const sB64 = s0.replace(/\s+/g, '');
+        if (/^[A-Za-z0-9+/=]+$/.test(sB64) || sB64.startsWith('/9j/') || sB64.startsWith('iVBOR') || sB64.startsWith('R0lGOD')) {
+          list[idx] = { ...it, dataUrl: `data:${mime};base64,${sB64}`, mimeType: mime };
+          this.setState({ images: list });
+          return;
+        }
+        if (/^\s*\d+(?:\s*,\s*\d+)+\s*$/.test(s0)) {
+          const nums = s0.split(',').map(x => parseInt(x.trim(), 10)).filter(n => !Number.isNaN(n));
+          const bytes = new Uint8Array(nums);
+          let binary = '';
+          const chunk = 0x8000;
+          for (let i = 0; i < bytes.length; i += chunk) binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+          const b64 = btoa(binary);
+          list[idx] = { ...it, dataUrl: `data:${mime};base64,${b64}`, mimeType: mime };
+          this.setState({ images: list });
+          return;
+        }
+        const sHex = s0.replace(/0x/gi, '').replace(/[^0-9a-fA-F]/g, '');
+        if (sHex.length > 16) {
+          const b64 = this.hexToBase64(sHex);
+          list[idx] = { ...it, dataUrl: `data:${mime};base64,${b64}`, mimeType: mime };
+          this.setState({ images: list });
+          return;
+        }
+      } else if (Array.isArray(raw)) {
+        const bytes = new Uint8Array(raw);
+        let binary = '';
+        const chunk = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunk) binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+        const b64 = btoa(binary);
+        list[idx] = { ...it, dataUrl: `data:${mime};base64,${b64}`, mimeType: mime };
         this.setState({ images: list });
+        return;
+      } else if (raw && typeof raw === 'object' && Array.isArray(raw.data)) {
+        const bytes = new Uint8Array(raw.data);
+        let binary = '';
+        const chunk = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunk) binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+        const b64 = btoa(binary);
+        list[idx] = { ...it, dataUrl: `data:${mime};base64,${b64}`, mimeType: mime };
+        this.setState({ images: list });
+        return;
       }
+      try {
+        archivodigitalService.getById(it.id).then((d) => {
+          const src = this.buildDataUrlFromItem(d && d.data ? d.data : it) || this.resolveImageSrc(d && d.data ? d.data : it);
+          const list2 = [...this.state.images];
+          list2[idx] = { ...it, dataUrl: src, mimeType: this.getMimeFromItem(d && d.data ? d.data : it) };
+          this.setState({ images: list2 });
+        }).catch(() => {});
+      } catch {}
     } catch {}
   };
 
@@ -101,9 +208,9 @@ export default class DictadoInforme extends React.Component {
     try {
       const inst = this.state.editorInst;
       if (!inst || !item) return;
-      const src = this.resolveImageSrc(item);
+      const src = item?.dataUrl || this.buildDataUrlFromItem(item) || this.resolveImageSrc(item);
       if (!src) return;
-      const isVideo = String(item.typeArchive || '').toLowerCase().startsWith('video/');
+      const isVideo = String(item.mimeType || item.typeArchive || '').toLowerCase().startsWith('video/');
       const htmlNode = isVideo ? `<video src="${src}" controls />` : `<img src="${src}" />`;
       if (inst.s && typeof inst.s.insertHTML === 'function') inst.s.insertHTML(htmlNode);
       else if (inst.selection && typeof inst.selection.insertHTML === 'function') inst.selection.insertHTML(htmlNode);
@@ -137,19 +244,21 @@ export default class DictadoInforme extends React.Component {
     try {
       const id = this.state.datos.numeroEstudio;
       if (id) {
+        this.setState({ imagesLoading: true });
         const resImg = await archivodigitalService.searchByEstudioId(id);
         const imgsRaw = Array.isArray(resImg) ? resImg : (resImg?.data || []);
-        const imgs = await Promise.all((imgsRaw || []).map(async (it) => {
-          let src = this.resolveImageSrc(it);
-          if (!src || src.length < 50) {
-            try {
-              const d = await archivodigitalService.getById(it.id);
-              src = this.resolveImageSrc(d?.data || {});
-            } catch {}
-          }
-          return { ...it, _src: src };
+        const imgs = (imgsRaw || []).map((f) => ({
+          id: f.id,
+          description: f.description,
+          mimeType: f.typeArchive,
+          dataUrl: `data:${f.typeArchive};base64,${String(f.archive || '').replace(/\s+/g, '')}`,
+          date: f.date,
+          hour: f.hour,
+          archive: f.archive,
+          typeArchive: f.typeArchive,
+          medical_ScheduleId: f.medical_ScheduleId
         }));
-        this.setState({ images: imgs });
+        this.setState({ images: imgs, imagesLoading: false });
       }
     } catch {}
   }
@@ -199,52 +308,141 @@ export default class DictadoInforme extends React.Component {
 
         <Paper sx={{ p: 2, boxShadow: 3 }}>
           <Box sx={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 2, height: 'calc(100vh - 240px)', minHeight: 0 }}>
-            <Box sx={{ minHeight: 400 }}>
+            <Box sx={{ minHeight: 900 }}>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>Editor del informe</Typography>
               <RichTextEditor value={html} onChange={(v) => this.setState({ html: v })} onReady={(inst) => { this.setState({ editorInst: inst }, () => { try { if (this.state.html) inst.value = this.state.html; } catch {} }); }} />
             </Box>
-            <Box sx={{ border: '1px solid #ddd', borderRadius: 1, p: 0, display: 'flex', flexDirection: 'column', gap: 2, height: '100%', minHeight: 0 }}>
-              <Accordion expanded={this.state.accordionTemplatesExpanded} onChange={(_, exp) => this.setState({ accordionTemplatesExpanded: exp })} disableGutters sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', flex: (this.state.accordionImagesExpanded && this.state.accordionTemplatesExpanded) ? '1 1 0' : (this.state.accordionTemplatesExpanded ? '1 1 auto' : '0 0 auto') }}>
-                <AccordionSummary expandIcon={<ExpandMore />} sx={{ minHeight: 44, '& .MuiAccordionSummary-content': { my: 0 } }}>
+            <Box sx={{ border: '1px solid #ddd', borderRadius: 1, p: 0, display: 'flex', flexDirection: 'column', gap: 2, height: '100%', minHeight: 0, overflow: 'hidden' }}>
+              <Accordion
+                expanded={this.state.accordionTemplatesExpanded}
+                onChange={(_, exp) => this.setState({ accordionTemplatesExpanded: exp })}
+                disableGutters
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  flex: '0 0 auto',
+                  overflow: 'hidden',
+                  // Asegura que el acordeón no crezca ilimitadamente
+                }}
+              >
+                <AccordionSummary
+                  expandIcon={<ExpandMore />}
+                  sx={{ minHeight: 44, '& .MuiAccordionSummary-content': { my: 0 } }}
+                >
                   <Typography variant="subtitle2">Plantillas disponibles</Typography>
                 </AccordionSummary>
-                <AccordionDetails sx={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', p: 2 }}>
+
+                <AccordionDetails
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    maxHeight: 300, // ← Altura máxima para activar el scroll
+                    minHeight: 0,
+                    p: 2,
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    // Opcional: estilos de scrollbar personalizados (si deseas)
+                    '&::-webkit-scrollbar': { width: '8px' },
+                    '&::-webkit-scrollbar-thumb': { 
+                      backgroundColor: '#bdbdbd', 
+                      borderRadius: '4px',
+                      '&:hover': { backgroundColor: '#9e9e9e' }
+                    }
+                  }}
+                >
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {this.state.plantillasAll.map((p) => (
-                      <Box key={p.id || p.examsId || p.name} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Box
+                        key={p.id || p.examsId || p.name}
+                        sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                      >
                         <Box sx={{ mr: 1 }}>
-                          <Typography variant="body2" fontWeight="bold">{p.name || 'Sin nombre'}</Typography>
-                          {p.description && <Typography variant="caption" color="text.secondary">{p.description}</Typography>}
+                          <Typography variant="body2" fontWeight="bold">
+                            {p.name || 'Sin nombre'}
+                          </Typography>
+                          {p.description && (
+                            <Typography variant="caption" color="text.secondary">
+                              {p.description}
+                            </Typography>
+                          )}
                         </Box>
                         <Box sx={{ display: 'flex', gap: 1 }}>
-                          <Button size="small" variant="outlined" onClick={() => this.setState({ previewPlantilla: p, previewOpen: true })}>Visualizar</Button>
-                          <Button size="small" variant="contained" onClick={() => this.setState({ html: String(p.plantilla || '') }, () => { try { if (this.state.editorInst) this.state.editorInst.value = this.state.html; } catch {} })}>Seleccionar</Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => this.setState({ previewPlantilla: p, previewOpen: true })}
+                          >
+                            Visualizar
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            onClick={() => {
+                              this.setState({ html: String(p.plantilla || '') }, () => {
+                                try {
+                                  if (this.state.editorInst) {
+                                    this.state.editorInst.value = this.state.html;
+                                  }
+                                } catch {}
+                              });
+                            }}
+                          >
+                            Seleccionar
+                          </Button>
                         </Box>
                       </Box>
                     ))}
                   </Box>
                 </AccordionDetails>
               </Accordion>
-              <Accordion expanded={this.state.accordionImagesExpanded} onChange={(_, exp) => this.setState({ accordionImagesExpanded: exp })} disableGutters sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', flex: (this.state.accordionImagesExpanded && this.state.accordionTemplatesExpanded) ? '1 1 0' : (this.state.accordionImagesExpanded ? '1 1 auto' : '0 0 auto') }}>
+              <Accordion expanded={this.state.accordionImagesExpanded} onChange={(_, exp) => this.setState({ accordionImagesExpanded: exp })} disableGutters sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', flex: '1 1 auto' }}>
                 <AccordionSummary expandIcon={<ExpandMore />} sx={{ minHeight: 44, '& .MuiAccordionSummary-content': { my: 0 } }}>
                   <Typography variant="subtitle2">Imágenes del estudio</Typography>
                 </AccordionSummary>
-                <AccordionDetails sx={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', p: 2 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
-                    <Button size="small" variant="contained" disabled={!this.state.selected || !this.state.editorInst} onClick={() => this.insertMediaItem(this.state.selected)}>Insertar</Button>
-                  </Box>
-                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 2 }}>
-                    {this.state.images.map((item, idx) => (
-                      <Box key={item.id} onClick={() => this.setState({ selected: item })} sx={{ border: (this.state.selected && this.state.selected.id === item.id) ? '2px solid #2184be' : '1px solid #ccc', borderRadius: 1, p: 1, cursor: 'pointer' }}>
-                        {(() => { const t = String(item.typeArchive || '').toLowerCase(); const d = String(item.description || '').toLowerCase(); const isVid = t.includes('video') || /\.(mp4|webm|ogg)$/i.test(d); return isVid; })() ? (
-                          <video src={item._src || this.resolveImageSrc(item)} controls style={{ width: '100%', height: ITEM_HEIGHT, objectFit: 'contain', borderRadius: 4 }} onError={() => this.handleMediaError(idx)} />
+                <AccordionDetails 
+                  sx={{ 
+                    display: 'flex',
+                    flexDirection: 'column',
+                    maxHeight: 900, // ← Altura máxima para forzar el scroll
+                    minHeight: 0,
+                    p: 2,
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    // Estilos de scrollbar (solo necesarios aquí, no en el hijo)
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: '#bdbdbd transparent',
+                    '&::-webkit-scrollbar': { width: '10px' },
+                    '&::-webkit-scrollbar-track': { backgroundColor: 'transparent' },
+                    '&::-webkit-scrollbar-thumb': { 
+                      backgroundColor: '#bdbdbd', 
+                      borderRadius: '8px', 
+                      border: '2px solid transparent', 
+                      backgroundClip: 'content-box' 
+                    },
+                    '&::-webkit-scrollbar-thumb:hover': { backgroundColor: '#9e9e9e' }
+                  }}
+                >
+
+
+                  <ImageList cols={1}  sx={{ width: '100%', maxHeight: 180 }}>
+                    {this.state.images.map((img, idx) => (
+                      <ImageListItem key={img.id || `${img.description || 'item'}-${idx}`} sx={{ border: '1px solid #ddd', borderRadius: 1, overflow: 'hidden', p: 1 }}>
+                        {img.mimeType?.startsWith('image/') ? (
+                          <img src={img.dataUrl || this.buildDataUrlFromItem(img) || this.resolveImageSrc(img)} alt={img.description || ''} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => this.handleMediaError(idx)} />
                         ) : (
-                          <img src={item._src || this.resolveImageSrc(item)} alt={item.description || ''} style={{ width: '100%', height: ITEM_HEIGHT, objectFit: 'contain', display: 'block', borderRadius: 4 }} loading="lazy" onError={() => this.handleMediaError(idx)} />
+                          <video src={img.dataUrl || this.buildDataUrlFromItem(img) || this.resolveImageSrc(img)} muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => this.handleMediaError(idx)} />
                         )}
-                        <Typography variant="caption" sx={{ display: 'block', mt: 0.5 }}>{item.description || item.typeArchive}</Typography>
-                      </Box>
+                        <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                          <Button size="small" variant="outlined" onClick={() => this.setState({ mediaPreviewOpen: true, mediaPreviewItem: img })}>
+                            Visualizar
+                          </Button>
+                          <Button size="small" variant="contained" disabled={!this.state.editorInst} onClick={() => this.insertMediaItem(img)}>
+                            Insertar
+                          </Button>
+                        </Box>
+                      </ImageListItem>
                     ))}
-                  </Box>
+                  </ImageList>
                 </AccordionDetails>
               </Accordion>
             </Box>
@@ -254,10 +452,10 @@ export default class DictadoInforme extends React.Component {
           <DialogTitle>Vista de archivo</DialogTitle>
           <DialogContent dividers>
             <Box sx={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', bgcolor: '#000', borderRadius: 1 }}>
-              {this.state.mediaPreviewItem && String(this.state.mediaPreviewItem.typeArchive || '').toLowerCase().startsWith('video/') ? (
-                <video src={this.resolveImageSrc(this.state.mediaPreviewItem)} controls style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain' }} />
+              {this.state.mediaPreviewItem && this.state.mediaPreviewItem.mimeType?.startsWith('image/') ? (
+                <img src={this.state.mediaPreviewItem?.dataUrl || ''} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain' }} />
               ) : (
-                <img src={this.resolveImageSrc(this.state.mediaPreviewItem || {})} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain' }} />
+                <video src={this.state.mediaPreviewItem?.dataUrl || ''} controls style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain' }} />
               )}
             </Box>
           </DialogContent>
