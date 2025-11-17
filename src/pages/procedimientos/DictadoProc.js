@@ -57,6 +57,7 @@ import salasService from 'services/salasService';
 import recursosService from 'services/recursosService';
 import medicosRefService from 'services/medicosRefService';
 import segurosService from 'services/segurosService';
+ 
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
@@ -143,6 +144,35 @@ const DictadoProc = () => {
   const [salaD, setSalaCargados] = useState([]);
   const [recursoD, setRecursoCargados] = useState([]);
   const [estudioD, seEstudioCargados] = useState([]);
+
+  const handleOpenDictadoInforme = (proc) => {
+    try {
+      const calcEdad = () => {
+        try {
+          if (proc?.edad) return String(proc.edad);
+          const fn = proc?.fechaNac || proc?.fechaNacimiento;
+          if (!fn) return '';
+          const dob = new Date(fn);
+          const now = new Date();
+          let edad = now.getFullYear() - dob.getFullYear();
+          const m = now.getMonth() - dob.getMonth();
+          if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) edad--;
+          return String(edad);
+        } catch { return ''; }
+      };
+      const params = new URLSearchParams({
+        nombre: (proc?.nombre || proc?.pacienteNombre || ''),
+        numero: (proc?.codigo || proc?.numeroEstudio || ''),
+        edad: calcEdad(),
+        fecha: (proc?.fechaExamen ? new Date(proc.fechaExamen).toLocaleDateString('es-ES') : ''),
+        estudio: (proc?.tipo || proc?.estudio || ''),
+        procedimiento: (proc?.procedimiento || ''),
+        medico: (proc?.gastroenterologo || proc?.medicoReferente || proc?.medico || ''),
+        studiesId : (proc?.studiesId || proc?.examen?.examsId || proc?.examsId || proc?.estudioId || '')
+      });
+      navigate(`/procedimientos/dictado-informe?${params.toString()}`);
+    } catch {}
+  };
 
 const cargarMedicos = async () => {
           try {
@@ -303,7 +333,9 @@ const cargarSalas = async () => {
                     //
                     fechaExamen: procedimientoDat.appointmentDate,
                     horaExamen: procedimientoDat.hoursMedicalShedule,
-                    urgente: procedimientoDat.urgenteId == '10059' ?true: false
+                    urgente: procedimientoDat.urgenteId == '10059' ?true: false,
+                    studiesId: procedimientoDat.studiesId
+                    
 
                   };
                 } catch (error) {
@@ -331,7 +363,8 @@ const cargarSalas = async () => {
                     procedimiento: '',
                     //
                     medicoReferente: '',
-                    gastroenterologo: ''
+                    gastroenterologo: '',
+                    studiesId: ''
                   };
                 }
               })
@@ -1224,7 +1257,7 @@ const cargarSalas = async () => {
                                 color="success"
                                 size="small"
                                 title="Iniciar informe de paciente"
-                                //onClick={() => handlePacientePresente(proc)}
+                                onClick={() => handleOpenDictadoInforme(proc)}
                               >
                                 <EditDocument />
 

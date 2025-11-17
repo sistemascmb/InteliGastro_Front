@@ -124,7 +124,7 @@ const DEFAULT_TEMPLATE_HTML = `<table style="border-collapse: collapse; width: 7
 	<td style="width: 66.3564%; border-color: rgb(61, 133, 198); line-height: 1;"><span style="font-size: 14px;"><strong style="font-family: Arial, Helvetica, sans-serif;">TITULO 1: <br></strong><span style="font-family: Arial, Helvetica, sans-serif;">Texto de contenido para plantillas generales.</span><strong style="font-family: Arial, Helvetica, sans-serif;"><br>TITULO 2: <br></strong><span style="font-family: Arial, Helvetica, sans-serif;">Texto de contenido para plantillas generales.</span><strong style="font-family: Arial, Helvetica, sans-serif;"><br> TITULO 3: Texto de contenido para plantillas generales.<br></strong><strong style="font-family: Arial, Helvetica, sans-serif;"> <br>DIAGNÓSTICO XXXXXXX: <br>  1.ABC&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <br> 2.DEF<br>  3.GHI</strong></span><br></td><td style="width: 33.5106%; text-align: center; vertical-align: middle;">&nbsp;&nbsp;<span style="color: rgb(71, 139, 147); font-size: 14pt;"><strong><span style="color: #000000;"><span style="font-size: 14pt;">[##FIRMA_MEDICO##]</span></span></strong></span><br></td></tr></tbody></table><p>Av. Hoyos Rubio 2397, Cajamarca</p>`;
 
 // Componente Editor de Texto con Jodit
-const RichTextEditor = memo(({ value, onChange, placeholder = "Escriba aquí..." }) => {
+export const RichTextEditor = memo(({ value, onChange, placeholder = "Escriba aquí...", onReady }) => {
   const editorRef = React.useRef(null);
   const headerInputRef = React.useRef(null);
   const footerInputRef = React.useRef(null);
@@ -193,6 +193,7 @@ const RichTextEditor = memo(({ value, onChange, placeholder = "Escriba aquí..."
   useEffect(() => {
     const inst = editorRef.current?.editor;
     if (!inst) return;
+    try { onReady && onReady(inst); } catch {}
 
     const removeEnterAfterImage = (node) => {
       try {
@@ -311,16 +312,24 @@ const RichTextEditor = memo(({ value, onChange, placeholder = "Escriba aquí..."
   useEffect(() => {
     const inst = editorRef.current?.editor;
     if (!inst) return;
-    if (typeof value === 'string' && value !== inst.value) {
+    const newVal = typeof value === 'string' ? value : '';
+    if (newVal !== inst.value) {
       try {
+        const current = inst.value || '';
+        const isEmpty = !current || current.trim() === '';
+        if (isEmpty) {
+          inst.value = newVal;
+          try { inst.events && inst.events.fire && inst.events.fire('change'); } catch {}
+          return;
+        }
         const sel = inst.iframe?.contentWindow?.getSelection ? inst.iframe.contentWindow.getSelection() : window.getSelection();
         const anchor = sel && sel.anchorNode;
         const isInside = inst.editor && typeof inst.editor.contains === 'function' ? inst.editor.contains(anchor) : false;
         if (!isInside) {
-          inst.value = value || '';
+          inst.value = newVal;
         }
       } catch {
-        inst.value = value || '';
+        inst.value = newVal;
       }
     }
   }, [value]);
@@ -443,6 +452,7 @@ const RichTextEditor = memo(({ value, onChange, placeholder = "Escriba aquí..."
       <Box sx={{ width: `${pageWidthPx}px`, minHeight: `${pageHeightPx}px`, bgcolor: 'white', mx: 'auto', boxShadow: 2, p: 0 }}>
         <JoditEditor
           ref={editorRef}
+          value={value || ''}
           config={joditConfig}
           onChange={(content) => onChange?.(content)}
         />

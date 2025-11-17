@@ -21,6 +21,7 @@ import CompletadoOld from './pages/procedimientos/CompletadoOld';
 import Altas from './pages/procedimientos/Altas';
 import AltasOld from './pages/procedimientos/AltasOld';
 import CapturaImagenes from './pages/procedimientos/CapturaImagenes';
+import DictadoInforme from './pages/procedimientos/DictadoInforme';
 
 import Pacientes from './pages/pacientes/Pacientes';
 
@@ -124,6 +125,7 @@ function App() {
             <Route path="/procedimientos/agendados" element={<Agendados />} />
             <Route path="/procedimientos/preparacionproc" element={<PreparacionProc />} />
             <Route path="/procedimientos/dictadoproc" element={<DictadoProc />} />
+            <Route path="/procedimientos/dictado-informe" element={<DictadoInforme />} />
             <Route path="/procedimientos/completados" element={<Completados />} />
             <Route path="/procedimientos/completadosold" element={<CompletadoOld />} />
             <Route path="/procedimientos/altas" element={<Altas />} />
