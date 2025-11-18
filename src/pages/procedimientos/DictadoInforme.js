@@ -4,6 +4,7 @@ import { NavigateNext, Assignment, ExpandMore } from '@mui/icons-material';
 import { RichTextEditor } from '../administracion/Plantillas';
 import { plantillaService } from 'services/plantillasService';
 import { archivodigitalService } from 'services/archivodigitalService';
+import { patientsService } from 'services/patientsService';
 
 const FALLBACK_INFORME_HTML = '<p><strong>Dictado de informe</strong></p><p>Inicie el dictado aquí...</p>';
 const ITEM_HEIGHT = 100;
@@ -23,7 +24,12 @@ export default class DictadoInforme extends React.Component {
         estudio: sp.get('estudio') || props.estudio || '',
         procedimiento: sp.get('procedimiento') || props.procedimiento || '',
         medico: sp.get('medico') || props.medico || '',
-        plantilla: ''
+        instrumento: sp.get('instrumento') || props.instrumento || '',
+        aseguradora: sp.get('aseguradora') || props.aseguradora || '',
+        preparacion: sp.get('preparacion') || props.preparacion || '',
+        personalId: sp.get('personalId') || props.personalId || '-',
+        plantilla: '',
+        pacientId: sp.get('pacientId') || sp.get('pacienteId') || props.pacientId || ''
       },
       images: [],
       selected: null,
@@ -35,7 +41,8 @@ export default class DictadoInforme extends React.Component {
       accordionTemplatesExpanded: true,
       mediaPreviewOpen: false,
       mediaPreviewItem: null,
-      imagesLoading: false
+      imagesLoading: false,
+      pacienteInfo: null
     };
   }
 
@@ -204,6 +211,63 @@ export default class DictadoInforme extends React.Component {
     } catch {}
   };
 
+  getTemplateVariableMap = () => {
+    const d = this.state.datos || {};
+    const extra = this.templateVarExtra || {};
+    return {
+      nombres: d.nombrePaciente || '',
+      nombrePaciente: d.nombrePaciente || '',
+      numeroEstudio: d.numeroEstudio || '',
+      edad: d.edad || '',
+      fecha: d.fecha || '',
+      fechaEstudio: d.fecha || '',
+      estudio: d.estudio || '',
+      procedimiento: d.procedimiento || '',
+      titulo: d.procedimiento || '',
+      medico: d.medico || '',
+      instrumento: d.instrumento || '',
+      aseguradora: d.aseguradora || '',
+      preparacion: d.preparacion || '-',
+      ...extra
+    };
+  };
+
+  applyTemplateVariables = (tpl) => {
+    try {
+      const raw = String(tpl || '');
+      const map = this.getTemplateVariableMap();
+      const norm = {};
+      Object.keys(map).forEach((k) => { norm[String(k).toLowerCase()] = map[k]; });
+      const hasHclPh = /\{\{\s*(hcl|historiaclinica)\s*\}\}/i.test(raw);
+      const hasSexoPh = /\{\{\s*(sexo|genero)\s*\}\}/i.test(raw);
+      let out = raw.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (m, k) => {
+        const key = String(k).toLowerCase();
+        const alias = key === 'hcl' ? 'historiaclinica' : (key === 'sexo' ? 'genero' : key);
+        let val = norm[alias];
+        if (val === undefined) return m;
+        if (alias === 'historiaclinica' || alias === 'genero' || alias === 'sexo') {
+          return `<span style="font-weight: normal">${String(val)}</span>`;
+        }
+        return String(val);
+      });
+      const hval = norm['historiaclinica'];
+      const sval = norm['genero'] !== undefined ? norm['genero'] : norm['sexo'];
+      if (!hasHclPh && hval !== undefined) {
+        out = out.replace(/<strong>\s*HCL:\s*<\/strong>/i, `<strong>HCL:</strong> <span style="font-weight: normal">${hval}</span>`);
+        out = out.replace(/(HCL\s*:\s*)(?!\{)/i, `$1<span style="font-weight: normal">${hval}</span>`);
+      }
+      if (!hasSexoPh && sval !== undefined) {
+        out = out.replace(/<strong>\s*Sexo:\s*<\/strong>/i, `<strong>Sexo:</strong> <span style="font-weight: normal">${sval}</span>`);
+        out = out.replace(/(Sexo\s*:\s*)(?!\{)/i, `$1<span style="font-weight: normal">${sval}</span>`);
+      }
+      return out;
+    } catch { return String(tpl || ''); }
+  };
+
+  registerTemplateVariables = (extra) => {
+    try { this.templateVarExtra = { ...(this.templateVarExtra || {}), ...(extra || {}) }; } catch {}
+  };
+
   insertMediaItem = (item) => {
     try {
       const inst = this.state.editorInst;
@@ -282,7 +346,8 @@ export default class DictadoInforme extends React.Component {
       }
       if (!picked && list.length > 0 && list[0].plantilla) picked = String(list[0].plantilla || '');
       if (!picked) picked = FALLBACK_INFORME_HTML;
-      this.setState({ html: picked, plantillasAll: list }, () => { try { if (this.state.editorInst) this.state.editorInst.value = this.state.html; } catch {} });
+      const withVars = this.applyTemplateVariables(picked);
+      this.setState({ html: withVars, plantillasAll: list, templateRaw: picked }, () => { try { if (this.state.editorInst) this.state.editorInst.value = this.state.html; } catch {} });
     } catch {}
 
     try {
@@ -303,6 +368,32 @@ export default class DictadoInforme extends React.Component {
           medical_ScheduleId: f.medical_ScheduleId
         }));
         this.setState({ images: imgs, imagesLoading: false });
+      }
+    } catch {}
+
+    try {
+      const pid = this.state.datos.pacientId;
+      if (pid) {
+        const resPac = await patientsService.getById(pid);
+        const info = (resPac && resPac.data) || null;
+        if (info) {
+          const nombreCompleto = `${info.names || ''} ${info.lastNames || ''}`.trim();
+          const datos = { ...this.state.datos, nombrePaciente: nombreCompleto || this.state.datos.nombrePaciente };
+          const gCode = String(info.gender || '');
+          const generoLabel = gCode === '10001' ? 'MASCULINO' : 'FEMENINO';
+          this.registerTemplateVariables({
+            nombres: datos.nombrePaciente,
+            nombrePaciente: datos.nombrePaciente,
+            documento: info.documentNumber || '',
+            genero: generoLabel,
+            sexo: generoLabel,
+            fechaNacimiento: info.birthdate || '',
+            historiaClinica: info.medicalHistory || ''
+          });
+          const baseTpl = this.state.templateRaw || this.state.html || '';
+          const updatedHtml = this.applyTemplateVariables(baseTpl);
+          this.setState({ pacienteInfo: info, datos, html: updatedHtml }, () => { try { if (this.state.editorInst) this.state.editorInst.value = this.state.html; } catch {} });
+        }
       }
     } catch {}
   }
@@ -424,7 +515,9 @@ export default class DictadoInforme extends React.Component {
                             size="small"
                             variant="contained"
                             onClick={() => {
-                              this.setState({ html: String(p.plantilla || '') }, () => {
+                              const tpl = String(p.plantilla || '');
+                              const withVars = this.applyTemplateVariables(tpl);
+                              this.setState({ html: withVars, templateRaw: tpl }, () => {
                                 try {
                                   if (this.state.editorInst) {
                                     this.state.editorInst.value = this.state.html;
@@ -520,7 +613,9 @@ export default class DictadoInforme extends React.Component {
             <Button onClick={() => this.setState({ previewOpen: false, previewPlantilla: null })}>Cerrar</Button>
             <Button variant="contained" onClick={() => {
               const p = this.state.previewPlantilla;
-              this.setState({ previewOpen: false, html: String((p && p.plantilla) || '') }, () => { try { if (this.state.editorInst) this.state.editorInst.value = this.state.html; } catch {} });
+              const tpl = String((p && p.plantilla) || '');
+              const withVars = this.applyTemplateVariables(tpl);
+              this.setState({ previewOpen: false, html: withVars, templateRaw: tpl }, () => { try { if (this.state.editorInst) this.state.editorInst.value = this.state.html; } catch {} });
             }}>Usar esta</Button>
           </DialogActions>
         </Dialog>

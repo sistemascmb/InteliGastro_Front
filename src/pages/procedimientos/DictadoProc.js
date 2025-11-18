@@ -168,7 +168,13 @@ const DictadoProc = () => {
         estudio: (proc?.tipo || proc?.estudio || ''),
         procedimiento: (proc?.procedimiento || ''),
         medico: (proc?.gastroenterologo || proc?.medicoReferente || proc?.medico || ''),
-        studiesId : (proc?.studiesId || proc?.examen?.examsId || proc?.examsId || proc?.estudioId || '')
+        studiesId : (proc?.studiesId || proc?.examen?.studiesId || proc?.studiesId || proc?.studiesId || ''),
+        pacientId : (proc?.pacientId || proc?.examen?.pacientId || proc?.pacientId || proc?.pacientId || ''),
+        instrumento : (proc?.recurso || ''),
+        aseguradora : (proc?.seguro || ''),
+        preparacion : '-',
+        personalId : (proc?.personalId || ''),
+
       });
       navigate(`/procedimientos/dictado-informe?${params.toString()}`);
     } catch {}
