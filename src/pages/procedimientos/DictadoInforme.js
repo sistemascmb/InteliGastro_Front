@@ -307,10 +307,12 @@ export default class DictadoInforme extends React.Component {
         </Paper>
 
         <Paper sx={{ p: 2, boxShadow: 3 }}>
-          <Box sx={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 2, height: 'calc(100vh - 240px)', minHeight: 0 }}>
-            <Box sx={{ minHeight: 900 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gridTemplateRows: { xs: 'auto auto', md: '1fr' }, gap: { xs: 1.5, md: 2 }, height: { xs: 'calc(100vh - 240px)', md: 'calc(100vh - 240px)' }, minHeight: 0, minWidth: 0 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, minWidth: 0 }}>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>Editor del informe</Typography>
-              <RichTextEditor value={html} onChange={(v) => this.setState({ html: v })} onReady={(inst) => { this.setState({ editorInst: inst }, () => { try { if (this.state.html) inst.value = this.state.html; } catch {} }); }} />
+              <Box sx={{ flex: '1 1 auto', minHeight: 0, minWidth: 0, overflow: 'auto' }}>
+                <RichTextEditor value={html} onChange={(v) => this.setState({ html: v })} onReady={(inst) => { this.setState({ editorInst: inst }, () => { try { if (this.state.html) inst.value = this.state.html; } catch {} }); }} />
+              </Box>
             </Box>
             <Box sx={{ border: '1px solid #ddd', borderRadius: 1, p: 0, display: 'flex', flexDirection: 'column', gap: 2, height: '100%', minHeight: 0, overflow: 'hidden' }}>
               <Accordion
@@ -336,7 +338,7 @@ export default class DictadoInforme extends React.Component {
                   sx={{
                     display: 'flex',
                     flexDirection: 'column',
-                    maxHeight: 300, // ← Altura máxima para activar el scroll
+                    maxHeight: 120, // ← Altura máxima para activar el scroll
                     minHeight: 0,
                     p: 2,
                     overflowY: 'auto',
