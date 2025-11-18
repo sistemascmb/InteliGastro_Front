@@ -5,6 +5,7 @@ import { RichTextEditor } from '../administracion/Plantillas';
 import { plantillaService } from 'services/plantillasService';
 import { archivodigitalService } from 'services/archivodigitalService';
 import { patientsService } from 'services/patientsService';
+import { staffService } from 'services/staffService';
 
 const FALLBACK_INFORME_HTML = '<p><strong>Dictado de informe</strong></p><p>Inicie el dictado aquí...</p>';
 const ITEM_HEIGHT = 100;
@@ -42,6 +43,9 @@ export default class DictadoInforme extends React.Component {
       mediaPreviewOpen: false,
       mediaPreviewItem: null,
       imagesLoading: false,
+      staffFirma: null,
+      staffCabeceraPlantilla: null,
+      staffLoading: false,
       pacienteInfo: null
     };
   }
@@ -209,6 +213,16 @@ export default class DictadoInforme extends React.Component {
         }).catch(() => {});
       } catch {}
     } catch {}
+  };
+
+  toDataUrl = (raw) => {
+    try {
+      if (!raw) return '';
+      const s = String(raw).trim();
+      if (s.startsWith('data:')) return s;
+      const mime = s.startsWith('/9j/') ? 'image/jpeg' : (s.startsWith('iVBOR') ? 'image/png' : (s.startsWith('R0lGOD') ? 'image/gif' : 'image/jpeg'));
+      return `data:${mime};base64,${s.replace(/\s+/g, '')}`;
+    } catch { return ''; }
   };
 
   getTemplateVariableMap = () => {
@@ -396,6 +410,20 @@ export default class DictadoInforme extends React.Component {
         }
       }
     } catch {}
+
+    try {
+      const personalId = this.state.datos.personalId;
+      if (personalId && personalId !== '-') {
+        this.setState({ staffLoading: true });
+        const resStaff = await staffService.getById(personalId);
+        const d = (resStaff && resStaff.data) || {};
+        const firmaUrl = this.toDataUrl(d.firma);
+        const headerUrl = this.toDataUrl(d.cabeceraPlantilla);
+        this.setState({ staffFirma: firmaUrl || null, staffCabeceraPlantilla: headerUrl || null, staffLoading: false });
+      }
+    } catch {
+      this.setState({ staffLoading: false });
+    }
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -450,6 +478,33 @@ export default class DictadoInforme extends React.Component {
               </Box>
             </Box>
             <Box sx={{ border: '1px solid #ddd', borderRadius: 1, p: 0, display: 'flex', flexDirection: 'column', gap: 2, height: '100%', minHeight: 0, overflow: 'hidden' }}>
+              <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Typography variant="h6" fontWeight="bold" sx={{ color: '#2184be' }}>
+                  Archivos del Personal
+                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#333', mb: 1 }}>
+                      Foto
+                    </Typography>
+                    <Box sx={{ width: 120, height: 160, border: '1px solid #ddd', borderRadius: 1, overflow: 'hidden', bgcolor: '#fafafa' }}>
+                      {this.state.staffFirma && (
+                        <img src={this.state.staffFirma} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      )}
+                    </Box>
+                  </Box>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#333', mb: 1 }}>
+                      Cabecera de Plantilla
+                    </Typography>
+                    <Box sx={{ width: '100%', minWidth: 420, height: 160, border: '1px solid #ddd', borderRadius: 1, overflow: 'hidden', bgcolor: '#fafafa' }}>
+                      {this.state.staffCabeceraPlantilla && (
+                        <img src={this.state.staffCabeceraPlantilla} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      )}
+                    </Box>
+                  </Box>
+                </Box>
+              </Box>
               <Accordion
                 expanded={this.state.accordionTemplatesExpanded}
                 onChange={(_, exp) => this.setState({ accordionTemplatesExpanded: exp })}
