@@ -1,11 +1,12 @@
 import React from 'react';
-import { Container, Paper, Breadcrumbs, Link, Box, Typography, Button, Divider, Accordion, AccordionSummary, AccordionDetails, Dialog, DialogTitle, DialogContent, DialogActions, ImageList, ImageListItem, CircularProgress } from '@mui/material';
+import { Container, Paper, Breadcrumbs, Link, Box, Typography, Button, Divider, Accordion, AccordionSummary, AccordionDetails, Dialog, DialogTitle, DialogContent, DialogActions, ImageList, ImageListItem, CircularProgress, Snackbar, Alert } from '@mui/material';
 import { NavigateNext, Assignment, ExpandMore } from '@mui/icons-material';
 import { RichTextEditor } from '../administracion/Plantillas';
 import { plantillaService } from 'services/plantillasService';
 import { archivodigitalService } from 'services/archivodigitalService';
 import { patientsService } from 'services/patientsService';
 import { staffService } from 'services/staffService';
+import { appointmentsService } from 'services';
 
 const FALLBACK_INFORME_HTML = '<p><strong>Dictado de informe</strong></p><p>Inicie el dictado aquí...</p>';
 const ITEM_HEIGHT = 100;
@@ -30,7 +31,14 @@ export default class DictadoInforme extends React.Component {
         preparacion: sp.get('preparacion') || props.preparacion || '',
         personalId: sp.get('personalId') || props.personalId || '-',
         plantilla: '',
-        pacientId: sp.get('pacientId') || sp.get('pacienteId') || props.pacientId || ''
+        pacientId: sp.get('pacientId') || sp.get('pacienteId') || props.pacientId || '',
+
+        estudioTeminadoId: sp.get('estudioTeminadoId') || sp.get('estudioTeminadoId') || props.estudioTeminadoId || '',
+        pdfGeneradoId: sp.get('pdfGeneradoId') || sp.get('pdfGeneradoId') || props.pdfGeneradoId || '',
+        estructuraHtml: sp.get('estructuraHtml') || sp.get('estructuraHtml') || props.estructuraHtml || '',
+        informePdf: sp.get('informePdf') || sp.get('informePdf') || props.informePdf || '',
+        dictadoGuardado: sp.get('dictadoGuardado') || sp.get('dictadoGuardado') || props.dictadoGuardado || '',
+
       },
       images: [],
       selected: null,
@@ -43,11 +51,19 @@ export default class DictadoInforme extends React.Component {
       mediaPreviewOpen: false,
       mediaPreviewItem: null,
       imagesLoading: false,
+      staffPhoto: null,
       staffFirma: null,
       staffCabeceraPlantilla: null,
       staffLoading: false,
+      guardarProcessingOpen: false,
+      terminarProcessingOpen: false,
+      guardarPayload: null,
+      terminarPayload: null,
       lastChangeSource: 'init',
-      pacienteInfo: null
+      pacienteInfo: null,
+      snackbarOpen: false,
+      snackbarMessage: '',
+      snackbarSeverity: 'success'
     };
   }
 
@@ -511,6 +527,34 @@ export default class DictadoInforme extends React.Component {
     } catch {}
   };
 
+  handleGuardarEstudio = async () => {
+    try {
+      const inst = this.state.editorInst;
+      const contenido = inst && inst.value ? inst.value : (this.state.html || '');
+      const d = this.state.datos || {};
+      const payload = { contenido, numeroEstudio: d.numeroEstudio || '', pacientId: d.pacientId || '', personalId: d.personalId || '' };
+      const procedimientoActualizado = await appointmentsService.update_estudio_dictado(d.numeroEstudio, payload);
+      console.log('✅ Procedimiento guardado:', procedimientoActualizado);
+      this.setState({ snackbarOpen: true, snackbarMessage: 'Dictado guardado correctamente', snackbarSeverity: 'success', datos: { ...d, dictadoGuardado: '1' } });
+    } catch (err) {
+      this.setState({ snackbarOpen: true, snackbarMessage: 'Error al guardar el dictado', snackbarSeverity: 'error' });
+    }
+  };
+
+  handleTerminarEstudio = async () => {
+    try {
+      const inst = this.state.editorInst;
+      const contenido = inst && inst.value ? inst.value : (this.state.html || '');
+      const d = this.state.datos || {};
+      const payload = { contenido, numeroEstudio: d.numeroEstudio || '', pacientId: d.pacientId || '', personalId: d.personalId || '' };
+      this.setState({ terminarProcessingOpen: true, terminarPayload: payload });
+    } catch {}
+  };
+
+  handleCloseGuardarProcessing = () => { this.setState({ guardarProcessingOpen: false }); };
+  handleCloseTerminarProcessing = () => { this.setState({ terminarProcessingOpen: false }); };
+  handleCloseSnackbar = () => { this.setState({ snackbarOpen: false }); };
+
   async componentDidMount() {
     try {
       const res = await plantillaService.getAll();
@@ -647,8 +691,15 @@ export default class DictadoInforme extends React.Component {
               {/*<div><strong>Estudio:</strong> {datos.estudio}</div>*/}
               <div><strong>Procedimiento:</strong> {datos.procedimiento}</div>
               <div><strong>Médico:</strong> {datos.medico}</div>
+
             </Box>
-            <Button variant="contained" color="error" onClick={() => window.location.assign('/procedimientos/dictadoproc?refresh=1')}>Cerrar dictado</Button>
+
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button variant="contained" color="primary" onClick={this.handleGuardarEstudio}>Guardar Dictado</Button>
+              <Button variant="contained" color="warning" onClick={this.handleTerminarEstudio} disabled={String(this.state.datos?.dictadoGuardado || '') !== '1'}>Terminar Dictado</Button>
+              <Button variant="contained" color="error" onClick={() => window.location.assign('/procedimientos/dictadoproc?refresh=1')}>Cerrar dictado</Button>
+            </Box>
+
           </Box>
         </Paper>
 
@@ -861,6 +912,28 @@ export default class DictadoInforme extends React.Component {
             }}>Usar esta</Button>
           </DialogActions>
         </Dialog>
+        <Dialog open={this.state.terminarProcessingOpen} onClose={this.handleCloseTerminarProcessing} maxWidth="sm" fullWidth>
+          <DialogTitle>Procesando término</DialogTitle>
+          <DialogContent dividers>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <CircularProgress size={24} />
+              <Typography variant="body2">Terminando estudio...</Typography>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={this.handleCloseTerminarProcessing}>Cerrar</Button>
+          </DialogActions>
+        </Dialog>
+        <Snackbar
+          open={this.state.snackbarOpen}
+          autoHideDuration={3000}
+          onClose={this.handleCloseSnackbar}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        >
+          <Alert onClose={this.handleCloseSnackbar} severity={this.state.snackbarSeverity} sx={{ width: '100%' }}>
+            {this.state.snackbarMessage}
+          </Alert>
+        </Snackbar>
       </Container>
     );
   }

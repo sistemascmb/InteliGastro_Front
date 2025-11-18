@@ -173,6 +173,12 @@ const DictadoProc = () => {
         instrumento : (proc?.recurso || ''),
         aseguradora : (proc?.seguro || ''),
         preparacion : '-',
+        dictadoGuardado: (proc?.dictadoGuardado || ''),
+        estructuraHtml: (proc?.estructuraHtml || ''),
+        pdfGeneradoId: (proc?.pdfGeneradoId || ''),
+        informePdf: (proc?.informePdf || ''),
+        estudioTeminadoId: (proc?.estudioTeminadoId || ''),
+
         personalId : (proc?.personalId || ''),
 
       });
@@ -340,8 +346,12 @@ const cargarSalas = async () => {
                     fechaExamen: procedimientoDat.appointmentDate,
                     horaExamen: procedimientoDat.hoursMedicalShedule,
                     urgente: procedimientoDat.urgenteId == '10059' ?true: false,
-                    studiesId: procedimientoDat.studiesId
-                    
+                    studiesId: procedimientoDat.studiesId,
+                    dictadoGuardado: procedimientoDat.dictadoGuardado,
+                    estructuraHtml: procedimientoDat.estructuraHtml,
+                    informePdf: procedimientoDat.informePdf,
+                    pdfGeneradoId: procedimientoDat.pdfGeneradoId,
+                    estudioTeminadoId:  procedimientoDat.estudioTeminadoId
 
                   };
                 } catch (error) {
@@ -370,7 +380,12 @@ const cargarSalas = async () => {
                     //
                     medicoReferente: '',
                     gastroenterologo: '',
-                    studiesId: ''
+                    studiesId: '',
+                    dictadoGuardado: '',
+                    estructuraHtml: '',
+                    informePdf: '',
+                    pdfGeneradoId: '',
+                    estudioTeminadoId:  ''
                   };
                 }
               })
