@@ -48,6 +48,10 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         estudioTeminadoId: proced.estudioTeminadoId,
         pdfGeneradoId: proced.pdfGeneradoId,
         dictadoGuardado: proced.dictadoGuardado,
+
+        estructuraHtml: proced.estructuraHtml,
+        informePdf: proced.informePdf,
+
         // Auditoría
         createdAt: proced.createdAt,
         createdBy: proced.createdBy,
@@ -109,7 +113,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         estudioTeminadoId: proced.estudioTeminadoId,
         pdfGeneradoId: proced.pdfGeneradoId,
         dictadoGuardado: proced.dictadoGuardado,
-
+        estructuraHtml: proced.estructuraHtml,
+        informePdf: proced.informePdf,
         // Auditoría
         createdAt: proced.createdAt,
         createdBy: proced.createdBy,
@@ -171,7 +176,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         estudioTeminadoId: proced.estudioTeminadoId,
         pdfGeneradoId: proced.pdfGeneradoId,
         dictadoGuardado: proced.dictadoGuardado,
-
+        estructuraHtml: proced.estructuraHtml,
+        informePdf: proced.informePdf,
         // Auditoría
         createdAt: proced.createdAt,
         createdBy: proced.createdBy,
@@ -233,7 +239,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         estudioTeminadoId: proced.estudioTeminadoId,
         pdfGeneradoId: proced.pdfGeneradoId,
         dictadoGuardado: proced.dictadoGuardado,
-
+        estructuraHtml: proced.estructuraHtml,
+        informePdf: proced.informePdf,
         // Auditoría
         createdAt: proced.createdAt,
         createdBy: proced.createdBy,
@@ -295,7 +302,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         estudioTeminadoId: proced.estudioTeminadoId,
         pdfGeneradoId: proced.pdfGeneradoId,
         dictadoGuardado: proced.dictadoGuardado,
-
+        estructuraHtml: proced.estructuraHtml,
+        informePdf: proced.informePdf,
         // Auditoría
         createdAt: proced.createdAt,
         createdBy: proced.createdBy,

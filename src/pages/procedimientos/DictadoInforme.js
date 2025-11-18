@@ -691,6 +691,7 @@ export default class DictadoInforme extends React.Component {
               {/*<div><strong>Estudio:</strong> {datos.estudio}</div>*/}
               <div><strong>Procedimiento:</strong> {datos.procedimiento}</div>
               <div><strong>Médico:</strong> {datos.medico}</div>
+              {/*<div><strong>Html:</strong> {datos.estructuraHtml}</div>*/}
 
             </Box>
 
