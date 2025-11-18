@@ -46,6 +46,7 @@ export default class DictadoInforme extends React.Component {
       staffFirma: null,
       staffCabeceraPlantilla: null,
       staffLoading: false,
+      lastChangeSource: 'init',
       pacienteInfo: null
     };
   }
@@ -228,6 +229,7 @@ export default class DictadoInforme extends React.Component {
   getTemplateVariableMap = () => {
     const d = this.state.datos || {};
     const extra = this.templateVarExtra || {};
+    const cabeceraHtml = this.state.staffCabeceraPlantilla ? `<img src="${this.state.staffCabeceraPlantilla}" style="max-width:100%; max-height:100%; width:auto; height:auto; display:block; margin:auto; object-fit:contain;" />` : '';
     return {
       nombres: d.nombrePaciente || '',
       nombrePaciente: d.nombrePaciente || '',
@@ -242,6 +244,7 @@ export default class DictadoInforme extends React.Component {
       instrumento: d.instrumento || '',
       aseguradora: d.aseguradora || '',
       preparacion: d.preparacion || '-',
+      cabecera: cabeceraHtml,
       ...extra
     };
   };
@@ -273,6 +276,13 @@ export default class DictadoInforme extends React.Component {
       if (!hasSexoPh && sval !== undefined) {
         out = out.replace(/<strong>\s*Sexo:\s*<\/strong>/i, `<strong>Sexo:</strong> <span style="font-weight: normal">${sval}</span>`);
         out = out.replace(/(Sexo\s*:\s*)(?!\{)/i, `$1<span style="font-weight: normal">${sval}</span>`);
+      }
+      if (this.state.staffCabeceraPlantilla) {
+        out = out.replace(/src=["']\s*\{\{\s*cabecera\s*\}\}\s*["']/gi, `src="${this.state.staffCabeceraPlantilla}" style="max-width:100%; max-height:100%; width:auto; height:auto; display:block; margin:auto; object-fit:contain;"`);
+      }
+      if (this.state.staffFirma) {
+        out = out.replace(/\[##\s*FIRMA_MEDICO\s*##\]/gi, `<img data-role="firma-inline" src="${this.state.staffFirma}" style="max-width:100%; max-height:100%; width:auto; height:auto; display:block; margin:auto; object-fit:contain;" />`);
+        out = out.replace(/<img([^>]*?)src=["']\s*\[##\s*FIRMA_MEDICO\s*##\]\s*["']([^>]*?)>/gi, (m, pre, post) => `<img${pre}src="${this.state.staffFirma}" data-role="firma-inline"${post}>`);
       }
       return out;
     } catch { return String(tpl || ''); }
@@ -339,6 +349,168 @@ export default class DictadoInforme extends React.Component {
     } catch {}
   };
 
+  initFirmaWatermarkDrag = () => {
+    try {
+      const inst = this.state.editorInst;
+      if (!inst) return;
+      const doc = inst.editorDocument || inst.iframe?.contentDocument || inst.ownerDocument || document;
+      const body = doc.body || doc.documentElement;
+      body.style.zIndex = 'auto';
+      let mark = doc.querySelector('[data-role="firma-watermark"]');
+      let handle = doc.querySelector('[data-role="firma-handle"]');
+      let resize = doc.querySelector('[data-role="firma-resize"]');
+      if (!mark || !handle || !resize) {
+        const inline = doc.querySelector('img[data-role="firma-inline"]');
+        if (inline) {
+          const rect = inline.getBoundingClientRect();
+          const brect = body.getBoundingClientRect();
+          const left = rect.left - brect.left;
+          const top = rect.top - brect.top;
+          const wm = doc.createElement('div');
+          wm.setAttribute('data-role', 'firma-watermark');
+          wm.style.position = 'absolute';
+          wm.style.zIndex = '0';
+          wm.style.left = left + 'px';
+          wm.style.top = top + 'px';
+          {
+            const rw = rect.width;
+            const rh = rect.height;
+            const ratio = rw && rh ? (rw / rh) : 1;
+            let w = this.state.firmaW && this.state.firmaW > 0 ? this.state.firmaW : null;
+            let h = this.state.firmaH && this.state.firmaH > 0 ? this.state.firmaH : null;
+            const cellNode = inline.closest ? inline.closest('td,th') : (function(){ let p=inline.parentNode; for(let i=0;i<10 && p;i++){ if(p.tagName==='TD'||p.tagName==='TH') return p; p=p.parentNode;} return null; })();
+            const cRect = cellNode && cellNode.getBoundingClientRect ? cellNode.getBoundingClientRect() : null;
+            const SMALL_W = 180, SMALL_H = 90;
+            const isSmallCell = !!cRect && (cRect.width <= SMALL_W && cRect.height <= SMALL_H);
+            if (w && !h) h = Math.round(w / ratio);
+            if (h && !w) w = Math.round(h * ratio);
+            if (!w || !h) {
+              if (!isSmallCell) {
+                const baseW = 230;
+                const baseH = Math.round(baseW / ratio);
+                w = w || baseW;
+                h = h || baseH;
+              } else {
+                w = w || rw;
+                h = h || rh;
+              }
+            }
+            wm.style.width = Math.max(40, Math.round(w)) + 'px';
+            wm.style.height = Math.max(30, Math.round(h)) + 'px';
+          }
+          wm.style.pointerEvents = 'none';
+          const img = doc.createElement('img');
+          img.src = inline.src;
+
+          img.style.objectFit = 'contain';
+          img.style.display = 'block';
+          img.style.mixBlendMode = 'multiply';
+          //img.style.opacity = '0.25';
+          wm.appendChild(img);
+          const h = doc.createElement('div');
+          h.setAttribute('data-role', 'firma-handle');
+          h.style.position = 'absolute';
+          h.style.zIndex = '999';
+          h.style.left = left + 'px';
+          h.style.top = top + 'px';
+          h.style.width = '14px';
+          h.style.height = '14px';
+          h.style.background = '#2184be';
+          h.style.borderRadius = '0%';
+          h.style.cursor = 'move';
+
+          const r = doc.createElement('div');
+          r.setAttribute('data-role', 'firma-resize');
+          r.style.position = 'absolute';
+          r.style.zIndex = '999';
+          r.style.width = '12px';
+          r.style.height = '12px';
+          r.style.background = '#2184be';
+          r.style.borderRadius = '2px';
+          r.style.cursor = 'se-resize';
+          r.style.boxShadow = '0 0 0 2px #fff';
+          r.style.left = (left + rect.width - 6) + 'px';
+          r.style.top = (top + rect.height - 6) + 'px';
+
+          body.appendChild(wm);
+          body.appendChild(h);
+          body.appendChild(r);
+          inline.parentNode && inline.parentNode.removeChild(inline);
+          mark = wm;
+          handle = h;
+          resize = r;
+        }
+      }
+      if (!mark || !handle) return;
+      let dragging = false;
+      let startX = 0, startY = 0, baseLeft = parseFloat(mark.style.left || '0') || 0, baseTop = parseFloat(mark.style.top || '0') || 0;
+      const onDown = (e) => {
+        dragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        baseLeft = parseFloat(mark.style.left || '0') || 0;
+        baseTop = parseFloat(mark.style.top || '0') || 0;
+        doc.addEventListener('mousemove', onMove);
+        doc.addEventListener('mouseup', onUp);
+      };
+      const onMove = (e) => {
+        if (!dragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        const left = baseLeft + dx;
+        const top = baseTop + dy;
+        mark.style.left = left + 'px';
+        mark.style.top = top + 'px';
+        handle.style.left = left + 'px';
+        handle.style.top = top + 'px';
+        if (resize) {
+          const rxLeft = left + (parseFloat(mark.style.width || '0') || 0) - 6;
+          const rxTop = top + (parseFloat(mark.style.height || '0') || 0) - 6;
+          resize.style.left = rxLeft + 'px';
+          resize.style.top = rxTop + 'px';
+        }
+      };
+      const onUp = () => {
+        dragging = false;
+        doc.removeEventListener('mousemove', onMove);
+        doc.removeEventListener('mouseup', onUp);
+      };
+      handle.addEventListener('mousedown', onDown);
+
+      let resizing = false;
+      let startRX = 0, startRY = 0, baseW = 0, baseH = 0;
+      const onResizeDown = (e) => {
+        resizing = true;
+        startRX = e.clientX;
+        startRY = e.clientY;
+        baseW = parseFloat(mark.style.width || '0') || 120;
+        baseH = parseFloat(mark.style.height || '0') || 90;
+        doc.addEventListener('mousemove', onResizeMove);
+        doc.addEventListener('mouseup', onResizeUp);
+      };
+      const onResizeMove = (e) => {
+        if (!resizing) return;
+        const dx = e.clientX - startRX;
+        const ratio = baseW && baseH ? (baseW / baseH) : 1;
+        const scale = Math.max(0.2, (baseW + dx) / Math.max(1, baseW));
+        const newW = Math.max(40, Math.round(baseW * scale));
+        const newH = Math.max(30, Math.round(newW / ratio));
+        mark.style.width = newW + 'px';
+        mark.style.height = newH + 'px';
+        const left = parseFloat(mark.style.left || '0') || 0;
+        const top = parseFloat(mark.style.top || '0') || 0;
+        resize.style.left = (left + newW - 6) + 'px';
+        resize.style.top = (top + newH - 6) + 'px';
+      };
+      const onResizeUp = () => {
+        resizing = false;
+        doc.removeEventListener('mousemove', onResizeMove);
+        doc.removeEventListener('mouseup', onResizeUp);
+      };
+      if (resize) resize.addEventListener('mousedown', onResizeDown);
+    } catch {}
+  };
+
   async componentDidMount() {
     try {
       const res = await plantillaService.getAll();
@@ -361,7 +533,7 @@ export default class DictadoInforme extends React.Component {
       if (!picked && list.length > 0 && list[0].plantilla) picked = String(list[0].plantilla || '');
       if (!picked) picked = FALLBACK_INFORME_HTML;
       const withVars = this.applyTemplateVariables(picked);
-      this.setState({ html: withVars, plantillasAll: list, templateRaw: picked }, () => { try { if (this.state.editorInst) this.state.editorInst.value = this.state.html; } catch {} });
+      this.setState({ html: withVars, plantillasAll: list, templateRaw: picked, lastChangeSource: 'system' }, () => { try { if (this.state.editorInst) this.state.editorInst.value = this.state.html; } catch {} });
     } catch {}
 
     try {
@@ -406,7 +578,7 @@ export default class DictadoInforme extends React.Component {
           });
           const baseTpl = this.state.templateRaw || this.state.html || '';
           const updatedHtml = this.applyTemplateVariables(baseTpl);
-          this.setState({ pacienteInfo: info, datos, html: updatedHtml }, () => { try { if (this.state.editorInst) this.state.editorInst.value = this.state.html; } catch {} });
+          this.setState({ pacienteInfo: info, datos, html: updatedHtml, lastChangeSource: 'system' }, () => { try { if (this.state.editorInst) this.state.editorInst.value = this.state.html; } catch {} });
         }
       }
     } catch {}
@@ -417,9 +589,16 @@ export default class DictadoInforme extends React.Component {
         this.setState({ staffLoading: true });
         const resStaff = await staffService.getById(personalId);
         const d = (resStaff && resStaff.data) || {};
+        const photoUrl = this.toDataUrl(d.photo);
         const firmaUrl = this.toDataUrl(d.firma);
         const headerUrl = this.toDataUrl(d.cabeceraPlantilla);
-        this.setState({ staffFirma: firmaUrl || null, staffCabeceraPlantilla: headerUrl || null, staffLoading: false });
+        this.setState({ staffPhoto: photoUrl || null, staffFirma: firmaUrl || null, staffCabeceraPlantilla: headerUrl || null, staffLoading: false }, () => {
+          try {
+            const baseTpl = this.state.templateRaw || this.state.html || '';
+            const updatedHtml = this.applyTemplateVariables(baseTpl);
+            this.setState({ html: updatedHtml, lastChangeSource: 'system' }, () => { try { if (this.state.editorInst) this.state.editorInst.value = this.state.html; } catch {} });
+          } catch {}
+        });
       }
     } catch {
       this.setState({ staffLoading: false });
@@ -428,7 +607,11 @@ export default class DictadoInforme extends React.Component {
 
   componentDidUpdate(prevProps, prevState) {
     if (prevState.html !== this.state.html && this.state.editorInst) {
-      try { this.state.editorInst.value = this.state.html || ''; } catch {}
+      const from = this.state.lastChangeSource;
+      if (from === 'system') {
+        try { this.state.editorInst.value = this.state.html || ''; } catch {}
+        setTimeout(() => { try { this.initFirmaWatermarkDrag(); } catch {} }, 200);
+      }
     }
   }
 
@@ -474,10 +657,11 @@ export default class DictadoInforme extends React.Component {
             <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, minWidth: 0 }}>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>Editor del informe</Typography>
               <Box sx={{ flex: '1 1 auto', minHeight: 0, minWidth: 0, overflow: 'auto' }}>
-                <RichTextEditor value={html} onChange={(v) => this.setState({ html: v })} onReady={(inst) => { this.setState({ editorInst: inst }, () => { try { if (this.state.html) inst.value = this.state.html; } catch {} }); }} />
+                <RichTextEditor value={html} applyValueUpdates={this.state.lastChangeSource !== 'user'} onChange={(v) => this.setState({ html: v, lastChangeSource: 'user' })} onReady={(inst) => { this.setState({ editorInst: inst }, () => { try { if (this.state.html) inst.value = this.state.html; } catch {} }); }} />
               </Box>
             </Box>
             <Box sx={{ border: '1px solid #ddd', borderRadius: 1, p: 0, display: 'flex', flexDirection: 'column', gap: 2, height: '100%', minHeight: 0, overflow: 'hidden' }}>
+              {/*
               <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <Typography variant="h6" fontWeight="bold" sx={{ color: '#2184be' }}>
                   Archivos del Personal
@@ -487,10 +671,12 @@ export default class DictadoInforme extends React.Component {
                     <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#333', mb: 1 }}>
                       Foto
                     </Typography>
-                    <Box sx={{ width: 120, height: 160, border: '1px solid #ddd', borderRadius: 1, overflow: 'hidden', bgcolor: '#fafafa' }}>
-                      {this.state.staffFirma && (
-                        <img src={this.state.staffFirma} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      )}
+                    <Box sx={{ width: 120, height: 160, border: '1px solid #ddd', borderRadius: 1, overflow: 'hidden', bgcolor: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {this.state.staffLoading && !this.state.staffPhoto ? (
+                        <CircularProgress size={24} />
+                      ) : this.state.staffPhoto ? (
+                        <img src={this.state.staffPhoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : null}
                     </Box>
                   </Box>
                   <Box sx={{ flex: 1 }}>
@@ -505,6 +691,7 @@ export default class DictadoInforme extends React.Component {
                   </Box>
                 </Box>
               </Box>
+              */}
               <Accordion
                 expanded={this.state.accordionTemplatesExpanded}
                 onChange={(_, exp) => this.setState({ accordionTemplatesExpanded: exp })}
@@ -572,7 +759,7 @@ export default class DictadoInforme extends React.Component {
                             onClick={() => {
                               const tpl = String(p.plantilla || '');
                               const withVars = this.applyTemplateVariables(tpl);
-                              this.setState({ html: withVars, templateRaw: tpl }, () => {
+                              this.setState({ html: withVars, templateRaw: tpl, lastChangeSource: 'system' }, () => {
                                 try {
                                   if (this.state.editorInst) {
                                     this.state.editorInst.value = this.state.html;
@@ -670,7 +857,7 @@ export default class DictadoInforme extends React.Component {
               const p = this.state.previewPlantilla;
               const tpl = String((p && p.plantilla) || '');
               const withVars = this.applyTemplateVariables(tpl);
-              this.setState({ previewOpen: false, html: withVars, templateRaw: tpl }, () => { try { if (this.state.editorInst) this.state.editorInst.value = this.state.html; } catch {} });
+              this.setState({ previewOpen: false, html: withVars, templateRaw: tpl, lastChangeSource: 'system' }, () => { try { if (this.state.editorInst) this.state.editorInst.value = this.state.html; } catch {} });
             }}>Usar esta</Button>
           </DialogActions>
         </Dialog>

@@ -124,7 +124,7 @@ const DEFAULT_TEMPLATE_HTML = `<table style="border-collapse: collapse; width: 7
 	<td style="width: 66.3564%; border-color: rgb(61, 133, 198); line-height: 1;"><span style="font-size: 14px;"><strong style="font-family: Arial, Helvetica, sans-serif;">TITULO 1: <br></strong><span style="font-family: Arial, Helvetica, sans-serif;">Texto de contenido para plantillas generales.</span><strong style="font-family: Arial, Helvetica, sans-serif;"><br>TITULO 2: <br></strong><span style="font-family: Arial, Helvetica, sans-serif;">Texto de contenido para plantillas generales.</span><strong style="font-family: Arial, Helvetica, sans-serif;"><br> TITULO 3: Texto de contenido para plantillas generales.<br></strong><strong style="font-family: Arial, Helvetica, sans-serif;"> <br>DIAGNÓSTICO XXXXXXX: <br>  1.ABC&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <br> 2.DEF<br>  3.GHI</strong></span><br></td><td style="width: 33.5106%; text-align: center; vertical-align: middle;">&nbsp;&nbsp;<span style="color: rgb(71, 139, 147); font-size: 14pt;"><strong><span style="color: #000000;"><span style="font-size: 14pt;">[##FIRMA_MEDICO##]</span></span></strong></span><br></td></tr></tbody></table><p>Av. Hoyos Rubio 2397, Cajamarca</p>`;
 
 // Componente Editor de Texto con Jodit
-export const RichTextEditor = memo(({ value, onChange, placeholder = "Escriba aquí...", onReady }) => {
+export const RichTextEditor = memo(({ value, onChange, placeholder = "Escriba aquí...", onReady, applyValueUpdates = true }) => {
   const editorRef = React.useRef(null);
   const headerInputRef = React.useRef(null);
   const footerInputRef = React.useRef(null);
@@ -310,6 +310,7 @@ export const RichTextEditor = memo(({ value, onChange, placeholder = "Escriba aq
   }, []);
 
   useEffect(() => {
+    if (!applyValueUpdates) return;
     const inst = editorRef.current?.editor;
     if (!inst) return;
     const newVal = typeof value === 'string' ? value : '';
@@ -332,18 +333,45 @@ export const RichTextEditor = memo(({ value, onChange, placeholder = "Escriba aq
         inst.value = newVal;
       }
     }
-  }, [value]);
+  }, [value, applyValueUpdates]);
 
   const previewHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"/><style>@page{size:A4;margin:${pageMargin}px}body{font-family:Arial, sans-serif;color:#333} .page{width:${pageWidthPx}px;min-height:${pageHeightPx}px;margin:0 auto;background:white} .header{margin-bottom:16px;text-align:center} .content{min-height:${pageHeightPx - pageMargin * 2 - 80}px} .footer{position:fixed;bottom:0;left:0;right:0;text-align:center;border-top:1px solid #ddd;padding-top:8px;background:white} table{width:100%;border-collapse:collapse;table-layout:fixed;border:1px solid #999} th,td{vertical-align:top;border:1px solid #999;padding:0} td p, th p{margin:0;} p:empty{display:none;} p:has(> img:only-child){line-height:0;margin:0;} img+br{display:none} figure{margin:0;display:flex;justify-content:center;align-items:center} img{max-width:100%;height:auto;object-fit:contain;display:block;margin:0 auto} @media print{.page{width:auto;min-height:auto;box-shadow:none}} </style></head><body><div class="page"><div class="header">${previewHeader || ''}</div><div class="content">${value || ''}</div></div><div class="footer">${previewFooter || ''}</div></body></html>`;
 
   const handlePrint = () => {
-    const win = window.open('');
+    const win = window.open('', '_blank');
     if (!win) return;
-    win.document.write(previewHtml);
-    win.document.close();
-    win.focus();
-    win.print();
-    win.close();
+    const doPrint = () => {
+      try { win.focus(); } catch {}
+      try { win.print(); } catch {}
+      setTimeout(() => { try { win.close(); } catch {} }, 100);
+    };
+    try { win.document.open(); } catch {}
+    try { win.document.write(previewHtml); } catch {}
+    try { win.document.close(); } catch {}
+    const tryPrintWhenReady = () => {
+      try {
+        const imgs = win.document && win.document.images;
+        if (imgs && imgs.length > 0) {
+          let pending = imgs.length;
+          const done = () => { if (--pending <= 0) doPrint(); };
+          for (let i = 0; i < imgs.length; i++) {
+            const img = imgs[i];
+            if (img.complete) { done(); } else {
+              img.addEventListener('load', done);
+              img.addEventListener('error', done);
+            }
+          }
+          if (pending <= 0) doPrint();
+        } else {
+          doPrint();
+        }
+      } catch { doPrint(); }
+    };
+    if (win.document && win.document.readyState === 'complete') {
+      requestAnimationFrame(tryPrintWhenReady);
+    } else {
+      win.addEventListener('load', tryPrintWhenReady);
+    }
   };
 
   return (
@@ -452,7 +480,7 @@ export const RichTextEditor = memo(({ value, onChange, placeholder = "Escriba aq
       <Box sx={{ width: `${pageWidthPx}px`, minHeight: `${pageHeightPx}px`, bgcolor: 'white', mx: 'auto', boxShadow: 2, p: 0 }}>
         <JoditEditor
           ref={editorRef}
-          value={value || ''}
+          value={applyValueUpdates ? (value || '') : undefined}
           config={joditConfig}
           onChange={(content) => onChange?.(content)}
         />
