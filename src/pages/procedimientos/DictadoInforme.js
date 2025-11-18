@@ -211,9 +211,53 @@ export default class DictadoInforme extends React.Component {
       const src = item?.dataUrl || this.buildDataUrlFromItem(item) || this.resolveImageSrc(item);
       if (!src) return;
       const isVideo = String(item.mimeType || item.typeArchive || '').toLowerCase().startsWith('video/');
-      const htmlNode = isVideo ? `<video src="${src}" controls />` : `<img src="${src}" />`;
-      if (inst.s && typeof inst.s.insertHTML === 'function') inst.s.insertHTML(htmlNode);
-      else if (inst.selection && typeof inst.selection.insertHTML === 'function') inst.selection.insertHTML(htmlNode);
+      if (inst.s && typeof inst.s.focus === 'function') inst.s.focus(); else if (typeof inst.focus === 'function') inst.focus();
+      setTimeout(() => {
+        try {
+          const doc = inst.editorDocument || inst.iframe?.contentWindow?.document || inst.ownerDocument || document;
+          let node;
+          if (isVideo) {
+            const v = doc.createElement('video');
+            v.setAttribute('src', src);
+            v.setAttribute('controls', 'true');
+            v.style.maxWidth = '100%';
+            v.style.maxHeight = '100%';
+            v.style.display = 'block';
+            v.style.margin = '0 auto';
+            v.style.objectFit = 'contain';
+            node = v;
+          } else {
+            const img = doc.createElement('img');
+            img.setAttribute('src', src);
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+            img.style.display = 'block';
+            img.style.margin = '0 auto';
+            img.style.objectFit = 'contain';
+            const fig = doc.createElement('figure');
+            fig.style.lineHeight = '0';
+            fig.style.margin = '0';
+            fig.appendChild(img);
+            node = fig;
+          }
+          if (inst.s && typeof inst.s.insertNode === 'function') { inst.s.insertNode(node); }
+          else if (inst.selection && typeof inst.selection.insertNode === 'function') { inst.selection.insertNode(node); }
+          else if (inst.s && typeof inst.s.insertHTML === 'function') { inst.s.insertHTML(node.outerHTML); }
+          else if (inst.selection && typeof inst.selection.insertHTML === 'function') { inst.selection.insertHTML(node.outerHTML); }
+          else if (typeof inst.execCommand === 'function') { inst.execCommand('insertHTML', node.outerHTML); }
+          else {
+            const sel = doc.getSelection();
+            if (sel && sel.rangeCount) {
+              const range = sel.getRangeAt(0);
+              range.deleteContents();
+              range.insertNode(node);
+            } else {
+              inst.value = (inst.value || '') + node.outerHTML;
+            }
+          }
+          try { inst.events && inst.events.fire && inst.events.fire('change'); } catch {}
+        } catch {}
+      }, 0);
     } catch {}
   };
 
