@@ -381,6 +381,9 @@ const cargarDepartamentos = async () => {
     distrito: '',
     pais: '',
     tipoDoc: '',
+    photo: '',
+    firma: '',
+    cabeceraPlantilla: ''
   });
 
   const [editFormData, setEditFormData] = useState({
@@ -407,6 +410,7 @@ const cargarDepartamentos = async () => {
     });
 
   const [errors, setErrors] = useState({});
+  const [fileInputKeys, setFileInputKeys] = useState({ photo: 0, firma: 0, cabeceraPlantilla: 0 });
   
   // Estado para búsqueda
   const [searchTerm, setSearchTerm] = useState('');
@@ -502,6 +506,9 @@ const cargarDepartamentos = async () => {
       distrito: '',
       pais: '',
       tipoDoc: '',
+      photo: '',
+      firma: '',
+      cabeceraPlantilla: ''
     });
     setErrors({});
   };
@@ -550,6 +557,20 @@ const cargarDepartamentos = async () => {
         setErrors(prev => ({ ...prev, [field]: '' }));
       }
     }, [errors]);
+
+  const handleFileUpload = useCallback((field, file) => {
+    if (!file) {
+      setFormData(prev => ({ ...prev, [field]: '' }));
+      setFileInputKeys(prev => ({ ...prev, [field]: (prev[field] || 0) + 1 }));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setFormData(prev => ({ ...prev, [field]: e.target.result }));
+      setFileInputKeys(prev => ({ ...prev, [field]: (prev[field] || 0) + 1 }));
+    };
+    reader.readAsDataURL(file);
+  }, []);
 
   // Función para manejar cambios en selects con lógica de cascada (crear)
     const handleSelectChangeWithCascade = useCallback((field, value) => {
@@ -893,10 +914,20 @@ const cargarDepartamentos = async () => {
           setLoading(true);
           console.log('📤 Creando Personal...');
   
-          // Asegurarse de que estado sea un ID numérico
+          // Asegurarse de que estado sea un ID numérico y convertir imágenes a base64 plano
+          const toPlainBase64 = (d) => {
+            try {
+              if (!d || typeof d !== 'string') return '';
+              const i = d.indexOf(',');
+              return i >= 0 ? d.slice(i + 1) : d.trim();
+            } catch { return ''; }
+          };
           const personalData = {
             ...formData,
-            estado: formData.estado || '10007' // Usar 10007 (activo) como valor por defecto
+            estado: formData.estado || '10007',
+            photo: toPlainBase64(formData.photo),
+            firma: toPlainBase64(formData.firma),
+            cabeceraPlantilla: toPlainBase64(formData.cabeceraPlantilla)
           };
   
           const nuevoPersonal = await staffService.create(personalData);
@@ -1539,6 +1570,53 @@ const cargarDepartamentos = async () => {
                       helperText={errors.correo}
                       size="small"
                     />
+                  </ResponsiveField>
+                </FieldRow>
+              </Paper>
+
+              <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f8f9fa' }}>
+                <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
+                  6. Archivos
+                </Typography>
+                <FieldRow>
+                  <ResponsiveField label="Foto">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                      <Box sx={{ width: 180, height: 220, border: '1px solid #ddd', borderRadius: 1, overflow: 'hidden', bgcolor: '#fafafa' }}>
+                        {formData.photo && (<img src={formData.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />)}
+                      </Box>
+                      <Button variant="outlined" component="label" size="small">
+                        Subir Foto
+                        <input key={fileInputKeys.photo} type="file" hidden accept="image/*" onChange={(e) => { const f = e.target.files && e.target.files[0]; handleFileUpload('photo', f); e.target.value = ''; }} />
+                      </Button>
+                      {formData.photo && (<Button variant="text" size="small" color="error" onClick={() => handleFileUpload('photo', null)}>Quitar</Button>)}
+                    </Box>
+                  </ResponsiveField>
+                
+                  <ResponsiveField label="Firma">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                      <Box sx={{ width: 340, height: 180, border: '1px solid #ddd', borderRadius: 1, overflow: 'hidden', bgcolor: '#fafafa' }}>
+                        {formData.firma && (<img src={formData.firma} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />)}
+                      </Box>
+                      <Button variant="outlined" component="label" size="small">
+                        Subir Firma
+                        <input key={fileInputKeys.firma} type="file" hidden accept="image/*" onChange={(e) => { const f = e.target.files && e.target.files[0]; handleFileUpload('firma', f); e.target.value = ''; }} />
+                      </Button>
+                      {formData.firma && (<Button variant="text" size="small" color="error" onClick={() => handleFileUpload('firma', null)}>Quitar</Button>)}
+                    </Box>
+                  </ResponsiveField>
+                </FieldRow>
+                <FieldRow>
+                  <ResponsiveField label="Cabecera de Plantilla">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                      <Box sx={{ flex: '1 1 auto', minWidth: 420, height: 200, border: '1px solid #ddd', borderRadius: 1, overflow: 'hidden', bgcolor: '#fafafa' }}>
+                        {formData.cabeceraPlantilla && (<img src={formData.cabeceraPlantilla} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />)}
+                      </Box>
+                      <Button variant="outlined" component="label" size="small">
+                        Subir Cabecera
+                        <input key={fileInputKeys.cabeceraPlantilla} type="file" hidden accept="image/*" onChange={(e) => { const f = e.target.files && e.target.files[0]; handleFileUpload('cabeceraPlantilla', f); e.target.value = ''; }} />
+                      </Button>
+                      {formData.cabeceraPlantilla && (<Button variant="text" size="small" color="error" onClick={() => handleFileUpload('cabeceraPlantilla', null)}>Quitar</Button>)}
+                    </Box>
                   </ResponsiveField>
                 </FieldRow>
               </Paper>

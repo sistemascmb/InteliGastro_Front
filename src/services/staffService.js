@@ -128,6 +128,11 @@ export const staffService = {
           departamento: data.departamento,
           provincia: data.provincia,
           distrito: data.distrito,
+          
+          photo: data.photo,
+          firma: data.firma,
+          cabeceraPlantilla: data.cabeceraPlantilla,
+
   
           // Auditoría
           createdAt: data.createdAt,
@@ -231,6 +236,11 @@ export const staffService = {
         distrito: personalData.distrito, // Condebamba
         pais: personalData.pais, // Perú
         tipoDoc: 1,
+
+        photo: personalData.photo,
+        firma: personalData.firma,
+        cabeceraPlantilla: personalData.cabeceraPlantilla,
+
         createdAt: new Date().toISOString(),
         createdBy: 'Arnold' // Usuario de prueba
       };
@@ -301,6 +311,11 @@ export const staffService = {
         distrito: personalData.distrito, // Condebamba
         pais: personalData.pais, // Perú
         tipoDoc: 1,
+
+        photo: personalData.photo,
+        firma: personalData.firma,
+        cabeceraPlantilla: personalData.cabeceraPlantilla,
+        
         updatedAt: new Date().toISOString(),
         updatedBy: 'Arnold',
         isDeleted: false
