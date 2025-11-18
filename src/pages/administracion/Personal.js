@@ -397,7 +397,7 @@ const cargarDepartamentos = async () => {
       celular: '',
       correo: '',
       direccion: '',
-      estado: '10007', // activo
+      estado: '10007',
       titulo: '',
       grado: '',
       nLicencia: '',
@@ -407,10 +407,14 @@ const cargarDepartamentos = async () => {
       distrito: '',
       pais: '',
       tipoDoc: '',
+      photo: '',
+      firma: '',
+      cabeceraPlantilla: ''
     });
 
   const [errors, setErrors] = useState({});
   const [fileInputKeys, setFileInputKeys] = useState({ photo: 0, firma: 0, cabeceraPlantilla: 0 });
+  const [editFileInputKeys, setEditFileInputKeys] = useState({ photo: 0, firma: 0, cabeceraPlantilla: 0 });
   
   // Estado para búsqueda
   const [searchTerm, setSearchTerm] = useState('');
@@ -526,7 +530,7 @@ const cargarDepartamentos = async () => {
       celular: '',
       correo: '',
       direccion: '',
-      estado: '10007', // activo
+      estado: '10007',
       titulo: '',
       grado: '',
       nLicencia: '',
@@ -536,6 +540,9 @@ const cargarDepartamentos = async () => {
       distrito: '',
       pais: '',
       tipoDoc: '',
+      photo: '',
+      firma: '',
+      cabeceraPlantilla: ''
     });
     setErrors({});
   };
@@ -568,6 +575,20 @@ const cargarDepartamentos = async () => {
     reader.onload = (e) => {
       setFormData(prev => ({ ...prev, [field]: e.target.result }));
       setFileInputKeys(prev => ({ ...prev, [field]: (prev[field] || 0) + 1 }));
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  const handleEditFileUpload = useCallback((field, file) => {
+    if (!file) {
+      setEditFormData(prev => ({ ...prev, [field]: '' }));
+      setEditFileInputKeys(prev => ({ ...prev, [field]: (prev[field] || 0) + 1 }));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setEditFormData(prev => ({ ...prev, [field]: e.target.result }));
+      setEditFileInputKeys(prev => ({ ...prev, [field]: (prev[field] || 0) + 1 }));
     };
     reader.readAsDataURL(file);
   }, []);
@@ -791,6 +812,27 @@ const cargarDepartamentos = async () => {
             tipoDoc: person.tipoDoc
           };
           setEditFormData(initialFormData);
+
+          try {
+            // Cargar archivos existentes del personal para edición
+            const byId = await staffService.getById(person.id);
+            const d = (byId && byId.data) || {};
+            const toDataUrl = (raw) => {
+              try {
+                if (!raw) return '';
+                const s = String(raw).trim();
+                if (s.startsWith('data:')) return s;
+                const mime = s.startsWith('/9j/') ? 'image/jpeg' : (s.startsWith('iVBOR') ? 'image/png' : (s.startsWith('R0lGOD') ? 'image/gif' : 'image/jpeg'));
+                return `data:${mime};base64,${s}`;
+              } catch { return ''; }
+            };
+            setEditFormData(prev => ({
+              ...prev,
+              photo: toDataUrl(d.photo) || prev.photo,
+              firma: toDataUrl(d.firma) || prev.firma,
+              cabeceraPlantilla: toDataUrl(d.cabeceraPlantilla) || prev.cabeceraPlantilla
+            }));
+          } catch {}
     
           // Verificar si el departamento existe en departamentosD y obtener el ID correcto
           let departamentoId = '';
@@ -868,8 +910,13 @@ const cargarDepartamentos = async () => {
           // Asegurarnos de que el estado se mantenga como ID numérico
     initialFormData.estado = person.estado || '10007';
 
-    // Actualizar el formulario con todos los valores validados
-    setEditFormData(initialFormData);
+    // Actualizar el formulario con todos los valores validados preservando imágenes cargadas
+    setEditFormData(prev => ({
+      ...initialFormData,
+      photo: prev.photo || initialFormData.photo || '',
+      firma: prev.firma || initialFormData.firma || '',
+      cabeceraPlantilla: prev.cabeceraPlantilla || initialFormData.cabeceraPlantilla || ''
+    }));
   } catch (error) {
     console.error('Error al cargar datos de ubicación:', error);
     setError('Error al cargar datos de ubicación');
@@ -885,9 +932,31 @@ const cargarDepartamentos = async () => {
     clearForm();
   };
 
-  const handleOpenDetailModal = (person) => {
-    setSelectedPersonal(person);
-    setOpenDetailModal(true);
+  const handleOpenDetailModal = async (person) => {
+    try {
+      const byId = await staffService.getById(person.id);
+      const d = (byId && byId.data) || {};
+      const toDataUrl = (raw) => {
+        try {
+          if (!raw) return '';
+          const s = String(raw).trim();
+          if (s.startsWith('data:')) return s;
+          const mime = s.startsWith('/9j/') ? 'image/jpeg' : (s.startsWith('iVBOR') ? 'image/png' : (s.startsWith('R0lGOD') ? 'image/gif' : 'image/jpeg'));
+          return `data:${mime};base64,${s}`;
+        } catch { return ''; }
+      };
+      const withImages = {
+        ...person,
+        photo: toDataUrl(d.photo) || person.photo || '',
+        firma: toDataUrl(d.firma) || person.firma || '',
+        cabeceraPlantilla: toDataUrl(d.cabeceraPlantilla) || person.cabeceraPlantilla || ''
+      };
+      setSelectedPersonal(withImages);
+      setOpenDetailModal(true);
+    } catch {
+      setSelectedPersonal(person);
+      setOpenDetailModal(true);
+    }
   };
 
   const handleCloseDetailModal = () => {
@@ -959,9 +1028,19 @@ const cargarDepartamentos = async () => {
         console.log('📤 Editando personal...');
 
         // Asegurarse de que estado sea un ID numérico
+        const toPlainBase64 = (d) => {
+          try {
+            if (!d || typeof d !== 'string') return '';
+            const i = d.indexOf(',');
+            return i >= 0 ? d.slice(i + 1) : d.trim();
+          } catch { return ''; }
+        };
         const formDataToSend = {
           ...editFormData,
-          estado: editFormData.estado === 10007 ? true : false
+          estado: editFormData.estado === 10007 ? true : false,
+          photo: toPlainBase64(editFormData.photo),
+          firma: toPlainBase64(editFormData.firma),
+          cabeceraPlantilla: toPlainBase64(editFormData.cabeceraPlantilla)
         };
         const personalActualizado = await staffService.update(selectedPersonal.id, formDataToSend);
         console.log('✅ Personal actualizado:', personalActualizado);
@@ -2284,6 +2363,55 @@ const cargarDepartamentos = async () => {
                 </FieldRow>
               </Box>
             </Paper>
+
+            <Paper sx={{ mb: 3, boxShadow: 2 }}>
+              <SectionHeader title="Archivos" />
+              <Box sx={{ p: 4 }}>
+                <FieldRow>
+                  <ResponsiveField label="Foto">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                      <Box sx={{ width: 180, height: 220, border: '1px solid #ddd', borderRadius: 1, overflow: 'hidden', bgcolor: '#fafafa' }}>
+                        {editFormData.photo && (<img src={editFormData.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />)}
+                      </Box>
+                      <Button variant="outlined" component="label" size="small">
+                        Subir Foto
+                        <input key={editFileInputKeys.photo} type="file" hidden accept="image/*" onChange={(e) => { const f = e.target.files && e.target.files[0]; handleEditFileUpload('photo', f); e.target.value = ''; }} />
+                      </Button>
+                      {editFormData.photo && (<Button variant="text" size="small" color="error" onClick={() => handleEditFileUpload('photo', null)}>Quitar</Button>)}
+                    </Box>
+                  </ResponsiveField>
+                </FieldRow>
+                <FieldRow>
+                  <ResponsiveField label="Firma">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                      <Box sx={{ width: 340, height: 180, border: '1px solid #ddd', borderRadius: 1, overflow: 'hidden', bgcolor: '#fafafa' }}>
+                        {editFormData.firma && (<img src={editFormData.firma} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />)}
+                      </Box>
+                      <Button variant="outlined" component="label" size="small">
+                        Subir Firma
+                        <input key={editFileInputKeys.firma} type="file" hidden accept="image/*" onChange={(e) => { const f = e.target.files && e.target.files[0]; handleEditFileUpload('firma', f); e.target.value = ''; }} />
+                      </Button>
+                      {editFormData.firma && (<Button variant="text" size="small" color="error" onClick={() => handleEditFileUpload('firma', null)}>Quitar</Button>)}
+                    </Box>
+                  </ResponsiveField>
+                </FieldRow>
+                <FieldRow>
+                  <ResponsiveField label="Cabecera de Plantilla">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                      <Box sx={{ flex: '1 1 auto', minWidth: 420, height: 200, border: '1px solid #ddd', borderRadius: 1, overflow: 'hidden', bgcolor: '#fafafa' }}>
+                        {editFormData.cabeceraPlantilla && (<img src={editFormData.cabeceraPlantilla} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />)}
+                      </Box>
+                      <Button variant="outlined" component="label" size="small">
+                        Subir Cabecera
+                        <input key={editFileInputKeys.cabeceraPlantilla} type="file" hidden accept="image/*" onChange={(e) => { const f = e.target.files && e.target.files[0]; handleEditFileUpload('cabeceraPlantilla', f); e.target.value = ''; }} />
+                      </Button>
+                      {editFormData.cabeceraPlantilla && (<Button variant="text" size="small" color="error" onClick={() => handleEditFileUpload('cabeceraPlantilla', null)}>Quitar</Button>)}
+                    </Box>
+                  </ResponsiveField>
+                </FieldRow>
+              </Box>
+            </Paper>
+
           </DialogContent>
           <DialogActions sx={{ p: 3, gap: 2 }}>
             <Button
@@ -2412,6 +2540,40 @@ const cargarDepartamentos = async () => {
                     </Grid>
                   )}*/}
                 </Grid>
+              </Paper>
+
+              <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f8f9fa' }}>
+                <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
+                  Archivos
+                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <FieldRow>
+                    <ResponsiveField label="Foto">
+                      <Box sx={{ width: 120, height: 160, border: '1px solid #ddd', borderRadius: 1, overflow: 'hidden', bgcolor: '#fafafa' }}>
+                        {selectedPersonal?.photo && (
+                          <img src={selectedPersonal.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        )}
+                      </Box>
+                    </ResponsiveField>
+                  
+                    <ResponsiveField label="Firma">
+                      <Box sx={{ width: 260, height: 110, border: '1px solid #ddd', borderRadius: 1, overflow: 'hidden', bgcolor: '#fafafa' }}>
+                        {selectedPersonal?.firma && (
+                          <img src={selectedPersonal.firma} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                        )}
+                      </Box>
+                    </ResponsiveField>
+                  </FieldRow>
+                  <FieldRow>
+                    <ResponsiveField label="Cabecera de Plantilla">
+                      <Box sx={{ flex: '1 1 auto', minWidth: 420, height: 160, border: '1px solid #ddd', borderRadius: 1, overflow: 'hidden', bgcolor: '#fafafa' }}>
+                        {selectedPersonal?.cabeceraPlantilla && (
+                          <img src={selectedPersonal.cabeceraPlantilla} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        )}
+                      </Box>
+                    </ResponsiveField>
+                  </FieldRow>
+                </Box>
               </Paper>
 
               {/* Información de Contacto */}
