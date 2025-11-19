@@ -655,12 +655,51 @@ export default class DictadoInforme extends React.Component {
     } catch {}
   };
 
+  ensureHtml2Pdf = async () => {
+    if (window.html2pdf) return window.html2pdf;
+    return await new Promise((resolve) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js';
+      s.onload = () => resolve(window.html2pdf || null);
+      s.onerror = () => resolve(null);
+      document.head.appendChild(s);s
+    });
+  };
+
+  arrayBufferToBase64 = (buffer) => {
+    try {
+      const bytes = new Uint8Array(buffer || 0);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+      return btoa(binary);
+    } catch { return ''; }
+  };
+
   generatePdfTextBase64 = async (html) => {
     try {
-      const docHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"/></head><body>' + String(html || '') + '</body></html>';
-      const b64 = btoa(unescape(encodeURIComponent(docHtml)));
-      return 'data:text/html;base64,' + b64;
-    } catch { return ''; }
+      const h2pdf = await this.ensureHtml2Pdf();
+      if (!h2pdf) throw new Error('lib');
+      const container = document.createElement('div');
+      container.innerHTML = String(html || '');
+      container.style.width = '794px';
+      container.style.margin = '0 auto';
+      const opt = { margin: 0, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css','legacy'] } };
+      return await new Promise((resolve, reject) => {
+        h2pdf().from(container).set(opt).toPdf().get('pdf').then((pdf) => {
+          try { resolve(pdf.output('datauristring')); }
+          catch {
+            try { const buf = pdf.output('arraybuffer'); resolve('data:application/pdf;base64,' + this.arrayBufferToBase64(buf)); }
+            catch (e) { reject(e); }
+          }
+        }).catch(reject);
+      });
+    } catch {
+      try {
+        const docHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"/></head><body>' + String(html || '') + '</body></html>';
+        const b64 = btoa(unescape(encodeURIComponent(docHtml)));
+        return 'data:text/html;base64,' + b64;
+      } catch { return ''; }
+    }
   };
 
   handleGuardarEstudio = async () => {
@@ -672,7 +711,7 @@ export default class DictadoInforme extends React.Component {
       const payload = { contenido, numeroEstudio: d.numeroEstudio || '', pacientId: d.pacientId || '', personalId: d.personalId || '', informePdf: pdfText };
       const procedimientoActualizado = await appointmentsService.update_estudio_dictado(d.numeroEstudio, payload);
       console.log('✅ Procedimiento guardado:', procedimientoActualizado);
-      this.setState({ snackbarOpen: true, snackbarMessage: 'Dictado guardado correctamente', snackbarSeverity: 'success', datos: { ...d, dictadoGuardado: '1' } });
+      this.setState({ snackbarOpen: true, snackbarMessage: 'Dictado guardado correctamente', snackbarSeverity: 'success', datos: { ...d, dictadoGuardado: '1', informePdf: pdfText } });
     } catch (err) {
       this.setState({ snackbarOpen: true, snackbarMessage: 'Error al guardar el dictado', snackbarSeverity: 'error' });
     }
@@ -685,6 +724,36 @@ export default class DictadoInforme extends React.Component {
       const d = this.state.datos || {};
       const payload = { contenido, numeroEstudio: d.numeroEstudio || '', pacientId: d.pacientId || '', personalId: d.personalId || '' };
       this.setState({ terminarProcessingOpen: true, terminarPayload: payload });
+    } catch {}
+  };
+
+  handleDescargarInformePdf = () => {
+    try {
+      const d = this.state.datos || {};
+      let dataUrl = String(d.informePdf || '');
+      if (!dataUrl) return;
+      if (!dataUrl.startsWith('data:')) dataUrl = 'data:application/pdf;base64,' + dataUrl;
+      if (dataUrl.startsWith('data:text/html')) {
+        try {
+          const parts = dataUrl.split(',');
+          const html = decodeURIComponent(escape(atob(parts[1] || '')));
+          this.generatePdfTextBase64(html).then((pdfUrl) => {
+            const a = document.createElement('a');
+            a.href = pdfUrl;
+            a.download = `Informe_${d.numeroEstudio || ''}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          });
+          return;
+        } catch {}
+      }
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `Informe_${d.numeroEstudio || ''}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     } catch {}
   };
 
@@ -850,6 +919,7 @@ export default class DictadoInforme extends React.Component {
 
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button variant="contained" color="primary" onClick={this.handleGuardarEstudio}>Guardar Dictado</Button>
+              <Button variant="contained" color="success" onClick={this.handleDescargarInformePdf} disabled={!this.state.datos?.informePdf}>Descargar PDF</Button>
               {/*<Button variant="contained" color="secondary" onClick={this.handleEliminarFirma}>Eliminar firma</Button>*/}
               <Button variant="contained" color="warning" onClick={this.handleTerminarEstudio} disabled={String(this.state.datos?.dictadoGuardado || '') !== '1'}>Terminar Dictado</Button>
               <Button variant="contained" color="error" onClick={() => window.location.assign('/procedimientos/dictadoproc?refresh=1')}>Cerrar dictado</Button>
