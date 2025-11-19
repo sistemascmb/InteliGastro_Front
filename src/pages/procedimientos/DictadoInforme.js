@@ -810,12 +810,16 @@ export default class DictadoInforme extends React.Component {
 
   handleTerminarEstudio = async () => {
     try {
-      const inst = this.state.editorInst;
       const contenido = await this.getCleanEditorHtml();
+      const pdfText = await this.generatePdfTextBase64(contenido);
       const d = this.state.datos || {};
-      const payload = { contenido, numeroEstudio: d.numeroEstudio || '', pacientId: d.pacientId || '', personalId: d.personalId || '' };
-      this.setState({ terminarProcessingOpen: true, terminarPayload: payload });
-    } catch {}
+      const payload = { contenido, numeroEstudio: d.numeroEstudio || '', pacientId: d.pacientId || '', personalId: d.personalId || '', informePdf: pdfText, estudioTeminadoId: '2' };
+      const procedimientoActualizado = await appointmentsService.update_estudio_dictado_terminado(d.numeroEstudio, payload);
+      console.log('✅ Dictado terminado:', procedimientoActualizado);
+      this.setState({ snackbarOpen: true, snackbarMessage: 'Dictado terminado correctamente', snackbarSeverity: 'success', datos: { ...d, dictadoGuardado: '1', informePdf: pdfText, estudioTeminadoId: '2' } });
+    } catch (err) {
+      this.setState({ snackbarOpen: true, snackbarMessage: 'Error al terminar el estudio', snackbarSeverity: 'error' });
+    }
   };
 
   handleDescargarInformePdf = () => {
@@ -998,10 +1002,10 @@ export default class DictadoInforme extends React.Component {
             </Box>
 
             <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button variant="contained" color="primary" onClick={this.handleGuardarEstudio}>Guardar Dictado</Button>
-              <Button variant="contained" color="success" onClick={this.handleDescargarInformePdf} disabled={!this.state.datos?.informePdf}>Descargar PDF</Button>
+              <Button variant="contained" color="primary" onClick={this.handleGuardarEstudio} disabled={String(this.state.datos?.estudioTeminadoId || '') === '2'}>Guardar Dictado</Button>
+              <Button variant="contained" color="success" onClick={this.handleDescargarInformePdf} disabled={String(this.state.datos?.estudioTeminadoId || '') === '5' || !this.state.datos?.informePdf}>Descargar PDF</Button>
               {/*<Button variant="contained" color="secondary" onClick={this.handleEliminarFirma}>Eliminar firma</Button>*/}
-              <Button variant="contained" color="warning" onClick={this.handleTerminarEstudio} disabled={String(this.state.datos?.dictadoGuardado || '') !== '1'}>Terminar Dictado</Button>
+              <Button variant="contained" color="warning" onClick={this.handleTerminarEstudio} disabled={String(this.state.datos?.estudioTeminadoId || '') === '2' || String(this.state.datos?.dictadoGuardado || '') !== '2'}>Terminar Dictado</Button>
               <Button variant="contained" color="error" onClick={() => window.location.assign('/procedimientos/dictadoproc?refresh=1')}>Cerrar dictado</Button>
             </Box>
 
@@ -1105,6 +1109,7 @@ export default class DictadoInforme extends React.Component {
                           <Button
                             size="small"
                             variant="outlined"
+                            disabled={String(this.state.datos?.estudioTeminadoId || '') === '2'}
                             onClick={() => this.setState({ previewPlantilla: p, previewOpen: true })}
                           >
                             Visualizar
@@ -1112,6 +1117,7 @@ export default class DictadoInforme extends React.Component {
                           <Button
                             size="small"
                             variant="contained"
+                            disabled={String(this.state.datos?.estudioTeminadoId || '') === '2'}
                             onClick={() => {
                               const tpl = String(p.plantilla || '');
                               const withVars = this.applyTemplateVariables(tpl);
@@ -1170,10 +1176,10 @@ export default class DictadoInforme extends React.Component {
                           <video src={img.dataUrl || this.buildDataUrlFromItem(img) || this.resolveImageSrc(img)} muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => this.handleMediaError(idx)} />
                         )}
                         <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                          <Button size="small" variant="outlined" onClick={() => this.setState({ mediaPreviewOpen: true, mediaPreviewItem: img })}>
+                          <Button size="small" variant="outlined" disabled={String(this.state.datos?.estudioTeminadoId || '') === '2'} onClick={() => this.setState({ mediaPreviewOpen: true, mediaPreviewItem: img })}>
                             Visualizar
                           </Button>
-                          <Button size="small" variant="contained" disabled={!this.state.editorInst} onClick={() => this.insertMediaItem(img)}>
+                          <Button size="small" variant="contained" disabled={!this.state.editorInst || String(this.state.datos?.estudioTeminadoId || '') === '2'} onClick={() => this.insertMediaItem(img)}>
                             Insertar
                           </Button>
                         </Box>
@@ -1199,7 +1205,7 @@ export default class DictadoInforme extends React.Component {
           </DialogContent>
           <DialogActions>
             <Button onClick={() => this.setState({ mediaPreviewOpen: false, mediaPreviewItem: null })}>Cerrar</Button>
-            <Button variant="contained" onClick={() => { const it = this.state.mediaPreviewItem; this.insertMediaItem(it); this.setState({ mediaPreviewOpen: false, mediaPreviewItem: null }); }}>Insertar</Button>
+            <Button variant="contained" disabled={String(this.state.datos?.estudioTeminadoId || '') === '2'} onClick={() => { const it = this.state.mediaPreviewItem; this.insertMediaItem(it); this.setState({ mediaPreviewOpen: false, mediaPreviewItem: null }); }}>Insertar</Button>
           </DialogActions>
         </Dialog>
         <Dialog open={this.state.previewOpen} onClose={() => this.setState({ previewOpen: false, previewPlantilla: null })} maxWidth="lg" fullWidth>
@@ -1217,7 +1223,7 @@ export default class DictadoInforme extends React.Component {
             }}>Usar esta</Button>
           </DialogActions>
         </Dialog>
-        <Dialog open={this.state.terminarProcessingOpen} onClose={this.handleCloseTerminarProcessing} maxWidth="sm" fullWidth>
+        <Dialog open={false} onClose={this.handleCloseTerminarProcessing} maxWidth="sm" fullWidth>
           <DialogTitle>Procesando término</DialogTitle>
           <DialogContent dividers>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>

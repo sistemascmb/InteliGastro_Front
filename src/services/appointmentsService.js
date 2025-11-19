@@ -143,7 +143,7 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
       // Filtrar solo recursos no eliminados (isDeleted : false)
       const pacienteActivos = response.filter(proced => !proced.isDeleted 
         && proced.typeOfAttention === 2
-        && (proced.status === 10069));
+         && (proced.status === 10069  || proced.status === 10070  ));
       console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.length);
 
       // Mapeamos los campos del backend a los campos del frontend
@@ -918,7 +918,7 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
     }
   },
 
-  update_estudio_dictado: async (id, pacienteData) => {
+  update_estudio_dictado_terminado: async (id, pacienteData) => {
     try {
       const urlOrigin = `${process.env.REACT_APP_API_URL}/Agenda/${id}`;
       const responseOrigin = await fetch(urlOrigin);
@@ -950,16 +950,16 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
 
         insuranceId: dataOrigin.insuranceId,
         letterOfGuarantee: dataOrigin.letterOfGuarantee,
-        status: dataOrigin.status, //cambio
+        status: 10070, //cambio
         typeOfAttention: dataOrigin.typeOfAttention, 
         anotacionesAdicionales: dataOrigin.anotacionesAdicionales,
         tipoProcedimientoId: dataOrigin.tipoProcedimientoId,
         urgenteId: dataOrigin.urgenteId,
-        estudioTeminadoId: 1,
-        pdfGeneradoId: dataOrigin.pdfGeneradoId ,
-        estructuraHtml: dataOrigin.estructuraHtml ,
-        informePdf: dataOrigin.informePdf ,
-        dictadoGuardado: dataOrigin.dictadoGuardado,
+        estudioTeminadoId: 2,
+        pdfGeneradoId: pacienteData.informePdf ? 1 : 0,
+        estructuraHtml: pacienteData.contenido,
+        informePdf: pacienteData.informePdf || 'null',
+        dictadoGuardado: 1,
 
         updatedAt: new Date().toISOString(),
         updatedBy: 'Arnold',
