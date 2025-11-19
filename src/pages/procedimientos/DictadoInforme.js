@@ -662,7 +662,7 @@ export default class DictadoInforme extends React.Component {
       s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js';
       s.onload = () => resolve(window.html2pdf || null);
       s.onerror = () => resolve(null);
-      document.head.appendChild(s);s
+      document.head.appendChild(s);
     });
   };
 
@@ -674,20 +674,58 @@ export default class DictadoInforme extends React.Component {
       return btoa(binary);
     } catch { return ''; }
   };
-
+  
+  waitForImages = async (root, timeoutMs = 4000) => {
+    try {
+      const imgs = Array.from((root || document).querySelectorAll('img'));
+      if (imgs.length === 0) return;
+      await new Promise((resolve) => {
+        let pending = imgs.length;
+        const done = () => { if (--pending <= 0) resolve(); };
+        setTimeout(resolve, timeoutMs);
+        imgs.forEach((img) => {
+          if (img.complete) { done(); } else {
+            img.addEventListener('load', done);
+            img.addEventListener('error', done);
+          }
+        });
+      });
+    } catch {}
+  };
+  
   generatePdfTextBase64 = async (html) => {
     try {
       const h2pdf = await this.ensureHtml2Pdf();
       if (!h2pdf) throw new Error('lib');
+
+      const mmToPx = (mm) => Math.round(mm * 96 / 25.4);
+      const pageWidthPx = mmToPx(210);
+      const pageHeightPx = mmToPx(297);
+      const marginPx = 20;
+
       const container = document.createElement('div');
-      container.innerHTML = String(html || '');
-      container.style.width = '794px';
-      container.style.margin = '0 auto';
-      const opt = { margin: 0, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css','legacy'] } };
+      const style = document.createElement('style');
+      style.textContent = `@page{size:A4;margin:0} html,body{margin:0;padding:0} .page{width:${pageWidthPx}px;min-height:${pageHeightPx}px;margin:0 auto;background:#fff;color:#333;padding:${marginPx}px} img{max-width:100%;height:auto;display:block} .page table{border-collapse:collapse;table-layout:fixed;width:100%} .page th,.page td{border:1px solid #999} hr{border:0;border-top:1px solid #999} *{-webkit-print-color-adjust:exact; print-color-adjust:exact} *,*::before,*::after{box-sizing:border-box}`;
+      container.appendChild(style);
+      const page = document.createElement('div');
+      page.className = 'page';
+      page.innerHTML = String(html || '');
+      container.appendChild(page);
+
+      await this.waitForImages(container);
+
+      const isSinglePage = page.scrollHeight <= pageHeightPx;
+      const opt = { margin: 0, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css','legacy'] } };
+
       return await new Promise((resolve, reject) => {
         h2pdf().from(container).set(opt).toPdf().get('pdf').then((pdf) => {
-          try { resolve(pdf.output('datauristring')); }
-          catch {
+          try {
+            if (isSinglePage && pdf.internal && typeof pdf.internal.getNumberOfPages === 'function') {
+              const n = pdf.internal.getNumberOfPages();
+              if (n > 1 && typeof pdf.deletePage === 'function') pdf.deletePage(n);
+            }
+            resolve(pdf.output('datauristring'));
+          } catch {
             try { const buf = pdf.output('arraybuffer'); resolve('data:application/pdf;base64,' + this.arrayBufferToBase64(buf)); }
             catch (e) { reject(e); }
           }
@@ -731,29 +769,17 @@ export default class DictadoInforme extends React.Component {
     try {
       const d = this.state.datos || {};
       let dataUrl = String(d.informePdf || '');
+      const fileName = `Informe_${d.numeroEstudio || ''}.pdf`;
       if (!dataUrl) return;
-      if (!dataUrl.startsWith('data:')) dataUrl = 'data:application/pdf;base64,' + dataUrl;
       if (dataUrl.startsWith('data:text/html')) {
         try {
           const parts = dataUrl.split(',');
           const html = decodeURIComponent(escape(atob(parts[1] || '')));
-          this.generatePdfTextBase64(html).then((pdfUrl) => {
-            const a = document.createElement('a');
-            a.href = pdfUrl;
-            a.download = `Informe_${d.numeroEstudio || ''}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-          });
+          PdfTools.fromHtml(html, fileName).then((pdfUrl) => PdfTools.download(pdfUrl, fileName));
           return;
         } catch {}
       }
-      const a = document.createElement('a');
-      a.href = dataUrl;
-      a.download = `Informe_${d.numeroEstudio || ''}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      PdfTools.download(dataUrl, fileName);
     } catch {}
   };
 
@@ -1163,3 +1189,63 @@ export default class DictadoInforme extends React.Component {
     );
   }
 }
+
+export const PdfTools = {
+  ensure: async () => {
+    if (window.html2pdf) return window.html2pdf;
+    return await new Promise((resolve) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js';
+      s.onload = () => resolve(window.html2pdf || null);
+      s.onerror = () => resolve(null);
+      document.head.appendChild(s);
+    });
+  },
+  fromHtml: async (html, fileName = 'Informe.pdf', marginPx = 20) => {
+    const h2pdf = await PdfTools.ensure();
+    if (!h2pdf) throw new Error('lib');
+    const mmToPx = (mm) => Math.round(mm * 96 / 25.4);
+    const pageWidthPx = mmToPx(210);
+    const pageHeightPx = mmToPx(297);
+    const container = document.createElement('div');
+    const style = document.createElement('style');
+    style.textContent = `@page{size:A4;margin:0} html,body{margin:0;padding:0} .page{width:${pageWidthPx}px;min-height:${pageHeightPx}px;margin:0 auto;background:#fff;color:#333;padding:${marginPx}px} img{max-width:100%;height:auto;display:block} .page table{border-collapse:collapse;table-layout:fixed;width:100%} .page th,.page td{border:1px solid #999} hr{border:0;border-top:1px solid #999} *{-webkit-print-color-adjust:exact; print-color-adjust:exact} *,*::before,*::after{box-sizing:border-box}`;
+    container.appendChild(style);
+    const page = document.createElement('div');
+    page.className = 'page';
+    page.innerHTML = String(html || '');
+    container.appendChild(page);
+    await new Promise((res) => {
+      const imgs = Array.from(container.querySelectorAll('img'));
+      if (imgs.length === 0) return res();
+      let pending = imgs.length;
+      imgs.forEach((img) => {
+        if (img.complete) { if (--pending === 0) res(); }
+        else { img.onload = img.onerror = () => { if (--pending === 0) res(); }; }
+      });
+    });
+    const isSingle = page.scrollHeight <= pageHeightPx;
+    const pdf = await h2pdf().from(container).set({
+      margin: 0,
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['css','legacy'] }
+    }).toPdf().get('pdf');
+    if (isSingle && pdf.internal && typeof pdf.internal.getNumberOfPages === 'function') {
+      const n = pdf.internal.getNumberOfPages();
+      if (n > 1 && typeof pdf.deletePage === 'function') pdf.deletePage(n);
+    }
+    return pdf.output('datauristring');
+  },
+  download: (dataUrlOrBase64, fileName = 'Informe.pdf') => {
+    let url = String(dataUrlOrBase64 || '');
+    if (!url) return;
+    if (!url.startsWith('data:')) url = 'data:application/pdf;base64,' + url;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+};

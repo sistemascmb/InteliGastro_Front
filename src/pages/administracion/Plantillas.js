@@ -128,6 +128,7 @@ export const RichTextEditor = memo(({ value, onChange, placeholder = "Escriba aq
   const editorRef = React.useRef(null);
   const headerInputRef = React.useRef(null);
   const footerInputRef = React.useRef(null);
+  const typingRef = React.useRef(false);
   const mmToPx = (mm) => Math.round(mm * 96 / 25.4);
   const pageWidthPx = mmToPx(210);
   const pageHeightPx = mmToPx(297);
@@ -187,7 +188,7 @@ export const RichTextEditor = memo(({ value, onChange, placeholder = "Escriba aq
     language: 'es',
     style: `body{font-family:${fontFamily}; font-size:${fontSize}px; color:#333} h1,h2,h3{color:#1976d2} a{color:#1976d2} blockquote{border-left:4px solid #1976d2; padding-left:8px; color:#555}`,
     iframe: true,
-    iframeStyle: `@page{size:A4;margin:${pageMargin}px} html{margin:0;padding:0;min-height:100%;} body{box-sizing:border-box;line-height:1.6;background:#fff;color:#333;position:relative;z-index:2;user-select:auto;outline:none;max-width:${pageWidthPx}px;min-height:${pageHeightPx}px;margin:0 auto;padding:${pageMargin}px;overflow:auto;} @media print{html,body{max-width:none!important;width:auto!important;padding:0!important;margin:0!important;min-height:auto!important;overflow:visible!important;} body::before{display:none!important;} [data-role="firma-handle"],[data-role="firma-resize"]{display:none!important;}} table{width:100%;border-collapse:collapse;empty-cells:show;max-width:100%;table-layout:fixed;border:1px solid #999;} th,td{vertical-align:top;border:1px solid #999;padding:0;} td p, th p{margin:0;} p:empty{display:none;} p:has(> img:only-child){line-height:0;margin:0;} img+br{display:none;} figure{margin:0;display:flex;justify-content:center;align-items:center;} img{max-width:100%;height:auto;display:block;object-fit:contain;margin:0 auto;} td img, th img{max-width:100%;height:auto;margin:0 auto;} ${showGuides ? `body::before{content:'';position:fixed;z-index:2147483647;top:${pageMargin}px;left:calc(50% - ${pageWidthPx / 2 - pageMargin}px);width:${pageWidthPx - pageMargin * 2}px;height:${pageHeightPx - pageMargin * 2}px;border:1px dashed #999;background:transparent;pointer-events:none;}` : ''}`
+    iframeStyle: `@page{size:A4;margin:${pageMargin}px} html{margin:0;padding:0;min-height:100%;} body{box-sizing:border-box;line-height:1.6;background:#fff;color:#333;position:relative;z-index:2;user-select:auto;outline:none;max-width:${pageWidthPx}px;min-height:${pageHeightPx}px;margin:0 auto;padding:${pageMargin}px;overflow:auto;} @media print{html,body{max-width:none!important;width:auto!important;padding:0!important;margin:0!important;min-height:auto!important;overflow:visible!important;} body::before{display:none!important;} [data-role="firma-handle"],[data-role="firma-resize"]{display:none!important;}} table{max-width:100%;border-collapse:collapse;empty-cells:show;table-layout:auto;border:1px solid #999;} th,td{vertical-align:top;border:1px solid #999;} td p, th p{margin:0;} p:empty{display:none;} p:has(> img:only-child){line-height:0;margin:0;} img+br{display:none;} figure{margin:0;display:flex;justify-content:center;align-items:center;} img{max-width:100%;height:auto;display:block;object-fit:contain;margin:0 auto;} td img, th img{max-width:100%;height:auto;margin:0 auto;} ${showGuides ? `body::before{content:'';position:fixed;z-index:2147483647;top:${pageMargin}px;left:calc(50% - ${pageWidthPx / 2 - pageMargin}px);width:${pageWidthPx - pageMargin * 2}px;height:${pageHeightPx - pageMargin * 2}px;border:1px dashed #999;background:transparent;pointer-events:none;}` : ''}`
   }), [pageMargin, singlePage, showGuides, fontFamily, fontSize]);
 
   useEffect(() => {
@@ -298,11 +299,17 @@ export const RichTextEditor = memo(({ value, onChange, placeholder = "Escriba aq
       } catch {}
     };
 
+    const markTyping = () => { typingRef.current = true; };
+    const unmarkTyping = () => { typingRef.current = false; };
+    inst.events && inst.events.on('keydown', markTyping);
+    inst.events && inst.events.on('input', unmarkTyping);
     inst.events && inst.events.on('afterInsertImage', removeEnterAfterImage);
     inst.events && inst.events.on('afterInsertNode', removeEnterAfterImage);
     inst.events && inst.events.on('afterInsertNode', normalizeTableInsertion);
 
     return () => {
+      inst.events && inst.events.off('keydown', markTyping);
+      inst.events && inst.events.off('input', unmarkTyping);
       inst.events && inst.events.off('afterInsertImage', removeEnterAfterImage);
       inst.events && inst.events.off('afterInsertNode', removeEnterAfterImage);
       inst.events && inst.events.off('afterInsertNode', normalizeTableInsertion);
@@ -313,6 +320,9 @@ export const RichTextEditor = memo(({ value, onChange, placeholder = "Escriba aq
     if (!applyValueUpdates) return;
     const inst = editorRef.current?.editor;
     if (!inst) return;
+    if (typingRef.current) return;
+    const isFocused = inst.s && typeof inst.s.isFocused === 'function' ? inst.s.isFocused() : false;
+    if (isFocused) return;
     const newVal = typeof value === 'string' ? value : '';
     if (newVal !== inst.value) {
       try {
@@ -323,10 +333,10 @@ export const RichTextEditor = memo(({ value, onChange, placeholder = "Escriba aq
           try { inst.events && inst.events.fire && inst.events.fire('change'); } catch {}
           return;
         }
-        const sel = inst.iframe?.contentWindow?.getSelection ? inst.iframe.contentWindow.getSelection() : window.getSelection();
-        const anchor = sel && sel.anchorNode;
-        const isInside = inst.editor && typeof inst.editor.contains === 'function' ? inst.editor.contains(anchor) : false;
-        if (!isInside) {
+        const doc = inst.iframe?.contentWindow?.document || inst.editorDocument || document;
+        const active = doc.activeElement;
+        const inside = inst.editor && typeof inst.editor.contains === 'function' ? inst.editor.contains(active) : false;
+        if (!inside) {
           inst.value = newVal;
         }
       } catch {
@@ -335,7 +345,7 @@ export const RichTextEditor = memo(({ value, onChange, placeholder = "Escriba aq
     }
   }, [value, applyValueUpdates]);
 
-  const previewHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"/><style>@page{size:A4;margin:${pageMargin}px}body{font-family:Arial, sans-serif;color:#333} .page{width:${pageWidthPx}px;min-height:${pageHeightPx}px;margin:0 auto;background:white} .header{margin-bottom:16px;text-align:center} .content{min-height:${pageHeightPx - pageMargin * 2 - 80}px} .footer{position:fixed;bottom:0;left:0;right:0;text-align:center;border-top:1px solid #ddd;padding-top:8px;background:white} table{width:100%;border-collapse:collapse;table-layout:fixed;border:1px solid #999} th,td{vertical-align:top;border:1px solid #999;padding:0} td p, th p{margin:0;} p:empty{display:none;} p:has(> img:only-child){line-height:0;margin:0;} img+br{display:none} figure{margin:0;display:flex;justify-content:center;align-items:center} img{max-width:100%;height:auto;object-fit:contain;display:block;margin:0 auto} @media print{.page{width:auto;min-height:auto;box-shadow:none}} </style></head><body><div class="page"><div class="header">${previewHeader || ''}</div><div class="content">${value || ''}</div></div><div class="footer">${previewFooter || ''}</div></body></html>`;
+  const previewHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"/><style>@page{size:A4;margin:${pageMargin}px}body{font-family:Arial, sans-serif;color:#333} .page{width:${pageWidthPx}px;min-height:${pageHeightPx}px;margin:0 auto;background:white} .header{margin-bottom:16px;text-align:center} .content{min-height:${pageHeightPx - pageMargin * 2 - 80}px} .footer{position:fixed;bottom:0;left:0;right:0;text-align:center;border-top:1px solid #ddd;padding-top:8px;background:white} table{max-width:100%;border-collapse:collapse;table-layout:auto;border:1px solid #999} th,td{vertical-align:top;border:1px solid #999} td p, th p{margin:0;} p:empty{display:none;} p:has(> img:only-child){line-height:0;margin:0;} img+br{display:none} figure{margin:0;display:flex;justify-content:center;align-items:center} img{max-width:100%;height:auto;object-fit:contain;display:block;margin:0 auto} @media print{.page{width:auto;min-height:auto;box-shadow:none}} </style></head><body><div class="page"><div class="header">${previewHeader || ''}</div><div class="content">${value || ''}</div></div><div class="footer">${previewFooter || ''}</div></body></html>`;
 
   const handlePrint = () => {
     const win = window.open('', '_blank');
@@ -480,7 +490,7 @@ export const RichTextEditor = memo(({ value, onChange, placeholder = "Escriba aq
       <Box sx={{ width: `${pageWidthPx}px`, minHeight: `${pageHeightPx}px`, bgcolor: 'white', mx: 'auto', boxShadow: 2, p: 0 }}>
         <JoditEditor
           ref={editorRef}
-          value={applyValueUpdates ? (value || '') : undefined}
+          value={applyValueUpdates && !typingRef.current ? (value || '') : undefined}
           config={joditConfig}
           onChange={(content) => onChange?.(content)}
         />
@@ -1791,7 +1801,7 @@ const cargarPersonal = async () => {
                 >
                   <RichTextEditor
                     value={editFormData.tipo === 'cabecera' ? editFormData.plantillaCabecera : editFormData.plantilla}
-                    onChange={(value) => handleInputChange(editFormData.tipo === 'cabecera' ? 'plantillaCabecera' : 'plantilla', value)}
+                    onChange={(value) => handleEditInputChange(editFormData.tipo === 'cabecera' ? 'plantillaCabecera' : 'plantilla', value)}
                     placeholder="Diseñe el contenido..."
                   />
                 </ResponsiveField>
