@@ -655,12 +655,21 @@ export default class DictadoInforme extends React.Component {
     } catch {}
   };
 
+  generatePdfTextBase64 = async (html) => {
+    try {
+      const docHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"/></head><body>' + String(html || '') + '</body></html>';
+      const b64 = btoa(unescape(encodeURIComponent(docHtml)));
+      return 'data:text/html;base64,' + b64;
+    } catch { return ''; }
+  };
+
   handleGuardarEstudio = async () => {
     try {
       const inst = this.state.editorInst;
       const contenido = await this.getCleanEditorHtml();
+      const pdfText = await this.generatePdfTextBase64(contenido);
       const d = this.state.datos || {};
-      const payload = { contenido, numeroEstudio: d.numeroEstudio || '', pacientId: d.pacientId || '', personalId: d.personalId || '' };
+      const payload = { contenido, numeroEstudio: d.numeroEstudio || '', pacientId: d.pacientId || '', personalId: d.personalId || '', informePdf: pdfText };
       const procedimientoActualizado = await appointmentsService.update_estudio_dictado(d.numeroEstudio, payload);
       console.log('✅ Procedimiento guardado:', procedimientoActualizado);
       this.setState({ snackbarOpen: true, snackbarMessage: 'Dictado guardado correctamente', snackbarSeverity: 'success', datos: { ...d, dictadoGuardado: '1' } });
@@ -835,13 +844,13 @@ export default class DictadoInforme extends React.Component {
               {/*<div><strong>Estudio:</strong> {datos.estudio}</div>*/}
               <div><strong>Procedimiento:</strong> {datos.procedimiento}</div>
               <div><strong>Médico:</strong> {datos.medico}</div>
-              {/*<div><strong>Html:</strong> {datos.estructuraHtml}</div>*/}
+              {/*<div><strong>PDF:</strong> {datos.informePdf}</div>*/}
 
             </Box>
 
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button variant="contained" color="primary" onClick={this.handleGuardarEstudio}>Guardar Dictado</Button>
-              <Button variant="contained" color="secondary" onClick={this.handleEliminarFirma}>Eliminar firma</Button>
+              {/*<Button variant="contained" color="secondary" onClick={this.handleEliminarFirma}>Eliminar firma</Button>*/}
               <Button variant="contained" color="warning" onClick={this.handleTerminarEstudio} disabled={String(this.state.datos?.dictadoGuardado || '') !== '1'}>Terminar Dictado</Button>
               <Button variant="contained" color="error" onClick={() => window.location.assign('/procedimientos/dictadoproc?refresh=1')}>Cerrar dictado</Button>
             </Box>

@@ -875,9 +875,9 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         tipoProcedimientoId: dataOrigin.tipoProcedimientoId,
         urgenteId: dataOrigin.urgenteId,
         estudioTeminadoId: 0,
-        pdfGeneradoId: 0,
+        pdfGeneradoId: pacienteData.informePdf ? 1 : 0,
         estructuraHtml: pacienteData.contenido,
-        informePdf: 'null',
+        informePdf: pacienteData.informePdf || 'null',
         dictadoGuardado: 1,
 
         updatedAt: new Date().toISOString(),
