@@ -255,7 +255,7 @@ const cargarSalas = async () => {
 
   const cargarProcedimientos = async () => {
         try {
-          const procedimientos = await appointmentsService.getAll_Proc_Alta();
+          const procedimientos = await appointmentsService.getAll_Proc_Completado();
           
           const listaAgendasProcedimientos = await Promise.all(
               procedimientos.data.map(async (procedimientoDat) => {
@@ -922,7 +922,8 @@ const cargarSalas = async () => {
     if (!tipo) return 'default';
     //const tipoNum = parseInt(tipo);
     switch (tipo) {
-      case 'Alta': return 'warning';
+      case 'Completado': return 'success';
+      case 'Alta': return 'success';
       default: return 'default';
     }
   };
@@ -1116,9 +1117,9 @@ const cargarSalas = async () => {
                            startIcon={<Search />}
                            onClick={handleBuscarProcedimientos}
                            sx={{
-                             backgroundColor: '#ff9800',
+                             backgroundColor: '#2184be',
                              '&:hover': {
-                               backgroundColor: '#f57c00'
+                               backgroundColor: '#2184be'
                              },
                              minHeight: '40px'
                            }}
@@ -1131,7 +1132,7 @@ const cargarSalas = async () => {
 
         {/* Contenido - 80% */}
         <Paper sx={{ flex: 1, boxShadow: 3, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <SectionHeader title={`Lista de Procedimientos Completados (${procedimientosFiltrados.length})`} />
+          <SectionHeader title={`Lista de Procedimientos Completados/Alta (${procedimientosFiltrados.length})`} />
 
           {/* Tabla con scroll */}
           <Box sx={{ flex: 1, overflow: 'auto' }}>
@@ -1176,6 +1177,7 @@ const cargarSalas = async () => {
                               >
                                 <AddCircle />
                               </IconButton>
+                              {/*
                               <IconButton
                                 color="error"
                                 size="small"
@@ -1183,7 +1185,7 @@ const cargarSalas = async () => {
                                 //onClick={() => handlePacientePresente(proc)}
                               >
                                 <SlowMotionVideoRounded/>
-                              </IconButton>
+                              </IconButton>*/}
                           </Box>
                         </TableCell>
                         <TableCell>

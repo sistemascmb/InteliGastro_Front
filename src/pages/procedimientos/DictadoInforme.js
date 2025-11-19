@@ -1005,7 +1005,7 @@ export default class DictadoInforme extends React.Component {
               <Button variant="contained" color="primary" onClick={this.handleGuardarEstudio} disabled={String(this.state.datos?.estudioTeminadoId || '') === '2'}>Guardar Dictado</Button>
               <Button variant="contained" color="success" onClick={this.handleDescargarInformePdf} disabled={String(this.state.datos?.estudioTeminadoId || '') === '5' || !this.state.datos?.informePdf}>Descargar PDF</Button>
               {/*<Button variant="contained" color="secondary" onClick={this.handleEliminarFirma}>Eliminar firma</Button>*/}
-              <Button variant="contained" color="warning" onClick={this.handleTerminarEstudio} disabled={String(this.state.datos?.estudioTeminadoId || '') === '2' || String(this.state.datos?.dictadoGuardado || '') !== '2'}>Terminar Dictado</Button>
+              <Button variant="contained" color="warning" onClick={this.handleTerminarEstudio} disabled={String(this.state.datos?.estudioTeminadoId || '') === '2' || String(this.state.datos?.dictadoGuardado || '') !== '1'}>Terminar Dictado</Button>
               <Button variant="contained" color="error" onClick={() => window.location.assign('/procedimientos/dictadoproc?refresh=1')}>Cerrar dictado</Button>
             </Box>
 

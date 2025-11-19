@@ -25,7 +25,10 @@ import {
   DialogContent,
   DialogActions,
   Grid,
-  Divider
+  Divider,
+  ImageList,
+  ImageListItem,
+  CircularProgress
 } from '@mui/material';
 import {
   NavigateNext,
@@ -46,7 +49,9 @@ import {
   Email,
   SlowMotionVideoRounded,
   ExitToAppRounded,
-  EditDocument
+  EditDocument,
+  OpenInNew,
+  Download
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { appointmentsService, patientsService, staff, staffService } from 'services';
@@ -57,6 +62,8 @@ import salasService from 'services/salasService';
 import recursosService from 'services/recursosService';
 import medicosRefService from 'services/medicosRefService';
 import segurosService from 'services/segurosService';
+import { PdfTools } from './DictadoInforme';
+import archivodigitalService from 'services/archivodigitalService';
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
@@ -137,6 +144,11 @@ const DictadoProc = () => {
   const [openCie10Modal, setOpenCie10Modal] = useState(false);
   const [openConfirmPresentModal, setOpenConfirmPresentModal] = useState(false);
   const [selectedProcedimiento, setSelectedProcedimiento] = useState(null);
+  const [selectedProc, setSelectedProc] = useState(null);
+  const [openStudyImagesModal, setOpenStudyImagesModal] = useState(false);
+  const [studyImages, setStudyImages] = useState([]);
+  const [selectedStudyImage, setSelectedStudyImage] = useState(null);
+  const [studyImagesLoading, setStudyImagesLoading] = useState(false);
   
   const [openEmailModal, setOpenEmailModal] = useState(false);
 
@@ -360,23 +372,21 @@ const cargarSalas = async () => {
   }, []);
 
   const handleReporte = (procedimiento) => {
-    // Simular descarga de PDF
-    const fileName = `Reporte_${procedimiento.codigo}_${procedimiento.nombre.replace(/\s+/g, '_')}.pdf`;
-
-    // Crear un enlace temporal para descargar
-    const link = document.createElement('a');
-    link.href = '#'; // En producción aquí iría la URL del PDF generado
-    link.download = fileName;
-
-    // Simular la descarga (en producción esto sería una URL real del servidor)
-    console.log(`Descargando reporte: ${fileName}`);
-    alert(`Descargando reporte: ${fileName}`);
-
-    // En producción sería algo como:
-    // link.href = `/api/reportes/pdf/${procedimiento.id}`;
-    // document.body.appendChild(link);
-    // link.click();
-    // document.body.removeChild(link);
+    try {
+      const d = procedimiento || {};
+      let dataUrl = String(d.informePdf || '');
+      const fileName = `Informe_${d.codigo || d.numeroEstudio || ''}.pdf`;
+      if (!dataUrl) return;
+      if (dataUrl.startsWith('data:text/html')) {
+        try {
+          const parts = dataUrl.split(',');
+          const html = decodeURIComponent(escape(atob(parts[1] || '')));
+          PdfTools.fromHtml(html, fileName).then((pdfUrl) => PdfTools.download(pdfUrl, fileName));
+          return;
+        } catch {}
+      }
+      PdfTools.download(dataUrl, fileName);
+    } catch {}
   };
 
   const [procedimientosAgendados_old, setProcedimientosAgendados_old] = useState([
@@ -651,6 +661,49 @@ const cargarSalas = async () => {
 
     // Opcional: mostrar mensaje de éxito
     // alert(`Procedimiento completado: ${selectedProcedimiento.paciente.nombre}`);
+  };
+
+  const handleVerImagenesEstudio = async (procedimiento) => {
+    if (!procedimiento) return;
+    setSelectedProc(procedimiento);
+    setOpenStudyImagesModal(true);
+    setStudyImagesLoading(true);
+    try {
+      const res = await archivodigitalService.searchByEstudioId(procedimiento.codigo);
+      const codigo = String(procedimiento.codigo || '');
+      const imgs = (res?.data || []).filter((f) => String(f.medical_ScheduleId || '') === codigo).map((f) => ({
+        id: f.id,
+        description: f.description,
+        mimeType: f.typeArchive,
+        dataUrl: `data:${f.typeArchive};base64,${f.archive}`,
+        date: f.date,
+        hour: f.hour
+      }));
+      setStudyImages(imgs);
+      setSelectedStudyImage(imgs[0] || null);
+    } catch (e) {
+      setStudyImages([]);
+      setSelectedStudyImage(null);
+    } finally {
+      setStudyImagesLoading(false);
+    }
+  };
+
+  const handleDownloadSelectedImage = () => {
+    if (!selectedStudyImage) return;
+    const a = document.createElement('a');
+    a.href = selectedStudyImage.dataUrl;
+    const ext = (selectedStudyImage.mimeType || '').split('/')[1] || 'dat';
+    const name = `${selectedStudyImage.description || 'archivo'}.${ext}`;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const handleOpenSelectedImage = () => {
+    if (!selectedStudyImage) return;
+    window.open(selectedStudyImage.dataUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handleReagendar = (procedimiento) => {
@@ -1117,9 +1170,9 @@ const cargarSalas = async () => {
                            startIcon={<Search />}
                            onClick={handleBuscarProcedimientos}
                            sx={{
-                             backgroundColor: '#4caf50',
+                             backgroundColor: '#2184be',
                              '&:hover': {
-                               backgroundColor: '#45a049'
+                               backgroundColor: '#2184be'
                              },
                              minHeight: '40px'
                            }}
@@ -1169,11 +1222,11 @@ const cargarSalas = async () => {
                         <TableCell>
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                             {/*{getIndicadorIcon(proc.urgente)}*/}
-                           <IconButton
+                              <IconButton
                                 color="success"
                                 size="small"
                                 title="Información"
-                                //onClick={() => handlePacientePresente(proc)}
+                                onClick={() => handleVerImagenesEstudio(proc)}
                               >
                                 <AddCircle />
                               </IconButton>
@@ -1181,7 +1234,7 @@ const cargarSalas = async () => {
                                 color="error"
                                 size="small"
                                 title="Información"
-                                //onClick={() => handlePacientePresente(proc)}
+                                onClick={() => handleVerImagenesEstudio(proc)}
                               >
                                 <SlowMotionVideoRounded/>
                               </IconButton>
@@ -1316,9 +1369,10 @@ const cargarSalas = async () => {
                           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                             <Box sx={{ display: 'flex', gap: 0.5 }}>
                             <IconButton
-                              color="primary"
+                              color="secondary"
                               size="small"
                               title="Reporte"
+                              disabled={!proc?.informePdf}
                               onClick={() => handleReporte(proc)}
                             >
                               <Description />
@@ -1343,6 +1397,7 @@ const cargarSalas = async () => {
                             </Box>
                             
                           </Box>
+                          {/*
                           <Box sx={{ display: 'flex', gap: 0.5 }}>
                             <IconButton
                               color="error"
@@ -1352,7 +1407,7 @@ const cargarSalas = async () => {
                             >
                             <ExitToAppRounded />
                             </IconButton>
-                          </Box>
+                          </Box>*/}
                         </TableCell>
                       </TableRow>
                     ))
@@ -1618,6 +1673,98 @@ const cargarSalas = async () => {
             Cerrar
           </Button>
         </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={openStudyImagesModal}
+        onClose={() => setOpenStudyImagesModal(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 2 } }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#2184be', color: 'white' }}>
+          <Typography variant="h6" fontWeight="bold">Imágenes del Estudio</Typography>
+          <Box>
+            <IconButton onClick={handleOpenSelectedImage} sx={{ color: 'white' }} disabled={!selectedStudyImage}>
+              <OpenInNew />
+            </IconButton>
+            <IconButton onClick={handleDownloadSelectedImage} sx={{ color: 'white' }} disabled={!selectedStudyImage}>
+              <Download />
+            </IconButton>
+            <IconButton onClick={() => setOpenStudyImagesModal(false)} sx={{ color: 'white' }}>
+              <Close />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 3 }}>
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid item xs={12} md={3}>
+              <Typography variant="body2" color="text.secondary">Paciente</Typography>
+              <Typography variant="h6" fontWeight="bold">{selectedProc?.nombre || '—'}</Typography>
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <Typography variant="body2" color="text.secondary">Edad</Typography>
+              <Typography variant="h6" fontWeight="bold">{(() => {
+                const b = selectedProc?.fechaNac ? new Date(selectedProc.fechaNac) : null;
+                const r = selectedProc?.fechaExamen ? new Date(selectedProc.fechaExamen) : new Date();
+                if (!b) return '—';
+                let age = r.getFullYear() - b.getFullYear();
+                const m = r.getMonth() - b.getMonth();
+                if (m < 0 || (m === 0 && r.getDate() < b.getDate())) age--;
+                return String(age);
+              })()}</Typography>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <Typography variant="body2" color="text.secondary">Procedimiento</Typography>
+              <Typography variant="h6" fontWeight="bold">{selectedProc?.procedimiento || '—'}</Typography>
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <Typography variant="body2" color="text.secondary">Médico</Typography>
+              <Typography variant="h6" fontWeight="bold">{selectedProc?.gastroenterologo || '—'}</Typography>
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <Typography variant="body2" color="text.secondary">Nº Examen</Typography>
+              <Typography variant="h6" fontWeight="bold">{selectedProc?.codigo || '—'}</Typography>
+            </Grid>
+          </Grid>
+
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box sx={{ minHeight: 360, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+              {studyImagesLoading ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <CircularProgress size={24} />
+                  <Typography variant="body2">Cargando imágenes...</Typography>
+                </Box>
+              ) : selectedStudyImage ? (
+                selectedStudyImage?.mimeType?.startsWith('image/') ? (
+                  <Box sx={{ maxWidth: '100%', maxHeight: 500 }}>
+                    <img src={selectedStudyImage.dataUrl} alt={selectedStudyImage.description || ''} style={{ maxWidth: '100%', maxHeight: '500px', display: 'block' }} />
+                  </Box>
+                ) : (
+                  <Box sx={{ width: '100%' }}>
+                    <video src={selectedStudyImage.dataUrl} controls style={{ width: '100%' }} />
+                  </Box>
+                )
+              ) : (
+                <Typography variant="body2" color="text.secondary">No hay imágenes para mostrar</Typography>
+              )}
+            </Box>
+
+            <Box>
+              <ImageList cols={6} gap={8} sx={{ width: '100%', maxHeight: 180 }}>
+                {studyImages.map((img) => (
+                  <ImageListItem key={img.id} onClick={() => setSelectedStudyImage(img)} sx={{ cursor: 'pointer', border: selectedStudyImage?.id === img.id ? '2px solid #2184be' : '1px solid #ddd', borderRadius: 1, overflow: 'hidden' }}>
+                    {img.mimeType?.startsWith('image/') ? (
+                      <img src={img.dataUrl} alt={img.description || ''} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <video src={img.dataUrl} muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    )}
+                  </ImageListItem>
+                ))}
+              </ImageList>
+            </Box>
+          </Box>
+        </DialogContent>
       </Dialog>
 
       {/* Modal para Cancelar Examen */}

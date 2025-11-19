@@ -451,6 +451,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         estudioTeminadoId: 0,
         pdfGeneradoId: 0,
         dictadoGuardado: 0,
+        informePdf: 'null',
+        estructuraHtml: 'null',
 
         createdAt: new Date().toISOString(),
         createdBy: 'Arnold' // Usuario de prueba
@@ -526,6 +528,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         estudioTeminadoId: 0,
         pdfGeneradoId: 0,
         dictadoGuardado: 0,
+        informePdf: 'null',
+        estructuraHtml: 'null',
 
         createdAt: new Date().toISOString(),
         createdBy: 'Arnold' // Usuario de prueba
