@@ -918,6 +918,88 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
     }
   },
 
+  update_estudio_dictado: async (id, pacienteData) => {
+    try {
+      const urlOrigin = `${process.env.REACT_APP_API_URL}/Agenda/${id}`;
+      const responseOrigin = await fetch(urlOrigin);
+      const dataOrigin = await responseOrigin.json();
+
+      console.log('📝 Actualizando Agenda con ID:', id);
+
+      if (!id) {
+        throw new Error('ID del Agenda es requerido');
+      }
+
+      // Formatear datos según el formato esperado por la API
+      const formattedData = {
+        medicalscheduleid: parseInt(id),
+        pacientId: dataOrigin.pacientId,
+        centroId: dataOrigin.centroId,
+        personalId: dataOrigin.personalId,
+        appointmentDate: dataOrigin.appointmentDate,
+        hoursMedicalShedule: dataOrigin.hoursMedicalShedule,
+
+        otherOrigins : dataOrigin.otherOrigins,
+        typeOfPatient: dataOrigin.typeOfPatient,
+        referral_doctorsId: dataOrigin.referral_doctorsId,
+        centerOfOriginId: dataOrigin.centerOfOriginId,
+        anotherCenter: dataOrigin.anotherCenter,
+        procedureRoomId: dataOrigin.procedureRoomId,
+        resourcesId: dataOrigin.resourcesId,
+        studiesId: dataOrigin.studiesId,
+
+        insuranceId: dataOrigin.insuranceId,
+        letterOfGuarantee: dataOrigin.letterOfGuarantee,
+        status: dataOrigin.status, //cambio
+        typeOfAttention: dataOrigin.typeOfAttention, 
+        anotacionesAdicionales: dataOrigin.anotacionesAdicionales,
+        tipoProcedimientoId: dataOrigin.tipoProcedimientoId,
+        urgenteId: dataOrigin.urgenteId,
+        estudioTeminadoId: 1,
+        pdfGeneradoId: dataOrigin.pdfGeneradoId ,
+        estructuraHtml: dataOrigin.estructuraHtml ,
+        informePdf: dataOrigin.informePdf ,
+        dictadoGuardado: dataOrigin.dictadoGuardado,
+
+        updatedAt: new Date().toISOString(),
+        updatedBy: 'Arnold',
+        isDeleted: false
+        
+      };
+
+      console.log('📊 Datos a enviar para actualizar:', formattedData);
+
+      const url = `${process.env.REACT_APP_API_URL}/Agenda/${id}`;
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formattedData)
+      });
+
+      console.log('🔗 Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Error response:', errorText);
+        throw new Error(`Error ${response.status}: ${response.statusText} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Agenda actualizado exitosamente:', data);
+
+      return {
+        data: data,
+        status: 'success'
+      };
+    } catch (error) {
+      console.error('❌ Error al actualizar Agenda:', error);
+      throw error;
+    }
+  },
+
+
   // Actualizar cita
   update: async (id, appointmentData) => {
     if (!id) {

@@ -302,8 +302,10 @@ export default class DictadoInforme extends React.Component {
         out = out.replace(/\[##\s*FIRMA_MEDICO\s*##\]/gi, '');
         out = out.replace(/<img([^>]*?)src=["']\s*\[##\s*FIRMA_MEDICO\s*##\]\s*["']([^>]*?)>/gi, '');
       } else if (this.state.staffFirma) {
-        out = out.replace(/\[##\s*FIRMA_MEDICO\s*##\]/gi, `<img data-role="firma-inline" src="${this.state.staffFirma}" style="max-width:100%; max-height:100%; width:auto; height:auto; display:block; margin:auto; object-fit:contain;" />`);
-        out = out.replace(/<img([^>]*?)src=["']\s*\[##\s*FIRMA_MEDICO\s*##\]\s*["']([^>]*?)>/gi, (m, pre, post) => `<img${pre}src="${this.state.staffFirma}" data-role="firma-inline"${post}>`);
+        const srcFirma = this.state.staffFirmaTransparent || this.state.staffFirma;
+        const fixed = `<div data-role="firma-fixed" style="position:absolute; right:20px; bottom:20px; z-index:10; width:240px;"><img src="${srcFirma}" style="max-width:100%; height:auto; display:block; object-fit:contain; background:transparent"/></div>`;
+        out = out.replace(/\[##\s*FIRMA_MEDICO\s*##\]/gi, fixed);
+        out = out.replace(/<img([^>]*?)src=["']\s*\[##\s*FIRMA_MEDICO\s*##\]\s*["']([^>]*?)>/gi, fixed);
       }
       return out;
     } catch { return String(tpl || ''); }
@@ -382,65 +384,29 @@ export default class DictadoInforme extends React.Component {
       let handle = doc.querySelector('[data-role="firma-handle"]');
       let resize = doc.querySelector('[data-role="firma-resize"]');
       if (!mark || !handle || !resize) {
-        const inline = doc.querySelector('img[data-role="firma-inline"]');
-        if (inline) {
-          const rect = inline.getBoundingClientRect();
+        let fixed = doc.querySelector('div[data-role="firma-fixed"]');
+        if (fixed) {
+          const rect = fixed.getBoundingClientRect();
           const brect = body.getBoundingClientRect();
           const left = rect.left - brect.left;
           const top = rect.top - brect.top;
-          const wm = doc.createElement('div');
-          wm.setAttribute('data-role', 'firma-watermark');
-          wm.style.position = 'absolute';
-          wm.style.zIndex = '0';
-          wm.style.left = left + 'px';
-          wm.style.top = top + 'px';
-          {
-            const rw = rect.width;
-            const rh = rect.height;
-            const ratio = rw && rh ? (rw / rh) : 1;
-            let w = this.state.firmaW && this.state.firmaW > 0 ? this.state.firmaW : null;
-            let h = this.state.firmaH && this.state.firmaH > 0 ? this.state.firmaH : null;
-            const cellNode = inline.closest ? inline.closest('td,th') : (function(){ let p=inline.parentNode; for(let i=0;i<10 && p;i++){ if(p.tagName==='TD'||p.tagName==='TH') return p; p=p.parentNode;} return null; })();
-            const cRect = cellNode && cellNode.getBoundingClientRect ? cellNode.getBoundingClientRect() : null;
-            const SMALL_W = 180, SMALL_H = 90;
-            const isSmallCell = !!cRect && (cRect.width <= SMALL_W && cRect.height <= SMALL_H);
-            if (w && !h) h = Math.round(w / ratio);
-            if (h && !w) w = Math.round(h * ratio);
-            if (!w || !h) {
-              if (!isSmallCell) {
-                const baseW = 230;
-                const baseH = Math.round(baseW / ratio);
-                w = w || baseW;
-                h = h || baseH;
-              } else {
-                w = w || rw;
-                h = h || rh;
-              }
-            }
-            wm.style.width = Math.max(40, Math.round(w)) + 'px';
-            wm.style.height = Math.max(30, Math.round(h)) + 'px';
-          }
-          wm.style.pointerEvents = 'none';
-          const img = doc.createElement('img');
-          img.src = inline.src;
-
-          img.style.objectFit = 'contain';
-          img.style.display = 'block';
-          img.style.mixBlendMode = 'multiply';
-          //img.style.opacity = '0.25';
-          wm.appendChild(img);
+          fixed.style.position = 'absolute';
+          fixed.style.left = Math.round(left) + 'px';
+          fixed.style.top = Math.round(top) + 'px';
+          fixed.style.zIndex = fixed.style.zIndex || '10';
+          if (!fixed.style.width) fixed.style.width = Math.max(180, Math.round(rect.width || 230)) + 'px';
+          mark = fixed;
           const h = doc.createElement('div');
           h.setAttribute('data-role', 'firma-handle');
           h.style.position = 'absolute';
           h.style.zIndex = '999';
-          h.style.left = left + 'px';
-          h.style.top = top + 'px';
+          h.style.left = mark.style.left;
+          h.style.top = mark.style.top;
           h.style.width = '14px';
           h.style.height = '14px';
           h.style.background = '#2184be';
           h.style.borderRadius = '0%';
           h.style.cursor = 'move';
-
           const r = doc.createElement('div');
           r.setAttribute('data-role', 'firma-resize');
           r.style.position = 'absolute';
@@ -451,17 +417,68 @@ export default class DictadoInforme extends React.Component {
           r.style.borderRadius = '2px';
           r.style.cursor = 'se-resize';
           r.style.boxShadow = '0 0 0 2px #fff';
-          r.style.left = (left + rect.width - 6) + 'px';
-          r.style.top = (top + rect.height - 6) + 'px';
-
-          body.appendChild(wm);
+          const mw = parseFloat(mark.style.width || '0') || rect.width || 230;
+          const mh = parseFloat(mark.style.height || '0') || rect.height || Math.round(mw/2);
+          r.style.left = (left + mw - 6) + 'px';
+          r.style.top = (top + mh - 6) + 'px';
           body.appendChild(h);
           body.appendChild(r);
-          inline.style.opacity = '0.001';
-          inline.style.pointerEvents = 'none';
-          mark = wm;
           handle = h;
           resize = r;
+        } else {
+          const inline = doc.querySelector('img[data-role="firma-inline"]');
+          if (inline) {
+            const rect = inline.getBoundingClientRect();
+            const brect = body.getBoundingClientRect();
+            const left = rect.left - brect.left;
+            const top = rect.top - brect.top;
+            const fixedDiv = doc.createElement('div');
+            fixedDiv.setAttribute('data-role', 'firma-fixed');
+            fixedDiv.style.position = 'absolute';
+            fixedDiv.style.left = Math.round(left) + 'px';
+            fixedDiv.style.top = Math.round(top) + 'px';
+            fixedDiv.style.zIndex = '10';
+            const baseW = Math.max(180, Math.round(rect.width || 230));
+            fixedDiv.style.width = baseW + 'px';
+            const img = doc.createElement('img');
+            img.src = inline.src;
+            img.style.objectFit = 'contain';
+            img.style.display = 'block';
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+            fixedDiv.appendChild(img);
+            body.appendChild(fixedDiv);
+            inline.style.opacity = '0.001';
+            inline.style.pointerEvents = 'none';
+            mark = fixedDiv;
+            const h = doc.createElement('div');
+            h.setAttribute('data-role', 'firma-handle');
+            h.style.position = 'absolute';
+            h.style.zIndex = '999';
+            h.style.left = mark.style.left;
+            h.style.top = mark.style.top;
+            h.style.width = '14px';
+            h.style.height = '14px';
+            h.style.background = '#2184be';
+            h.style.borderRadius = '0%';
+            h.style.cursor = 'move';
+            const r = doc.createElement('div');
+            r.setAttribute('data-role', 'firma-resize');
+            r.style.position = 'absolute';
+            r.style.zIndex = '999';
+            r.style.width = '12px';
+            r.style.height = '12px';
+            r.style.background = '#2184be';
+            r.style.borderRadius = '2px';
+            r.style.cursor = 'se-resize';
+            r.style.boxShadow = '0 0 0 2px #fff';
+            r.style.left = (left + baseW - 6) + 'px';
+            r.style.top = (top + Math.round(baseW/2) - 6) + 'px';
+            body.appendChild(h);
+            body.appendChild(r);
+            handle = h;
+            resize = r;
+          }
         }
       }
       if (!mark || !handle) return;
@@ -572,30 +589,35 @@ export default class DictadoInforme extends React.Component {
       const body = doc && doc.body;
       if (!body) return inst && inst.value ? inst.value : (this.state.html || '');
       const wm = body.querySelector('[data-role="firma-watermark"]');
-      if (wm && !this.state.firmaDisabled) {
-        const rect = wm.getBoundingClientRect();
-        const w = parseFloat(wm.style.width || '') || rect.width;
-        const h = parseFloat(wm.style.height || '') || rect.height;
-        const imgWm = wm.querySelector('img');
-        let inline = body.querySelector('img[data-role="firma-inline"]');
-        if (!inline && imgWm) {
-          inline = doc.createElement('img');
-          inline.setAttribute('data-role', 'firma-inline');
-          inline.src = imgWm.src || this.state.staffFirma || '';
-          inline.style.display = 'block';
-          inline.style.margin = '0 auto';
-          inline.style.objectFit = 'contain';
-          inline.style.maxWidth = '100%';
-          inline.style.height = 'auto';
-          const target = body.querySelector('td[style*="text-align: center"], th[style*="text-align: center"]') || body;
-          target.appendChild(inline);
+      const fixed = body.querySelector('div[data-role="firma-fixed"]');
+      if (!this.state.firmaDisabled) {
+        if (!fixed && wm) {
+          const rect = wm.getBoundingClientRect();
+          const brect = body.getBoundingClientRect();
+          const left = rect.left - brect.left;
+          const top = rect.top - brect.top;
+          const w = parseFloat(wm.style.width || '') || rect.width;
+          const h = parseFloat(wm.style.height || '') || rect.height;
+          const imgWm = wm.querySelector('img');
+          const div = doc.createElement('div');
+          div.setAttribute('data-role', 'firma-fixed');
+          div.style.position = 'absolute';
+          div.style.left = Math.round(left) + 'px';
+          div.style.top = Math.round(top) + 'px';
+          div.style.width = Math.max(40, Math.round(w)) + 'px';
+          div.style.height = Math.max(30, Math.round(h)) + 'px';
+          div.style.zIndex = '10';
+          const img = doc.createElement('img');
+          img.src = (imgWm && imgWm.src) || this.state.staffFirma || '';
+          img.style.maxWidth = '100%';
+          img.style.height = 'auto';
+          img.style.display = 'block';
+          img.style.objectFit = 'contain';
+          div.appendChild(img);
+          body.appendChild(div);
         }
-        if (inline) {
-          if (w) inline.style.width = Math.round(w) + 'px';
-          if (h) inline.style.height = Math.round(h) + 'px';
-          inline.style.opacity = '1';
-          inline.style.pointerEvents = 'auto';
-        }
+        const f = body.querySelector('div[data-role="firma-fixed"]');
+        if (f) { f.style.pointerEvents = 'none'; }
       }
       const convertUrlToDataUrl = async (url) => {
         try {
@@ -646,7 +668,7 @@ export default class DictadoInforme extends React.Component {
       const body = doc && doc.body;
       if (!body) return;
       body.querySelectorAll('[data-role="firma-watermark"],[data-role="firma-handle"],[data-role="firma-resize"]').forEach((n) => { n.parentNode && n.parentNode.removeChild(n); });
-      body.querySelectorAll('img[data-role="firma-inline"]').forEach((n) => { n.parentNode && n.parentNode.removeChild(n); });
+      body.querySelectorAll('img[data-role="firma-inline"],div[data-role="firma-fixed"]').forEach((n) => { n.parentNode && n.parentNode.removeChild(n); });
       let html = body.innerHTML;
       html = html.replace(/\[##\s*FIRMA_MEDICO\s*##\]/gi, '');
       html = html.replace(/<img([^>]*?)src=["']\s*\[##\s*FIRMA_MEDICO\s*##\]\s*["']([^>]*?)>/gi, '');
@@ -691,6 +713,37 @@ export default class DictadoInforme extends React.Component {
         });
       });
     } catch {}
+  };
+  
+  toTransparentPng = async (src, threshold = 250) => {
+    try {
+      const url = String(src || '');
+      if (!url) return url;
+      return await new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          try {
+            const w = img.naturalWidth || img.width;
+            const h = img.naturalHeight || img.height;
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            const id = ctx.getImageData(0, 0, w, h);
+            const d = id.data;
+            for (let i = 0; i < d.length; i += 4) {
+              const r = d[i], g = d[i+1], b = d[i+2];
+              if (r >= threshold && g >= threshold && b >= threshold) d[i+3] = 0;
+            }
+            ctx.putImageData(id, 0, 0);
+            resolve(canvas.toDataURL('image/png'));
+          } catch { resolve(url); }
+        };
+        img.onerror = () => resolve(url);
+        img.src = url;
+      });
+    } catch { return src; }
   };
   
   generatePdfTextBase64 = async (html) => {
@@ -880,7 +933,8 @@ export default class DictadoInforme extends React.Component {
         const photoUrl = this.toDataUrl(d.photo);
         const firmaUrl = this.toDataUrl(d.firma);
         const headerUrl = this.toDataUrl(d.cabeceraPlantilla);
-        this.setState({ staffPhoto: photoUrl || null, staffFirma: firmaUrl || null, staffCabeceraPlantilla: headerUrl || null, staffLoading: false }, () => {
+        const firmaPng = await this.toTransparentPng(firmaUrl);
+        this.setState({ staffPhoto: photoUrl || null, staffFirma: firmaUrl || null, staffFirmaTransparent: firmaPng || firmaUrl, staffCabeceraPlantilla: headerUrl || null, staffLoading: false }, () => {
           try {
             if (this.state.initialFromSaved && !this.state.templateRaw) {
               this.setState({ lastChangeSource: 'system' }, () => { try { if (this.state.editorInst) this.state.editorInst.value = this.state.html; } catch {} });
