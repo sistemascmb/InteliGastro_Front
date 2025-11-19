@@ -534,7 +534,38 @@ export default class DictadoInforme extends React.Component {
     } catch {}
   };
 
-  getCleanEditorHtml = () => {
+  normalizeSavedHtmlMedia = (html) => {
+    try {
+      const div = document.createElement('div');
+      div.innerHTML = String(html || '');
+      const fixSrc = (s) => {
+        if (!s) return s;
+        const v = String(s).trim();
+        if (!v) return v;
+        if (v.startsWith('data:')) {
+          const parts = v.split(',');
+          if (parts.length >= 2) {
+            const head = parts[0];
+            const body = parts.slice(1).join(',').replace(/\s+/g, '');
+            return head + ',' + body;
+          }
+          return v.replace(/\s+/g, '');
+        }
+        if (v.startsWith('blob:') || v.startsWith('http') || v.startsWith('/')) return v;
+        const b = v.replace(/\s+/g, '');
+        if (b.startsWith('/9j/')) return 'data:image/jpeg;base64,' + b;
+        if (b.startsWith('iVBOR')) return 'data:image/png;base64,' + b;
+        if (b.startsWith('R0lGOD')) return 'data:image/gif;base64,' + b;
+        if (/^[A-Za-z0-9+/=]+$/.test(b) && b.length > 32) return 'data:image/jpeg;base64,' + b;
+        return v;
+      };
+      div.querySelectorAll('img').forEach((img) => { const ns = fixSrc(img.getAttribute('src')); if (ns) img.setAttribute('src', ns); });
+      div.querySelectorAll('video').forEach((vd) => { const ns = fixSrc(vd.getAttribute('src')); if (ns) vd.setAttribute('src', ns); });
+      return div.innerHTML;
+    } catch { return String(html || ''); }
+  };
+
+  getCleanEditorHtml = async () => {
     try {
       const inst = this.state.editorInst;
       const doc = inst && (inst.editorDocument || inst.iframe?.contentWindow?.document || inst.ownerDocument || document);
@@ -564,6 +595,37 @@ export default class DictadoInforme extends React.Component {
           if (h) inline.style.height = Math.round(h) + 'px';
           inline.style.opacity = '1';
           inline.style.pointerEvents = 'auto';
+        }
+      }
+      const convertUrlToDataUrl = async (url) => {
+        try {
+          const resp = await fetch(url);
+          const blob = await resp.blob();
+          if (!blob) return url;
+          return await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(String(reader.result || '').replace(/\s+/g, ''));
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        } catch { return url; }
+      };
+      const imgs = Array.from(body.querySelectorAll('img'));
+      for (let i = 0; i < imgs.length; i++) {
+        const img = imgs[i];
+        const src = img.getAttribute('src') || '';
+        if (src.startsWith('blob:') || src.startsWith('http') || src.startsWith('//') || src.startsWith('/')) {
+          const dataUrl = await convertUrlToDataUrl(src);
+          img.setAttribute('src', String(dataUrl || '').replace(/\s+/g, ''));
+        }
+      }
+      const vids = Array.from(body.querySelectorAll('video'));
+      for (let i = 0; i < vids.length; i++) {
+        const vd = vids[i];
+        const src = vd.getAttribute('src') || '';
+        if (src.startsWith('blob:')) {
+          const dataUrl = await convertUrlToDataUrl(src);
+          vd.setAttribute('src', String(dataUrl || '').replace(/\s+/g, ''));
         }
       }
       ['[data-role="firma-watermark"]','[data-role="firma-handle"]','[data-role="firma-resize"]'].forEach((sel) => {
@@ -596,7 +658,7 @@ export default class DictadoInforme extends React.Component {
   handleGuardarEstudio = async () => {
     try {
       const inst = this.state.editorInst;
-      const contenido = this.getCleanEditorHtml();
+      const contenido = await this.getCleanEditorHtml();
       const d = this.state.datos || {};
       const payload = { contenido, numeroEstudio: d.numeroEstudio || '', pacientId: d.pacientId || '', personalId: d.personalId || '' };
       const procedimientoActualizado = await appointmentsService.update_estudio_dictado(d.numeroEstudio, payload);
@@ -610,7 +672,7 @@ export default class DictadoInforme extends React.Component {
   handleTerminarEstudio = async () => {
     try {
       const inst = this.state.editorInst;
-      const contenido = this.getCleanEditorHtml();
+      const contenido = await this.getCleanEditorHtml();
       const d = this.state.datos || {};
       const payload = { contenido, numeroEstudio: d.numeroEstudio || '', pacientId: d.pacientId || '', personalId: d.personalId || '' };
       this.setState({ terminarProcessingOpen: true, terminarPayload: payload });
@@ -629,7 +691,8 @@ export default class DictadoInforme extends React.Component {
       const savedHtmlRaw = this.state.datos?.estructuraHtml;
       const savedHtml = typeof savedHtmlRaw === 'string' ? savedHtmlRaw.trim() : '';
       if (dg === '1' && savedHtml && savedHtml.toLowerCase() !== 'null') {
-        this.setState({ html: savedHtml, plantillasAll: list, templateRaw: '', lastChangeSource: 'system', initialFromSaved: true }, () => { try { if (this.state.editorInst) this.state.editorInst.value = this.state.html; } catch {} });
+        const normalizedSavedHtml = this.normalizeSavedHtmlMedia(savedHtml);
+        this.setState({ html: normalizedSavedHtml, plantillasAll: list, templateRaw: '', lastChangeSource: 'system', initialFromSaved: true }, () => { try { if (this.state.editorInst) this.state.editorInst.value = this.state.html; } catch {} });
       } else {
         const sp = new URLSearchParams(window.location.search);
         const studiesIdRaw = sp.get('studiesId');
@@ -772,7 +835,7 @@ export default class DictadoInforme extends React.Component {
               {/*<div><strong>Estudio:</strong> {datos.estudio}</div>*/}
               <div><strong>Procedimiento:</strong> {datos.procedimiento}</div>
               <div><strong>Médico:</strong> {datos.medico}</div>
-              <div><strong>Html:</strong> {datos.estructuraHtml}</div>
+              {/*<div><strong>Html:</strong> {datos.estructuraHtml}</div>*/}
 
             </Box>
 
