@@ -64,7 +64,8 @@ export default class DictadoInforme extends React.Component {
       snackbarOpen: false,
       snackbarMessage: '',
       snackbarSeverity: 'success',
-      firmaDisabled: false
+      firmaDisabled: false,
+      initialFromSaved: false
     };
   }
 
@@ -624,25 +625,32 @@ export default class DictadoInforme extends React.Component {
     try {
       const res = await plantillaService.getAll();
       const list = Array.isArray(res) ? res : (res?.data || []);
-      const sp = new URLSearchParams(window.location.search);
-      const studiesIdRaw = sp.get('studiesId');
-      let picked = '';
-      if (studiesIdRaw) {
-        const idNum = Number(studiesIdRaw);
-        const foundExact = list.find(p => String(p.examsId) === studiesIdRaw || Number(p.examsId) === idNum);
-        if (foundExact && foundExact.plantilla) picked = String(foundExact.plantilla || '');
-      }
-      if (!picked) {
-        const estudioName = String(this.state.datos.estudio || '').toLowerCase();
-        if (estudioName) {
-          const foundByName = list.find(p => String(p.name || '').toLowerCase().includes(estudioName));
-          if (foundByName && foundByName.plantilla) picked = String(foundByName.plantilla || '');
+      const dg = String(this.state.datos?.dictadoGuardado || '').trim();
+      const savedHtmlRaw = this.state.datos?.estructuraHtml;
+      const savedHtml = typeof savedHtmlRaw === 'string' ? savedHtmlRaw.trim() : '';
+      if (dg === '1' && savedHtml && savedHtml.toLowerCase() !== 'null') {
+        this.setState({ html: savedHtml, plantillasAll: list, templateRaw: '', lastChangeSource: 'system', initialFromSaved: true }, () => { try { if (this.state.editorInst) this.state.editorInst.value = this.state.html; } catch {} });
+      } else {
+        const sp = new URLSearchParams(window.location.search);
+        const studiesIdRaw = sp.get('studiesId');
+        let picked = '';
+        if (studiesIdRaw) {
+          const idNum = Number(studiesIdRaw);
+          const foundExact = list.find(p => String(p.examsId) === studiesIdRaw || Number(p.examsId) === idNum);
+          if (foundExact && foundExact.plantilla) picked = String(foundExact.plantilla || '');
         }
+        if (!picked) {
+          const estudioName = String(this.state.datos.estudio || '').toLowerCase();
+          if (estudioName) {
+            const foundByName = list.find(p => String(p.name || '').toLowerCase().includes(estudioName));
+            if (foundByName && foundByName.plantilla) picked = String(foundByName.plantilla || '');
+          }
+        }
+        if (!picked && list.length > 0 && list[0].plantilla) picked = String(list[0].plantilla || '');
+        if (!picked) picked = FALLBACK_INFORME_HTML;
+        const withVars = this.applyTemplateVariables(picked);
+        this.setState({ html: withVars, plantillasAll: list, templateRaw: picked, lastChangeSource: 'system' }, () => { try { if (this.state.editorInst) this.state.editorInst.value = this.state.html; } catch {} });
       }
-      if (!picked && list.length > 0 && list[0].plantilla) picked = String(list[0].plantilla || '');
-      if (!picked) picked = FALLBACK_INFORME_HTML;
-      const withVars = this.applyTemplateVariables(picked);
-      this.setState({ html: withVars, plantillasAll: list, templateRaw: picked, lastChangeSource: 'system' }, () => { try { if (this.state.editorInst) this.state.editorInst.value = this.state.html; } catch {} });
     } catch {}
 
     try {
@@ -685,9 +693,13 @@ export default class DictadoInforme extends React.Component {
             fechaNacimiento: info.birthdate || '',
             historiaClinica: info.medicalHistory || ''
           });
-          const baseTpl = this.state.templateRaw || this.state.html || '';
-          const updatedHtml = this.applyTemplateVariables(baseTpl);
-          this.setState({ pacienteInfo: info, datos, html: updatedHtml, lastChangeSource: 'system' }, () => { try { if (this.state.editorInst) this.state.editorInst.value = this.state.html; } catch {} });
+          if (this.state.initialFromSaved && !this.state.templateRaw) {
+            this.setState({ pacienteInfo: info, datos, lastChangeSource: 'system' }, () => { try { if (this.state.editorInst) this.state.editorInst.value = this.state.html; } catch {} });
+          } else {
+            const baseTpl = this.state.templateRaw || this.state.html || '';
+            const updatedHtml = this.applyTemplateVariables(baseTpl);
+            this.setState({ pacienteInfo: info, datos, html: updatedHtml, lastChangeSource: 'system' }, () => { try { if (this.state.editorInst) this.state.editorInst.value = this.state.html; } catch {} });
+          }
         }
       }
     } catch {}
@@ -703,9 +715,13 @@ export default class DictadoInforme extends React.Component {
         const headerUrl = this.toDataUrl(d.cabeceraPlantilla);
         this.setState({ staffPhoto: photoUrl || null, staffFirma: firmaUrl || null, staffCabeceraPlantilla: headerUrl || null, staffLoading: false }, () => {
           try {
-            const baseTpl = this.state.templateRaw || this.state.html || '';
-            const updatedHtml = this.applyTemplateVariables(baseTpl);
-            this.setState({ html: updatedHtml, lastChangeSource: 'system' }, () => { try { if (this.state.editorInst) this.state.editorInst.value = this.state.html; } catch {} });
+            if (this.state.initialFromSaved && !this.state.templateRaw) {
+              this.setState({ lastChangeSource: 'system' }, () => { try { if (this.state.editorInst) this.state.editorInst.value = this.state.html; } catch {} });
+            } else {
+              const baseTpl = this.state.templateRaw || this.state.html || '';
+              const updatedHtml = this.applyTemplateVariables(baseTpl);
+              this.setState({ html: updatedHtml, lastChangeSource: 'system' }, () => { try { if (this.state.editorInst) this.state.editorInst.value = this.state.html; } catch {} });
+            }
           } catch {}
         });
       }
@@ -877,7 +893,7 @@ export default class DictadoInforme extends React.Component {
                             onClick={() => {
                               const tpl = String(p.plantilla || '');
                               const withVars = this.applyTemplateVariables(tpl);
-                              this.setState({ html: withVars, templateRaw: tpl, lastChangeSource: 'system' }, () => {
+                              this.setState({ html: withVars, templateRaw: tpl, lastChangeSource: 'system', initialFromSaved: false }, () => {
                                 try {
                                   if (this.state.editorInst) {
                                     this.state.editorInst.value = this.state.html;
