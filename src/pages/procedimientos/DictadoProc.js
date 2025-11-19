@@ -145,6 +145,7 @@ const DictadoProc = () => {
   const [openUploadModal, setOpenUploadModal] = useState(false);
   const [openCie10Modal, setOpenCie10Modal] = useState(false);
   const [openConfirmPresentModal, setOpenConfirmPresentModal] = useState(false);
+  const [openCambioDictadoModal, setCambioDictadoModal] = useState(false);
   const [selectedProcedimiento, setSelectedProcedimiento] = useState(null);
   const [selectedProc, setSelectedProc] = useState(null);
   const [openStudyImagesModal, setOpenStudyImagesModal] = useState(false);
@@ -748,6 +749,16 @@ const cargarSalas = async () => {
     // alert(`Procedimiento completado: ${selectedProcedimiento.paciente.nombre}`);
   };
 
+  const handleConfirmPacienteDictado = async(e) => {
+    e.preventDefault();
+    console.log('Paciente cambió a Completado:', selectedProcedimiento);
+    const procedimientoCompletado = { ...selectedProcedimiento, status: 10065 };
+    const procedimientoActualizado = await appointmentsService.update_Estado_Proc(selectedProcedimiento.id, procedimientoCompletado);
+    console.log('✅ Procedimiento actualizado:', procedimientoActualizado);
+    await cargarProcedimientos();
+    handleClosePacienteDictadoModal();
+  };
+
   const handleReagendar = (procedimiento) => {
     setSelectedProcedimiento(procedimiento);
 
@@ -839,6 +850,11 @@ const cargarSalas = async () => {
 
   const handleCloseConfirmPresentModal = () => {
     setOpenConfirmPresentModal(false);
+    setSelectedProcedimiento(null);
+  };
+
+  const handleClosePacienteDictadoModal = () => {
+    setCambioDictadoModal(false);
     setSelectedProcedimiento(null);
   };
 
@@ -2358,6 +2374,49 @@ const cargarSalas = async () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Modal de Cambio a Dictado */}
+      <Dialog
+        open={openCambioDictadoModal}
+        onClose={handleClosePacienteDictadoModal}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 2 } }}
+      >
+        <DialogTitle sx={{
+              backgroundColor: '#dbb539ff',
+          color: 'white',
+          textAlign: 'center'
+        }}>
+          <Typography variant="h6" fontWeight="bold">Cambiar Procedimiento a Completado</Typography>
+        </DialogTitle>
+        <DialogContent sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="body1">
+            ¿Confirma pase de paciente Completado: <strong>"{selectedProcedimiento?.nombre}"</strong> ?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            Procedimiento: {selectedProcedimiento?.procedimiento}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Fecha: {selectedProcedimiento?.fechaExamen ? new Date(selectedProcedimiento.fechaExamen).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'} - {selectedProcedimiento?.horaExamen || '—'}
+          </Typography>
+          <Typography variant="body2" color="primary" sx={{ mt: 2, fontWeight: 'bold' }}>
+            El examen cambiará al estado a "Completado".
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, justifyContent: 'center', gap: 2 }}>
+          <Button variant="outlined" onClick={handleClosePacienteDictadoModal}>Cancelar</Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirmPacienteDictado}
+            startIcon={<CheckCircle />}
+            sx={{ backgroundColor: '#dbb539ff', '&:hover': { backgroundColor: '#dbb539ff' } }}
+          >
+            Confirmar Dictado
+          </Button>
+        </DialogActions>
+      </Dialog>
+
     </Container>
   );
 };

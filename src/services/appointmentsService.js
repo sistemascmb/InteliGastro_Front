@@ -653,8 +653,11 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         tipoProcedimientoId: dataOrigin.tipoProcedimientoId,
         urgenteId: dataOrigin.urgenteId,
         estudioTeminadoId: dataOrigin.estudioTeminadoId,
+        
         pdfGeneradoId: dataOrigin.PdfGeneradoId,
         dictadoGuardado: dataOrigin.dictadoGuardado,
+        estructuraHtml: dataOrigin.estructuraHtml,
+        informePdf: dataOrigin.informePdf,
 
         updatedAt: new Date().toISOString(),
         updatedBy: 'Arnold',
@@ -728,6 +731,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         estudioTeminadoId: 1,
         pdfGeneradoId: dataOrigin.PdfGeneradoId,
         dictadoGuardado: dataOrigin.dictadoGuardado,
+        estructuraHtml: dataOrigin.estructuraHtml,
+        informePdf: dataOrigin.informePdf,
 
         updatedAt: new Date().toISOString(),
         updatedBy: 'Arnold',
@@ -798,6 +803,9 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         estudioTeminadoId: 0,
         pdfGeneradoId: 0,
         dictadoGuardado: dataOrigin.dictadoGuardado,
+
+        estructuraHtml: dataOrigin.estructuraHtml,
+        informePdf: dataOrigin.informePdf,
 
         updatedAt: new Date().toISOString(),
         updatedBy: 'Arnold',
