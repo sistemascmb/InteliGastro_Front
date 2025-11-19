@@ -63,7 +63,8 @@ export default class DictadoInforme extends React.Component {
       pacienteInfo: null,
       snackbarOpen: false,
       snackbarMessage: '',
-      snackbarSeverity: 'success'
+      snackbarSeverity: 'success',
+      firmaDisabled: false
     };
   }
 
@@ -296,7 +297,10 @@ export default class DictadoInforme extends React.Component {
       if (this.state.staffCabeceraPlantilla) {
         out = out.replace(/src=["']\s*\{\{\s*cabecera\s*\}\}\s*["']/gi, `src="${this.state.staffCabeceraPlantilla}" style="max-width:100%; max-height:100%; width:auto; height:auto; display:block; margin:auto; object-fit:contain;"`);
       }
-      if (this.state.staffFirma) {
+      if (this.state.firmaDisabled) {
+        out = out.replace(/\[##\s*FIRMA_MEDICO\s*##\]/gi, '');
+        out = out.replace(/<img([^>]*?)src=["']\s*\[##\s*FIRMA_MEDICO\s*##\]\s*["']([^>]*?)>/gi, '');
+      } else if (this.state.staffFirma) {
         out = out.replace(/\[##\s*FIRMA_MEDICO\s*##\]/gi, `<img data-role="firma-inline" src="${this.state.staffFirma}" style="max-width:100%; max-height:100%; width:auto; height:auto; display:block; margin:auto; object-fit:contain;" />`);
         out = out.replace(/<img([^>]*?)src=["']\s*\[##\s*FIRMA_MEDICO\s*##\]\s*["']([^>]*?)>/gi, (m, pre, post) => `<img${pre}src="${this.state.staffFirma}" data-role="firma-inline"${post}>`);
       }
@@ -367,6 +371,7 @@ export default class DictadoInforme extends React.Component {
 
   initFirmaWatermarkDrag = () => {
     try {
+      if (this.state.firmaDisabled) return;
       const inst = this.state.editorInst;
       if (!inst) return;
       const doc = inst.editorDocument || inst.iframe?.contentDocument || inst.ownerDocument || document;
@@ -451,7 +456,8 @@ export default class DictadoInforme extends React.Component {
           body.appendChild(wm);
           body.appendChild(h);
           body.appendChild(r);
-          inline.parentNode && inline.parentNode.removeChild(inline);
+          inline.style.opacity = '0.001';
+          inline.style.pointerEvents = 'none';
           mark = wm;
           handle = h;
           resize = r;
@@ -527,10 +533,69 @@ export default class DictadoInforme extends React.Component {
     } catch {}
   };
 
+  getCleanEditorHtml = () => {
+    try {
+      const inst = this.state.editorInst;
+      const doc = inst && (inst.editorDocument || inst.iframe?.contentWindow?.document || inst.ownerDocument || document);
+      const body = doc && doc.body;
+      if (!body) return inst && inst.value ? inst.value : (this.state.html || '');
+      const wm = body.querySelector('[data-role="firma-watermark"]');
+      if (wm && !this.state.firmaDisabled) {
+        const rect = wm.getBoundingClientRect();
+        const w = parseFloat(wm.style.width || '') || rect.width;
+        const h = parseFloat(wm.style.height || '') || rect.height;
+        const imgWm = wm.querySelector('img');
+        let inline = body.querySelector('img[data-role="firma-inline"]');
+        if (!inline && imgWm) {
+          inline = doc.createElement('img');
+          inline.setAttribute('data-role', 'firma-inline');
+          inline.src = imgWm.src || this.state.staffFirma || '';
+          inline.style.display = 'block';
+          inline.style.margin = '0 auto';
+          inline.style.objectFit = 'contain';
+          inline.style.maxWidth = '100%';
+          inline.style.height = 'auto';
+          const target = body.querySelector('td[style*="text-align: center"], th[style*="text-align: center"]') || body;
+          target.appendChild(inline);
+        }
+        if (inline) {
+          if (w) inline.style.width = Math.round(w) + 'px';
+          if (h) inline.style.height = Math.round(h) + 'px';
+          inline.style.opacity = '1';
+          inline.style.pointerEvents = 'auto';
+        }
+      }
+      ['[data-role="firma-watermark"]','[data-role="firma-handle"]','[data-role="firma-resize"]'].forEach((sel) => {
+        body.querySelectorAll(sel).forEach((n) => { n.parentNode && n.parentNode.removeChild(n); });
+      });
+      Array.from(body.querySelectorAll('figure')).forEach((f) => { if (!f.querySelector('img,video,table') && f.textContent.trim() === '') f.parentNode && f.parentNode.removeChild(f); });
+      Array.from(body.querySelectorAll('p')).forEach((p) => { if (p.textContent.trim() === '' && !p.querySelector('img,video,table')) p.parentNode && p.parentNode.removeChild(p); });
+      const html = body.innerHTML;
+      try { if (inst) inst.value = html; } catch {}
+      return html;
+    } catch { return this.state.html || ''; }
+  };
+
+  handleEliminarFirma = () => {
+    try {
+      const inst = this.state.editorInst;
+      const doc = inst && (inst.editorDocument || inst.iframe?.contentWindow?.document || inst.ownerDocument || document);
+      const body = doc && doc.body;
+      if (!body) return;
+      body.querySelectorAll('[data-role="firma-watermark"],[data-role="firma-handle"],[data-role="firma-resize"]').forEach((n) => { n.parentNode && n.parentNode.removeChild(n); });
+      body.querySelectorAll('img[data-role="firma-inline"]').forEach((n) => { n.parentNode && n.parentNode.removeChild(n); });
+      let html = body.innerHTML;
+      html = html.replace(/\[##\s*FIRMA_MEDICO\s*##\]/gi, '');
+      html = html.replace(/<img([^>]*?)src=["']\s*\[##\s*FIRMA_MEDICO\s*##\]\s*["']([^>]*?)>/gi, '');
+      try { if (inst) { inst.value = html; inst.events && inst.events.fire && inst.events.fire('change'); } } catch {}
+      this.setState({ firmaDisabled: true, html: html, lastChangeSource: 'system' });
+    } catch {}
+  };
+
   handleGuardarEstudio = async () => {
     try {
       const inst = this.state.editorInst;
-      const contenido = inst && inst.value ? inst.value : (this.state.html || '');
+      const contenido = this.getCleanEditorHtml();
       const d = this.state.datos || {};
       const payload = { contenido, numeroEstudio: d.numeroEstudio || '', pacientId: d.pacientId || '', personalId: d.personalId || '' };
       const procedimientoActualizado = await appointmentsService.update_estudio_dictado(d.numeroEstudio, payload);
@@ -544,7 +609,7 @@ export default class DictadoInforme extends React.Component {
   handleTerminarEstudio = async () => {
     try {
       const inst = this.state.editorInst;
-      const contenido = inst && inst.value ? inst.value : (this.state.html || '');
+      const contenido = this.getCleanEditorHtml();
       const d = this.state.datos || {};
       const payload = { contenido, numeroEstudio: d.numeroEstudio || '', pacientId: d.pacientId || '', personalId: d.personalId || '' };
       this.setState({ terminarProcessingOpen: true, terminarPayload: payload });
@@ -691,12 +756,13 @@ export default class DictadoInforme extends React.Component {
               {/*<div><strong>Estudio:</strong> {datos.estudio}</div>*/}
               <div><strong>Procedimiento:</strong> {datos.procedimiento}</div>
               <div><strong>Médico:</strong> {datos.medico}</div>
-              {/*<div><strong>Html:</strong> {datos.estructuraHtml}</div>*/}
+              <div><strong>Html:</strong> {datos.estructuraHtml}</div>
 
             </Box>
 
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button variant="contained" color="primary" onClick={this.handleGuardarEstudio}>Guardar Dictado</Button>
+              <Button variant="contained" color="secondary" onClick={this.handleEliminarFirma}>Eliminar firma</Button>
               <Button variant="contained" color="warning" onClick={this.handleTerminarEstudio} disabled={String(this.state.datos?.dictadoGuardado || '') !== '1'}>Terminar Dictado</Button>
               <Button variant="contained" color="error" onClick={() => window.location.assign('/procedimientos/dictadoproc?refresh=1')}>Cerrar dictado</Button>
             </Box>
