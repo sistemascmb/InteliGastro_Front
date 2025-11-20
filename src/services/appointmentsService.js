@@ -51,6 +51,7 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
 
         estructuraHtml: proced.estructuraHtml,
         informePdf: proced.informePdf,
+        preparacion: proced.preparacion,
 
         // Auditoría
         createdAt: proced.createdAt,
@@ -115,6 +116,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         dictadoGuardado: proced.dictadoGuardado,
         estructuraHtml: proced.estructuraHtml,
         informePdf: proced.informePdf,
+        preparacion: proced.preparacion,
+
         // Auditoría
         createdAt: proced.createdAt,
         createdBy: proced.createdBy,
@@ -178,6 +181,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         dictadoGuardado: proced.dictadoGuardado,
         estructuraHtml: proced.estructuraHtml,
         informePdf: proced.informePdf,
+        preparacion: proced.preparacion,
+
         // Auditoría
         createdAt: proced.createdAt,
         createdBy: proced.createdBy,
@@ -241,6 +246,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         dictadoGuardado: proced.dictadoGuardado,
         estructuraHtml: proced.estructuraHtml,
         informePdf: proced.informePdf,
+        preparacion: proced.preparacion,
+
         // Auditoría
         createdAt: proced.createdAt,
         createdBy: proced.createdBy,
@@ -304,6 +311,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         dictadoGuardado: proced.dictadoGuardado,
         estructuraHtml: proced.estructuraHtml,
         informePdf: proced.informePdf,
+        preparacion: proced.preparacion,
+
         // Auditoría
         createdAt: proced.createdAt,
         createdBy: proced.createdBy,
@@ -453,6 +462,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         dictadoGuardado: 0,
         informePdf: 'null',
         estructuraHtml: 'null',
+        preparacion: 'null',
+
 
         createdAt: new Date().toISOString(),
         createdBy: 'Arnold' // Usuario de prueba
@@ -530,6 +541,7 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         dictadoGuardado: 0,
         informePdf: 'null',
         estructuraHtml: 'null',
+        preparacion: 'null',
 
         createdAt: new Date().toISOString(),
         createdBy: 'Arnold' // Usuario de prueba
@@ -662,6 +674,7 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         dictadoGuardado: dataOrigin.dictadoGuardado,
         estructuraHtml: dataOrigin.estructuraHtml,
         informePdf: dataOrigin.informePdf,
+        preparacion: dataOrigin.preparacion,
 
         updatedAt: new Date().toISOString(),
         updatedBy: 'Arnold',
@@ -737,6 +750,8 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         dictadoGuardado: dataOrigin.dictadoGuardado,
         estructuraHtml: dataOrigin.estructuraHtml,
         informePdf: dataOrigin.informePdf,
+        preparacion: dataOrigin.preparacion,
+
 
         updatedAt: new Date().toISOString(),
         updatedBy: 'Arnold',
@@ -807,6 +822,7 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         estudioTeminadoId: 0,
         pdfGeneradoId: 0,
         dictadoGuardado: dataOrigin.dictadoGuardado,
+        preparacion: dataOrigin.preparacion,
 
         estructuraHtml: dataOrigin.estructuraHtml,
         informePdf: dataOrigin.informePdf,
@@ -878,6 +894,7 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         procedureRoomId: dataOrigin.procedureRoomId,
         resourcesId: dataOrigin.resourcesId,
         studiesId: dataOrigin.studiesId,
+        preparacion: dataOrigin.preparacion,
 
         insuranceId: dataOrigin.insuranceId,
         letterOfGuarantee: dataOrigin.letterOfGuarantee,
@@ -972,6 +989,7 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         estructuraHtml: pacienteData.contenido,
         informePdf: pacienteData.informePdf || 'null',
         dictadoGuardado: 1,
+        preparacion: dataOrigin.preparacion,
 
         updatedAt: new Date().toISOString(),
         updatedBy: 'Arnold',
@@ -1011,6 +1029,87 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
     }
   },
 
+  update_preparacion: async (id, pacienteData) => {
+    try {
+      const urlOrigin = `${process.env.REACT_APP_API_URL}/Agenda/${id}`;
+      const responseOrigin = await fetch(urlOrigin);
+      const dataOrigin = await responseOrigin.json();
+
+      console.log('📝 Actualizando Agenda con ID:', id);
+
+      if (!id) {
+        throw new Error('ID del Agenda es requerido');
+      }
+
+      // Formatear datos según el formato esperado por la API
+      const formattedData = {
+        medicalscheduleid: parseInt(id),
+        pacientId: dataOrigin.pacientId,
+        centroId: dataOrigin.centroId,
+        personalId: dataOrigin.personalId,
+        appointmentDate: dataOrigin.appointmentDate,
+        hoursMedicalShedule: dataOrigin.hoursMedicalShedule,
+
+        otherOrigins : dataOrigin.otherOrigins,
+        typeOfPatient: dataOrigin.typeOfPatient,
+        referral_doctorsId: dataOrigin.referral_doctorsId,
+        centerOfOriginId: dataOrigin.centerOfOriginId,
+        anotherCenter: dataOrigin.anotherCenter,
+        procedureRoomId: dataOrigin.procedureRoomId,
+        resourcesId: dataOrigin.resourcesId,
+        studiesId: dataOrigin.studiesId,
+
+        insuranceId: dataOrigin.insuranceId,
+        letterOfGuarantee: dataOrigin.letterOfGuarantee,
+        status: dataOrigin.status, //cambio
+        typeOfAttention: dataOrigin.typeOfAttention, 
+        anotacionesAdicionales: dataOrigin.anotacionesAdicionales,
+        tipoProcedimientoId: dataOrigin.tipoProcedimientoId,
+        urgenteId: dataOrigin.urgenteId,
+        estudioTeminadoId: 2,
+        pdfGeneradoId: dataOrigin.informePdf,
+        estructuraHtml: dataOrigin.contenido,
+        informePdf: dataOrigin.informePdf,
+        dictadoGuardado: dataOrigin.dictadoGuardado,
+        preparacion: pacienteData.preparacion,
+
+        updatedAt: dataOrigin.updatedAt,
+        updatedBy: dataOrigin.updatedBy,
+        isDeleted: false
+        
+      };
+
+      console.log('📊 Datos a enviar para actualizar:', formattedData);
+
+      const url = `${process.env.REACT_APP_API_URL}/Agenda/${id}`;
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formattedData)
+      });
+
+      console.log('🔗 Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Error response:', errorText);
+        throw new Error(`Error ${response.status}: ${response.statusText} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Agenda actualizado exitosamente:', data);
+
+      return {
+        data: data,
+        status: 'success'
+      };
+    } catch (error) {
+      console.error('❌ Error al actualizar Agenda:', error);
+      throw error;
+    }
+  },
 
   // Actualizar cita
   update: async (id, appointmentData) => {
