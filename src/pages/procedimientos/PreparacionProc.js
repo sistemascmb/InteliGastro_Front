@@ -1781,7 +1781,7 @@ const cargarSalas = async () => {
                       </Grid>  
                       <Grid container spacing={2} sx={{ mt: 2 }}>
                         <Grid item xs={12} md={6}>
-                          <Typography variant="body2"><strong>Urgente:</strong> {selectedProcedimiento.urgente}</Typography>
+                          <Typography variant="body2"><strong>Urgente:</strong> {selectedProcedimiento.urgente === true ?'Sí': 'No'}</Typography>
                         </Grid>
                       </Grid>
                       <Grid container spacing={2} sx={{ mt: 2 }}>

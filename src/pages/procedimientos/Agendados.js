@@ -306,7 +306,6 @@ const cargarSalas = async () => {
                   const seguroDatos = await segurosService.getById(procedimientoDat.insuranceId);
                   const tipoAtencion = await centrosService.getSystemParameterId(procedimientoDat.typeOfPatient);
                   const tipoProced = await centrosService.getSystemParameterId(procedimientoDat.tipoProcedimientoId);
-
                   
                   // Transformar el estado a ID numérico, manejando tanto booleano como texto
                   
@@ -1428,7 +1427,7 @@ const cargarSalas = async () => {
         </DialogActions>
       </Dialog>
 
-      {/* Modal para Historial del Examen */}
+      {/* Modal para Información del Examen */}
       <Dialog
         open={openExamHistoryModal}
         onClose={handleCloseExamHistory}
@@ -1511,7 +1510,7 @@ const cargarSalas = async () => {
                 </Grid>  
                 <Grid container spacing={2} sx={{ mt: 2 }}>
                   <Grid item xs={12} md={6}>
-                    <Typography variant="body2"><strong>Urgente:</strong> {selectedProcedimiento.urgente}</Typography>
+                    <Typography variant="body2"><strong>Urgente:</strong> {selectedProcedimiento.urgente === true ?'Sí': 'No'}</Typography>
                   </Grid>
                 </Grid>
                 <Grid container spacing={2} sx={{ mt: 2 }}>
@@ -1798,7 +1797,9 @@ const cargarSalas = async () => {
                     onChange={handleFileSelect}
                     style={{ display: 'none' }}
                     id="file-upload"
-                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                    accept=".pdf,.doc,.docx"
+
+                    //accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                   />
                   <label htmlFor="file-upload">
                     <Button
@@ -1821,9 +1822,9 @@ const cargarSalas = async () => {
                       displayEmpty
                     >
                       <MenuItem value="">Seleccionar tipo</MenuItem>
-                      <MenuItem value="Imagen">Imagen</MenuItem>
-                      <MenuItem value="Laboratorio">Laboratorio</MenuItem>
-                      <MenuItem value="Documento">Documento</MenuItem>
+                      <MenuItem value="Pdf">Pdf</MenuItem>
+                      <MenuItem value="Word">Word</MenuItem>
+                      <MenuItem value="Excel">Excel</MenuItem>
                       <MenuItem value="Otro">Otro</MenuItem>
                     </Select>
                   </FormControl>
@@ -1860,7 +1861,7 @@ const cargarSalas = async () => {
                       <TableCell><strong>Nombre</strong></TableCell>
                       <TableCell><strong>Tipo</strong></TableCell>
                       <TableCell><strong>Fecha Creación</strong></TableCell>
-                      <TableCell><strong>Tamaño</strong></TableCell>
+                      {/*<TableCell><strong>Tamaño</strong></TableCell>*/}
                       <TableCell align="center"><strong>Acciones</strong></TableCell>
                     </TableRow>
                   </TableHead>
@@ -1886,7 +1887,7 @@ const cargarSalas = async () => {
                             />
                           </TableCell>
                           <TableCell>{archivo.fechaCreacion}</TableCell>
-                          <TableCell>{archivo.tamaño}</TableCell>
+                          {/*<TableCell>{archivo.tamaño}</TableCell>*/}
                           <TableCell align="center">
                             <IconButton
                               color="error"

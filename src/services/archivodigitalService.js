@@ -196,7 +196,48 @@ getAll_Estudio: async (params = {}) => {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
       const rawData = await response.json();
-      const activos = (Array.isArray(rawData) ? rawData : []).filter(item => item.isDeleted === false);
+      const activos = (Array.isArray(rawData) ? rawData : []).filter(item => item.isDeleted === false && (item.typeArchive === 'video/mp4' || item.typeArchive === 'image/jpeg' || item.typeArchive === 'video/mp4;codecs=avc1'));
+      const mappedData = activos.map(ArchivoDigital => ({
+        id: ArchivoDigital.digitalfileid,
+        digitalfileid: ArchivoDigital.digitalfileid,
+        date: ArchivoDigital.date,
+        hour: ArchivoDigital.hour,
+        desktop: ArchivoDigital.desktop,
+        archive: ArchivoDigital.archive,
+        description: ArchivoDigital.description,
+        typeArchive: ArchivoDigital.typeArchive,
+        medical_ScheduleId: ArchivoDigital.medical_ScheduleId,
+        estado: ArchivoDigital.status ? 'activo' : 'inactivo',
+        status: ArchivoDigital.status ? '10007' : '10008',
+        createdAt: ArchivoDigital.createdAt,
+        createdBy: ArchivoDigital.createdBy,
+        updatedAt: ArchivoDigital.updatedAt,
+        updatedBy: ArchivoDigital.updatedBy,
+        isDeleted: ArchivoDigital.isDeleted
+      }));
+      return {
+        data: mappedData,
+        status: 'success'
+      };
+    } catch (error) {
+      console.error('❌ Error al buscar archivos por estudio:', error);
+      throw error;
+    }
+  },
+
+  searchByEstudioId_Otros: async (estudioId) => {
+    if (!estudioId) {
+      throw new Error('ID del estudio es requerido');
+    }
+    try {
+      //const url = `http://192.168.1.55:8090/api/ArchivoDigital/search?value1=${encodeURIComponent(estudioId)}`;
+      const url = `${process.env.REACT_APP_API_URL}/ArchivoDigital/search?value1=${estudioId}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      const rawData = await response.json();
+      const activos = (Array.isArray(rawData) ? rawData : []).filter(item => item.isDeleted === false && (item.typeArchive != 'video/mp4' || item.typeArchive != 'image/jpeg' || item.typeArchive != 'video/mp4;codecs=avc1'));
       const mappedData = activos.map(ArchivoDigital => ({
         id: ArchivoDigital.digitalfileid,
         digitalfileid: ArchivoDigital.digitalfileid,
