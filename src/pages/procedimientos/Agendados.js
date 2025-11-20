@@ -25,7 +25,9 @@ import {
   DialogContent,
   DialogActions,
   Grid,
-  Divider
+  Divider,
+  Alert,
+  Snackbar
 } from '@mui/material';
 import {
   NavigateNext,
@@ -41,7 +43,8 @@ import {
   History,
   Assessment,
   Delete,
-  Save
+  Save,
+  Download
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { appointmentsService, patientsService, staff, staffService } from 'services';
@@ -52,6 +55,7 @@ import salasService from 'services/salasService';
 import recursosService from 'services/recursosService';
 import medicosRefService from 'services/medicosRefService';
 import segurosService from 'services/segurosService';
+import archivodigitalService from 'services/archivodigitalService';
 
 const ParametroTexto = ({ id }) => {
   const [valor, setValor] = useState('');
@@ -239,22 +243,22 @@ const cargarSalas = async () => {
     descripcion: ''
   });
 
-  const [archivosSubidos, setArchivosSubidos] = useState([
-    {
-      id: 1,
-      nombre: 'Resultado_Laboratorio_001.pdf',
-      tipo: 'Laboratorio',
-      fechaCreacion: '2024-01-10',
-      tamaño: '2.5 MB'
-    },
-    {
-      id: 2,
-      nombre: 'Imagen_Endoscopia_001.jpg',
-      tipo: 'Imagen',
-      fechaCreacion: '2024-01-09',
-      tamaño: '1.8 MB'
+  const [archivosSubidos, setArchivosSubidos] = useState([]);
+
+  const cargarArchivos = async (codigoEstudio) => {
+    try {
+      if (!codigoEstudio) return;
+      const response = await archivodigitalService.searchByEstudioId_Otros(codigoEstudio);
+      const list = Array.isArray(response) ? response : (response?.data || []);
+      setArchivosSubidos(list);
+    } catch (error) {
+      console.error('❌ Error al cargar archivos:', error);
+      setArchivosSubidos([]);
+      try { setSnackbar({ open: true, message: 'Error al cargar archivos', severity: 'error' }); } catch {}
     }
-  ]);
+  };
+
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   // Estados para CIE-10
   const [cie10Form, setCie10Form] = useState({
@@ -594,12 +598,20 @@ const cargarSalas = async () => {
     const nombrePaciente = proc?.paciente?.nombre || '';
     const documentoPaciente = proc?.paciente?.documento || '';
     const search = (filters.searchTerm || '').toLowerCase();
-    const cumpleBusqueda = !filters.searchTerm ||
+  const cumpleBusqueda = !filters.searchTerm ||
       nombrePaciente.toLowerCase().includes(search) ||
       documentoPaciente.includes(filters.searchTerm);
 
     return cumpleFechaInicio && cumpleFechaFin && cumpleSala && cumpleProcedimiento && cumpleBusqueda;
   });
+
+  const formatLocalDateTime = (isoString) => {
+    if (!isoString) return '—';
+    const d = new Date(isoString);
+    const date = d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const time = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    return `${date} ${time}`;
+  };
 
   // Funciones para manejar modales
   const handleOpenPatientHistory = async (procedimiento) => {
@@ -735,6 +747,7 @@ const cargarSalas = async () => {
 
   const handleSubirArchivos = (procedimiento) => {
     setSelectedProcedimiento(procedimiento);
+    cargarArchivos(procedimiento?.codigo);
     setUploadForm({
       selectedFile: null,
       tipoArchivo: '',
@@ -842,29 +855,102 @@ const cargarSalas = async () => {
     setUploadForm(prev => ({ ...prev, selectedFile: file }));
   };
 
-  // Función para subir archivo
-  const handleUploadFile = () => {
-    if (uploadForm.selectedFile && uploadForm.tipoArchivo) {
-      const newFile = {
-        id: archivosSubidos.length + 1,
-        nombre: uploadForm.selectedFile.name,
-        tipo: uploadForm.tipoArchivo,
-        fechaCreacion: new Date().toISOString().split('T')[0],
-        tamaño: `${(uploadForm.selectedFile.size / 1024 / 1024).toFixed(1)} MB`
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result || '';
+        const str = typeof result === 'string' ? result : '';
+        const mimeMatch = str.match(/^data:(.+);base64,/);
+        const mime = mimeMatch ? mimeMatch[1] : (file && file.type) || '';
+        resolve({ dataUrl: str, mime });
       };
-      setArchivosSubidos(prev => [...prev, newFile]);
-      setUploadForm({
-        selectedFile: null,
-        tipoArchivo: '',
-        descripcion: ''
-      });
+      reader.onerror = (e) => reject(e);
+      reader.readAsDataURL(file);
+    });
+  };
+  const handleCloseSnackbar = () => { setSnackbar(prev => ({ ...prev, open: false })); };
+
+  // Función para subir archivo
+  const handleUploadFile = async () => {
+    const file = uploadForm.selectedFile;
+    if (file && uploadForm.tipoArchivo) {
+      try {
+        const { dataUrl, mime } = await fileToBase64(file);
+        const payload = {
+          date: new Date().toISOString(),
+          hour: new Date().getHours() + ':'+ new Date().getMinutes(),
+          estudioId: selectedProcedimiento.codigo,
+          nombre: file.name,
+          mimeType: mime,
+          tipoArchivo: uploadForm.tipoArchivo,
+          archive: dataUrl,
+          fechaCreacion: new Date().toISOString().split('T')[0],
+          tamaño: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
+          createdAt: new Date().toISOString(),
+
+        };
+        
+        try {
+          const nuevoArchivo = await archivodigitalService.create_CaptureImagenes(payload);
+          console.log('✅ Archivo creado:', nuevoArchivo);
+          setSnackbar({ open: true, message: 'Guardado correcto', severity: 'success' });
+
+          cargarArchivos(selectedProcedimiento.codigo);
+
+          setUploadForm({
+          selectedFile: null,
+          tipoArchivo: '',
+          descripcion: ''
+        });
+         
+        } catch (err) {
+          console.log('Payload preparado para envío:', payload);
+          setSnackbar({ open: true, message: 'Error al guardar archivo', severity: 'error' });
+        }
+      } catch 
+      {
+        console.error('Error al convertir archivo a Base64');
+        setSnackbar({ open: true, message: 'Error al convertir archivo', severity: 'error' });
+      }
     }
   };
 
   // Función para eliminar archivo
-  const handleDeleteFile = (fileId) => {
-    setArchivosSubidos(prev => prev.filter(file => file.id !== fileId));
+  const handleDeleteFile = async (fileId) => {
+    try {
+      await archivodigitalService.delete(fileId);
+      setSnackbar({ open: true, message: 'Eliminado correcto', severity: 'success' });
+      await cargarArchivos(selectedProcedimiento?.codigo);
+    } catch (error) {
+      console.error('❌ Error al eliminar Archivo Digital:', error);
+    }
   };
+
+  const getExtensionFromMime = (mime) => {
+    if (mime === 'application/pdf') return 'pdf';
+    if (mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || mime === 'application/msword') return 'docx';
+    if (mime === 'application/vnd.ms-excel') return 'xls';
+    if (mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') return 'xlsx';
+    return 'dat';
+  };
+
+  const handleDownloadFile = (item) => {
+    if (!item) return;
+    const mime = item.typeArchive || 'application/octet-stream';
+    let href = item.archive || '';
+    if (typeof href !== 'string') return;
+    if (!/^data:/.test(href)) href = `data:${mime};base64,${href}`;
+    const a = document.createElement('a');
+    a.href = href;
+    const baseName = item.description || item.nombre || 'archivo';
+    const hasExt = /\.[a-z0-9]+$/i.test(baseName);
+    a.download = hasExt ? baseName : `${baseName}.${getExtensionFromMime(mime)}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
 
   // Funciones para CIE-10
   const handleAgregarCie10 = () => {
@@ -926,6 +1012,20 @@ const cargarSalas = async () => {
       case 10025: return 'Adicional';
       default: return 'Otro';
     }
+  };
+
+  const getArchivoTipoLabel = (mime) => {
+    if (mime === 'application/pdf') return 'PDF';
+    if (mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || mime === 'application/msword') return 'Word';
+    if (mime === 'application/vnd.ms-excel' || mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') return 'Excel';
+    return 'Otro';
+  };
+
+  const getArchivoTipoColor = (mime) => {
+    if (mime === 'application/pdf') return 'warning';
+    if (mime === 'application/vnd.ms-excel' || mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') return 'success';
+    if (mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return 'info';
+    return 'default';
   };
 
   return (
@@ -1340,6 +1440,12 @@ const cargarSalas = async () => {
           </Box>
         </Paper>
       </Box>
+
+      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={handleCloseSnackbar} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
 
       {/* Modal para Historial del Paciente */}
       <Dialog
@@ -1857,7 +1963,7 @@ const cargarSalas = async () => {
                 <Table size="small">
                   <TableHead>
                     <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                      <TableCell><strong>ID</strong></TableCell>
+                      <TableCell><strong>Nº</strong></TableCell>
                       <TableCell><strong>Nombre</strong></TableCell>
                       <TableCell><strong>Tipo</strong></TableCell>
                       <TableCell><strong>Fecha Creación</strong></TableCell>
@@ -1875,20 +1981,28 @@ const cargarSalas = async () => {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      archivosSubidos.map((archivo) => (
-                        <TableRow key={archivo.id} hover>
-                          <TableCell>{archivo.id}</TableCell>
-                          <TableCell>{archivo.nombre}</TableCell>
+                      archivosSubidos.map((archivo, index) => (
+                        <TableRow key={index} hover>
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell>{archivo.description}</TableCell>
                           <TableCell>
                             <Chip
-                              label={archivo.tipo}
-                              color="primary"
+                              label={getArchivoTipoLabel(archivo.typeArchive)}
+                              color={getArchivoTipoColor(archivo.typeArchive)}
                               size="small"
                             />
                           </TableCell>
-                          <TableCell>{archivo.fechaCreacion}</TableCell>
+                          <TableCell>{formatLocalDateTime(archivo.createdAt)}</TableCell>
                           {/*<TableCell>{archivo.tamaño}</TableCell>*/}
                           <TableCell align="center">
+                            <IconButton
+                              color="primary"
+                              size="small"
+                              onClick={() => handleDownloadFile(archivo)}
+                              title="Descargar archivo"
+                            >
+                              <Download />
+                            </IconButton>
                             <IconButton
                               color="error"
                               size="small"
