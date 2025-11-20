@@ -302,6 +302,7 @@ const cargarSalas = async () => {
                     documento: pacienteDatos.data.documentNumber,
                     fechaNac: pacienteDatos.data.birthdate,
                     genero: pacienteDatos.data.gender == '10001' ?'MASCULINO':'FEMENINO',
+                    medicalHistory: pacienteDatos.data.medicalHistory,
                     tipoAtencion: tipoAtencion.data.value1,
                     seguro: seguroDatos.data.name,
                     tipoProcedimiento: tipoProced.data.value1,
@@ -337,6 +338,7 @@ const cargarSalas = async () => {
                     documento: 'Documento no encontrado',
                     fechaNac: '',
                     genero: '',
+                    medicalHistory: '',
                     tipoAtencion: '',
                     seguro: '',
                     tipoProc: '',
@@ -1282,7 +1284,7 @@ const cargarSalas = async () => {
                                 sx={{ fontSize: '10px', minWidth: 'auto', px: 1 }}
                               >
                                 <History sx={{ fontSize: 12, mr: 0.5 }} />
-                                Historial
+                                INFO PAC
                               </Button>
                               <Button
                                 size="small"
@@ -1560,120 +1562,147 @@ const cargarSalas = async () => {
         </DialogActions>
       </Dialog>
 
-      {/* Modal para Historial del Examen */}
-      <Dialog
-        open={openExamHistoryModal}
-        onClose={handleCloseExamHistory}
-        maxWidth="lg"
-        fullWidth
-        PaperProps={{
-          sx: { borderRadius: 2 }
-        }}
-      >
-        <DialogTitle sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          backgroundColor: '#2184be',
-          color: 'white'
-        }}>
-          <Typography variant="h6" fontWeight="bold">Historial del Examen</Typography>
-          <IconButton onClick={handleCloseExamHistory} sx={{ color: 'white' }}>
-            <Close />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers sx={{ p: 4 }}>
-          {selectedProcedimiento && (
-            <>
-              {/* Información Médica */}
-              <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f8f9fa' }}>
-                <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
-                  Información Médica
-                </Typography>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body2"><strong>ID:</strong> {examenCompleto.id}</Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body2"><strong>Número de Acceso:</strong> {examenCompleto.numeroAcceso}</Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body2"><strong>Paciente:</strong> {examenCompleto.paciente}</Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body2"><strong>H.C.:</strong> {examenCompleto.hc}</Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body2"><strong>Fecha de Nacimiento:</strong> {examenCompleto.fechaNacimiento}</Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body2"><strong>Edad:</strong> {examenCompleto.edad} años</Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body2"><strong>Centro:</strong> {examenCompleto.centro}</Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body2"><strong>Sala/Recurso:</strong> {examenCompleto.salaRecurso}</Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body2"><strong>Procedimiento:</strong> {examenCompleto.procedimiento}</Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body2"><strong>Médico Asignado:</strong> {examenCompleto.medicoAsignado}</Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body2"><strong>Fecha de Examen:</strong> {examenCompleto.fechaExamen}</Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body2"><strong>Estado:</strong> {examenCompleto.estado}</Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body2"><strong>Estado Reporte:</strong> {examenCompleto.estadoReporte}</Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body2"><strong>Médico Ref.:</strong> {examenCompleto.medicoRef}</Typography>
-                  </Grid>
-                </Grid>
-              </Paper>
-
-              {/* Información Clínica */}
-              <Paper sx={{ p: 3, backgroundColor: '#f8f9fa' }}>
-                <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
-                  Información Clínica
-                </Typography>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body2"><strong>Suministros:</strong> {examenCompleto.suministros}</Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body2"><strong>CIE-10:</strong> {examenCompleto.cie10}</Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body2"><strong>Urgente:</strong> {examenCompleto.urgente}</Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body2"><strong>Adenda:</strong> {examenCompleto.adenda}</Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body2"><strong>Reporte:</strong> {examenCompleto.reporte}</Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body2"><strong>Archivos Multimedia:</strong> {examenCompleto.archivosMultimedia}</Typography>
-                  </Grid>
-                </Grid>
-              </Paper>
-            </>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ p: 3 }}>
-          <Button
-            variant="outlined"
-            onClick={handleCloseExamHistory}
-          >
-            Cerrar
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* Modal para Información del Examen */}
+            <Dialog
+              open={openExamHistoryModal}
+              onClose={handleCloseExamHistory}
+              maxWidth="lg"
+              fullWidth
+              PaperProps={{
+                sx: { borderRadius: 2 }
+              }}
+            >
+              <DialogTitle sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                backgroundColor: '#2184be',
+                color: 'white'
+              }}>
+                <Typography variant="h6" fontWeight="bold">Información del Examen</Typography>
+                <IconButton onClick={handleCloseExamHistory} sx={{ color: 'white' }}>
+                  <Close />
+                </IconButton>
+              </DialogTitle>
+              <DialogContent dividers sx={{ p: 4 }}>
+                {selectedProcedimiento && (
+                  <>
+                    {/* Información Médica */}
+                    <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f8f9fa' }}>
+                      <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
+                        Información Médica
+                      </Typography>
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2"><strong>ID: </strong> EX-Nº {selectedProcedimiento.id}</Typography>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2"><strong>Paciente:</strong> {selectedProcedimiento.nombre}</Typography>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2"><strong>H.C.:</strong> {selectedProcedimiento.medicalHistory}</Typography>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2"><strong>Fecha de Nacimiento:</strong> {selectedProcedimiento.fechaNac ? new Date(selectedProcedimiento.fechaNac).toLocaleDateString() : '-'}</Typography>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2"><strong>Edad:</strong> {(() => {
+                              const b = selectedProcedimiento?.fechaNac ? new Date(selectedProcedimiento.fechaNac) : null;
+                              const r = selectedProcedimiento?.fechaExamen ? new Date(selectedProcedimiento.fechaExamen) : new Date();
+                              if (!b) return '—';
+                              let age = r.getFullYear() - b.getFullYear();
+                              const m = r.getMonth() - b.getMonth();
+                              if (m < 0 || (m === 0 && r.getDate() < b.getDate())) age--;
+                              return String(age);
+                            })()} años
+                          </Typography>
+                        </Grid>
+                      </Grid>
+                      <Grid container spacing={2} sx={{ mt: 2 }}>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2"><strong>Centro:</strong> {selectedProcedimiento.centro}</Typography>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2"><strong>Sala/Recurso:</strong> {selectedProcedimiento.sala} / {selectedProcedimiento.recurso}</Typography>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2"><strong>Procedimiento:</strong> {selectedProcedimiento.procedimiento}</Typography>
+                        </Grid>
+                      </Grid>
+                      <Grid container spacing={2} sx={{ mt: 2 }}>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2"><strong>Médico Asignado:</strong> {selectedProcedimiento.gastroenterologo}</Typography>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2"><strong>Médico Ref.:</strong> {selectedProcedimiento.medicoReferente}</Typography>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2"><strong>Fecha de Examen:</strong> {new Date(selectedProcedimiento.fechaExamen).toLocaleDateString()}</Typography>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2"><strong>Duracion:</strong> {selectedProcedimiento.tiempo} mins.</Typography>
+                        </Grid>
+                      </Grid>  
+                      <Grid container spacing={2} sx={{ mt: 2 }}>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2"><strong>Urgente:</strong> {selectedProcedimiento.urgente}</Typography>
+                        </Grid>
+                      </Grid>
+                      <Grid container spacing={2} sx={{ mt: 2 }}>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2"><strong>Estado:</strong> {selectedProcedimiento.estado}</Typography>
+                        </Grid>
+                      </Grid>
+                      <Grid container spacing={2} sx={{ mt: 2 }}>  
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2"><strong>Estado Reporte:</strong> {selectedProcedimiento.estudioTeminadoId === 0 ? 'Sin Finalizar':selectedProcedimiento.estudioTeminadoId=== 1?'DICTADO':'Terminado'}</Typography>
+                        </Grid>
+                      </Grid>
+                      <Grid container spacing={2} sx={{ mt: 2 }}>  
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2"><strong>Archivos multimedia:</strong> 0 </Typography>
+                        </Grid>
+                      </Grid>
+                    </Paper>
+      
+                    {/* Información Clínica 
+                    <Paper sx={{ p: 3, backgroundColor: '#f8f9fa' }}>
+                      <Typography variant="h6" fontWeight="bold" sx={{ mb: 3, color: '#2184be' }}>
+                        Información Clínica
+                      </Typography>
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2"><strong>Suministros:</strong> {examenCompleto.suministros}</Typography>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2"><strong>CIE-10:</strong> {examenCompleto.cie10}</Typography>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2"><strong>Urgente:</strong> {examenCompleto.urgente}</Typography>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2"><strong>Adenda:</strong> {examenCompleto.adenda}</Typography>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2"><strong>Reporte:</strong> {examenCompleto.reporte}</Typography>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="body2"><strong>Archivos Multimedia:</strong> {examenCompleto.archivosMultimedia}</Typography>
+                        </Grid>
+                      </Grid>
+                    </Paper>*/}
+                  </>
+                )}
+              </DialogContent>
+              <DialogActions sx={{ p: 3 }}>
+                <Button
+                  variant="outlined"
+                  onClick={handleCloseExamHistory}
+                >
+                  Cerrar
+                </Button>
+              </DialogActions>
+            </Dialog>
 
       <Dialog
         open={openStudyImagesModal}
