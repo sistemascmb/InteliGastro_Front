@@ -26,6 +26,8 @@ import {
   DialogActions,
   Grid,
   Divider,
+  Alert,
+  Snackbar,
   ImageList,
   ImageListItem,
   CircularProgress
@@ -271,6 +273,8 @@ const cargarSalas = async () => {
       tamaño: '1.8 MB'
     }
   ]);
+
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   // Estados para CIE-10
   const [cie10Form, setCie10Form] = useState({
@@ -862,8 +866,22 @@ const cargarSalas = async () => {
     setOpenRescheduleModal(true);
   };
 
+  const cargarArchivos = async (codigoEstudio) => {
+    try {
+      if (!codigoEstudio) return;
+      const response = await archivodigitalService.searchByEstudioId_Otros(codigoEstudio);
+      const list = Array.isArray(response) ? response : (response?.data || []);
+      setArchivosSubidos(list);
+    } catch (error) {
+      console.error('❌ Error al cargar archivos:', error);
+      setArchivosSubidos([]);
+      try { setSnackbar({ open: true, message: 'Error al cargar archivos', severity: 'error' }); } catch {}
+    }
+  };
+
   const handleSubirArchivos = (procedimiento) => {
     setSelectedProcedimiento(procedimiento);
+    cargarArchivos(procedimiento?.codigo);
     setUploadForm({
       selectedFile: null,
       tipoArchivo: '',
@@ -976,28 +994,65 @@ const cargarSalas = async () => {
     setUploadForm(prev => ({ ...prev, selectedFile: file }));
   };
 
-  // Función para subir archivo
-  const handleUploadFile = () => {
-    if (uploadForm.selectedFile && uploadForm.tipoArchivo) {
-      const newFile = {
-        id: archivosSubidos.length + 1,
-        nombre: uploadForm.selectedFile.name,
-        tipo: uploadForm.tipoArchivo,
-        fechaCreacion: new Date().toISOString().split('T')[0],
-        tamaño: `${(uploadForm.selectedFile.size / 1024 / 1024).toFixed(1)} MB`
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result || '';
+        const str = typeof result === 'string' ? result : '';
+        const mimeMatch = str.match(/^data:(.+);base64,/);
+        const mime = mimeMatch ? mimeMatch[1] : (file && file.type) || '';
+        resolve({ dataUrl: str, mime });
       };
-      setArchivosSubidos(prev => [...prev, newFile]);
-      setUploadForm({
-        selectedFile: null,
-        tipoArchivo: '',
-        descripcion: ''
-      });
+      reader.onerror = (e) => reject(e);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleUploadFile = async () => {
+    const file = uploadForm.selectedFile;
+    if (file && uploadForm.tipoArchivo) {
+      try {
+        const { dataUrl, mime } = await fileToBase64(file);
+        const payload = {
+          date: new Date().toISOString(),
+          hour: new Date().getHours() + ':'+ new Date().getMinutes(),
+          estudioId: selectedProcedimiento.codigo,
+          nombre: file.name,
+          mimeType: mime,
+          tipoArchivo: uploadForm.tipoArchivo,
+          archive: dataUrl,
+          fechaCreacion: new Date().toISOString().split('T')[0],
+          tamaño: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
+          createdAt: new Date().toISOString(),
+        };
+
+        try {
+          const nuevoArchivo = await archivodigitalService.create_CaptureImagenes(payload);
+          console.log('✅ Archivo creado:', nuevoArchivo);
+          setSnackbar({ open: true, message: 'Guardado correcto', severity: 'success' });
+          setUploadForm({ selectedFile: null, tipoArchivo: '', descripcion: '' });
+          await cargarArchivos(selectedProcedimiento?.codigo);
+        } catch (err) {
+          console.log('Payload preparado para envío:', payload);
+          setSnackbar({ open: true, message: 'Error al guardar archivo', severity: 'error' });
+        }
+      } catch {
+        console.error('Error al convertir archivo a Base64');
+        setSnackbar({ open: true, message: 'Error al convertir archivo', severity: 'error' });
+      }
     }
   };
 
   // Función para eliminar archivo
-  const handleDeleteFile = (fileId) => {
-    setArchivosSubidos(prev => prev.filter(file => file.id !== fileId));
+  const handleDeleteFile = async (fileId) => {
+    try {
+      await archivodigitalService.delete(fileId);
+      setSnackbar({ open: true, message: 'Eliminado correcto', severity: 'success' });
+      await cargarArchivos(selectedProcedimiento?.codigo);
+    } catch (error) {
+      console.error('❌ Error al eliminar Archivo Digital:', error);
+    }
   };
 
   // Funciones para CIE-10
@@ -1060,6 +1115,51 @@ const cargarSalas = async () => {
       case 10025: return 'Adicional';
       default: return 'Otro';
     }
+  };
+
+  const formatLocalDateTime = (isoString) => {
+    if (!isoString) return '—';
+    const d = new Date(isoString);
+    const date = d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const time = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    return `${date} ${time}`;
+  };
+
+  const getArchivoTipoLabel = (mime) => {
+    if (mime === 'application/pdf') return 'PDF';
+    if (mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || mime === 'application/msword') return 'Word';
+    if (mime === 'application/vnd.ms-excel' || mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') return 'Excel';
+    return 'Otro';
+  };
+
+  const getArchivoTipoColor = (mime) => {
+    if (mime === 'application/pdf') return 'warning';
+    if (mime === 'application/vnd.ms-excel' || mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') return 'success';
+    return 'default';
+  };
+
+  const getExtensionFromMime = (mime) => {
+    if (mime === 'application/pdf') return 'pdf';
+    if (mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || mime === 'application/msword') return 'docx';
+    if (mime === 'application/vnd.ms-excel') return 'xls';
+    if (mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') return 'xlsx';
+    return 'dat';
+  };
+
+  const handleDownloadFile = (item) => {
+    if (!item) return;
+    const mime = item.typeArchive || 'application/octet-stream';
+    let href = item.archive || '';
+    if (typeof href !== 'string') return;
+    if (!/^data:/.test(href)) href = `data:${mime};base64,${href}`;
+    const a = document.createElement('a');
+    a.href = href;
+    const baseName = item.description || item.nombre || 'archivo';
+    const hasExt = /\.[a-z0-9]+$/i.test(baseName);
+    a.download = hasExt ? baseName : `${baseName}.${getExtensionFromMime(mime)}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   return (
@@ -2067,7 +2167,7 @@ const cargarSalas = async () => {
                     onChange={handleFileSelect}
                     style={{ display: 'none' }}
                     id="file-upload"
-                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                    accept=".pdf,.doc,.docx"
                   />
                   <label htmlFor="file-upload">
                     <Button
@@ -2090,9 +2190,9 @@ const cargarSalas = async () => {
                       displayEmpty
                     >
                       <MenuItem value="">Seleccionar tipo</MenuItem>
-                      <MenuItem value="Imagen">Imagen</MenuItem>
-                      <MenuItem value="Laboratorio">Laboratorio</MenuItem>
-                      <MenuItem value="Documento">Documento</MenuItem>
+                      <MenuItem value="Pdf">Pdf</MenuItem>
+                      <MenuItem value="Word">Word</MenuItem>
+                      <MenuItem value="Excel">Excel</MenuItem>
                       <MenuItem value="Otro">Otro</MenuItem>
                     </Select>
                   </FormControl>
@@ -2125,11 +2225,10 @@ const cargarSalas = async () => {
                 <Table size="small">
                   <TableHead>
                     <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                      <TableCell><strong>ID</strong></TableCell>
+                      <TableCell><strong>Nº</strong></TableCell>
                       <TableCell><strong>Nombre</strong></TableCell>
                       <TableCell><strong>Tipo</strong></TableCell>
                       <TableCell><strong>Fecha Creación</strong></TableCell>
-                      <TableCell><strong>Tamaño</strong></TableCell>
                       <TableCell align="center"><strong>Acciones</strong></TableCell>
                     </TableRow>
                   </TableHead>
@@ -2143,20 +2242,27 @@ const cargarSalas = async () => {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      archivosSubidos.map((archivo) => (
-                        <TableRow key={archivo.id} hover>
-                          <TableCell>{archivo.id}</TableCell>
-                          <TableCell>{archivo.nombre}</TableCell>
+                      archivosSubidos.map((archivo, index) => (
+                        <TableRow key={archivo.id ?? index} hover>
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell>{archivo.description}</TableCell>
                           <TableCell>
                             <Chip
-                              label={archivo.tipo}
-                              color="primary"
+                              label={getArchivoTipoLabel(archivo.typeArchive)}
+                              color={getArchivoTipoColor(archivo.typeArchive)}
                               size="small"
                             />
                           </TableCell>
-                          <TableCell>{archivo.fechaCreacion}</TableCell>
-                          <TableCell>{archivo.tamaño}</TableCell>
+                          <TableCell>{formatLocalDateTime(archivo.createdAt)}</TableCell>
                           <TableCell align="center">
+                            <IconButton
+                              color="primary"
+                              size="small"
+                              onClick={() => handleDownloadFile(archivo)}
+                              title="Descargar archivo"
+                            >
+                              <Download />
+                            </IconButton>
                             <IconButton
                               color="error"
                               size="small"
@@ -2184,6 +2290,12 @@ const cargarSalas = async () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar(prev => ({ ...prev, open: false }))} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert onClose={() => setSnackbar(prev => ({ ...prev, open: false }))} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
 
       {/* Modal para CIE-10 */}
       <Dialog

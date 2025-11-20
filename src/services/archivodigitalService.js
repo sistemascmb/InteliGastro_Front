@@ -237,7 +237,7 @@ getAll_Estudio: async (params = {}) => {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
       const rawData = await response.json();
-      const activos = (Array.isArray(rawData) ? rawData : []).filter(item => item.isDeleted === false && (item.typeArchive != 'video/mp4' || item.typeArchive != 'image/jpeg' || item.typeArchive != 'video/mp4;codecs=avc1'));
+      const activos = (Array.isArray(rawData) ? rawData : []).filter(item => item.isDeleted === false && (item.typeArchive != 'video/mp4' && item.typeArchive != 'image/jpeg' && item.typeArchive != 'video/mp4;codecs=avc1'));
       const mappedData = activos.map(ArchivoDigital => ({
         id: ArchivoDigital.digitalfileid,
         digitalfileid: ArchivoDigital.digitalfileid,
