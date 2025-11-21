@@ -651,15 +651,16 @@ const cargarPersonal = async () => {
                     ? `${personalDatos.data.nombres} ${personalDatos.data.apellidos}`
                     : 'Sin asignar',
                   nombreEstudios: estudios?.data?.name 
-                    ? `${personalDatos.data.name}`
+                    ? `${estudios.data.name}`
                     : 'Sin asignar',
-                    fechaCreacion: plantillas.createdAt
+                  fechaCreacion: plantillas.createdAt
                 };
               }
               return {
                 ...plantillas,
                 nombrePersonal: plantillas.personalId === -1 ? 'Todos' : 'Sin asignar',
                 nombreEstudios: plantillas.examsId === -1 ? 'Todos' : 'Sin asignar',
+                fechaCreacion: plantillas.createdAt
               };
             } catch (error) {
               console.error(`Error al obtener personal ${plantillas?.personalId}:`, error);
@@ -667,6 +668,7 @@ const cargarPersonal = async () => {
                                  ...(plantillas || {}),
                                  nombrePersonal: 'Error al cargar personal',
                                  nombreEstudios: 'Error al cargar estudios',
+                                 fechaCreacion: plantillas?.createdAt
                               };
                             }
                           })
@@ -1087,12 +1089,34 @@ const cargarPersonal = async () => {
   };
 
   // Función para formatear fecha
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+  const formatDate = (dateInput) => {
+    try {
+      if (!dateInput) return '—';
+      let d;
+      if (typeof dateInput === 'string') {
+        const s = dateInput.trim();
+        if (/^\/Date\(\d+\)\/$/.test(s)) {
+          const ticks = Number(s.match(/\d+/)[0]);
+          d = new Date(ticks);
+        } else if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/.test(s)) {
+          d = new Date(s.replace(' ', 'T'));
+        } else if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
+          d = new Date(s);
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+          d = new Date(`${s}T00:00:00`);
+        } else {
+          const parsed = Date.parse(s);
+          if (!isNaN(parsed)) d = new Date(parsed);
+        }
+      } else if (dateInput instanceof Date) {
+        d = dateInput;
+      } else if (typeof dateInput === 'number') {
+        d = new Date(dateInput);
+      }
+      if (!d || isNaN(d.getTime())) return '—';
+      if (d.getFullYear() <= 1900) return '—';
+      return d.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+    } catch { return '—'; }
   };
 
   // Función para obtener texto de asignación

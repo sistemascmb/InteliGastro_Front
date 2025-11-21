@@ -30,7 +30,11 @@ import {
   Snackbar,
   ImageList,
   ImageListItem,
-  CircularProgress
+  CircularProgress,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemButton
 } from '@mui/material';
 import {
   NavigateNext,
@@ -67,6 +71,7 @@ import recursosService from 'services/recursosService';
 import medicosRefService from 'services/medicosRefService';
 import segurosService from 'services/segurosService';
 import archivodigitalService from 'services/archivodigitalService';
+import preparacionService from 'services/preparacionService';
  
 
 const ParametroTexto = ({ id }) => {
@@ -192,6 +197,9 @@ const DictadoProc = () => {
   const [loadingPaciente, setLoadingPaciente] = useState(false);
   const [selectedProc, setSelectedProc] = useState(null);
   const [openStudyImagesModal, setOpenStudyImagesModal] = useState(false);
+  const [openPreparacionModal, setOpenPreparacionModal] = useState(false);
+  const [preparacionActual, setPreparacionActual] = useState('');
+  const [listaPreparaciones, setListaPreparaciones] = useState([]);
   
   const [studyImages, setStudyImages] = useState([]);
   const [selectedStudyImage, setSelectedStudyImage] = useState(null);
@@ -236,6 +244,7 @@ const DictadoProc = () => {
         pdfGeneradoId: (proc?.pdfGeneradoId || ''),
         informePdf: (proc?.informePdf || ''),
         estudioTeminadoId: (proc?.estudioTeminadoId || ''),
+        preparacion: (proc?.preparacion || ''),
 
         personalId : (proc?.personalId || ''),
 
@@ -323,6 +332,44 @@ const cargarSalas = async () => {
   ]);
 
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+
+  const handleOpenPreparacionModal = async (procedimiento) => {
+    setSelectedProcedimiento(procedimiento);
+    setPreparacionActual(procedimiento?.preparacion || '');
+    try {
+      const response = await preparacionService.getAll();
+      setListaPreparaciones(Array.isArray(response) ? response : (response?.data || []));
+    } catch (error) {
+      setListaPreparaciones([]);
+      setSnackbar({ open: true, message: 'Error al cargar preparaciones', severity: 'error' });
+    }
+    setOpenPreparacionModal(true);
+  };
+
+  const handleClosePreparacionModal = () => {
+    setOpenPreparacionModal(false);
+    setSelectedProcedimiento(null);
+  };
+
+  const handleSeleccionarPreparacion = (descripcion) => {
+    setPreparacionActual(descripcion || '');
+  };
+
+  const handleGuardarPreparacion = async () => {
+    try {
+      if (!selectedProcedimiento?.id) return;
+      if (!preparacionActual || !String(preparacionActual).trim()) {
+        setSnackbar({ open: true, message: 'La preparación es requerida', severity: 'warning' });
+        return;
+      }
+      await appointmentsService.update_preparacion(selectedProcedimiento.id, { preparacion: preparacionActual });
+      setSnackbar({ open: true, message: 'Preparación actualizada correctamente', severity: 'success' });
+      handleClosePreparacionModal();
+      await cargarProcedimientos();
+    } catch (error) {
+      setSnackbar({ open: true, message: 'Error al actualizar preparación', severity: 'error' });
+    }
+  };
 
   // Estados para CIE-10
   const [cie10Form, setCie10Form] = useState({
@@ -415,8 +462,9 @@ const cargarSalas = async () => {
                     pdfGeneradoId: procedimientoDat.pdfGeneradoId,
                     estudioTeminadoId:  procedimientoDat.estudioTeminadoId,
                     anotacionesAdicionales: procedimientoDat.anotacionesAdicionales || '-',
-                    cantidadMultimediaEstudio: Array.isArray(cantidadMultimedia?.data) ? cantidadMultimedia.data.length : 0
+                    cantidadMultimediaEstudio: Array.isArray(cantidadMultimedia?.data) ? cantidadMultimedia.data.length : 0,
 
+                    preparacion: procedimientoDat.preparacion || ''
 
                   };
                 } catch (error) {
@@ -454,7 +502,8 @@ const cargarSalas = async () => {
                     pdfGeneradoId: '',
                     estudioTeminadoId:  '',
                     anotacionesAdicionales: '',
-                    cantidadMultimediaEstudio: ''
+                    cantidadMultimediaEstudio: '',
+                    preparacion: '',
                   };
                 }
               })
@@ -1565,7 +1614,7 @@ const cargarSalas = async () => {
                                 color="warning"
                                 size="small"
                                 title="Preparación de Paciente"
-                                //onClick={() => handleSubirArchivos(proc)}
+                                onClick={() => handleOpenPreparacionModal(proc)}
                               >
                                 <BedroomChild />
                               </IconButton>
@@ -1700,6 +1749,76 @@ const cargarSalas = async () => {
           >
             Cerrar
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={openPreparacionModal}
+        onClose={handleClosePreparacionModal}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 2 } }}
+      >
+        <DialogTitle sx={{ backgroundColor: '#2184be', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6" fontWeight="bold">Preparación del Paciente</Typography>
+          <IconButton onClick={handleClosePreparacionModal} sx={{ color: 'white' }}>
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 4 }}>
+          {selectedProcedimiento && (
+            <>
+              <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f8f9fa' }}>
+                <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, color: '#2184be' }}>
+                  Información del Paciente y Examen
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body2"><strong>Paciente:</strong> {selectedProcedimiento?.nombre || '—'}</Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body2"><strong>Examen:</strong> {selectedProcedimiento?.codigo || '—'}</Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body2"><strong>Procedimiento:</strong> {selectedProcedimiento?.procedimiento || '—'}</Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body2"><strong>Fecha:</strong> {selectedProcedimiento?.fechaExamen ? new Date(selectedProcedimiento.fechaExamen).toLocaleDateString('es-ES') : '—'}</Typography>
+                  </Grid>
+                </Grid>
+              </Paper>
+              <FieldRow>
+                <ResponsiveField label="Preparaciones Disponibles" sx={{ flex: 1 }}>
+                  <Paper sx={{ maxHeight: 220, overflow: 'auto' }}>
+                    <List>
+                      {listaPreparaciones.map((prep) => (
+                        <ListItem key={prep.id} disablePadding>
+                          <ListItemButton onClick={() => handleSeleccionarPreparacion(prep.descripcion)}>
+                            <ListItemText primary={prep.descripcion} />
+                          </ListItemButton>
+                        </ListItem>
+                      ))}
+                    </List>
+                  </Paper>
+                </ResponsiveField>
+                <ResponsiveField label="Preparación del Paciente" required sx={{ flex: 1 }}>
+                  <TextField
+                    value={preparacionActual}
+                    onChange={(e) => setPreparacionActual(e.target.value)}
+                    multiline
+                    minRows={5}
+                    fullWidth
+                    size="small"
+                    placeholder="Ingrese la preparación del paciente o seleccione una de la lista"
+                  />
+                </ResponsiveField>
+              </FieldRow>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 3, justifyContent: 'flex-end' }}>
+          <Button variant="outlined" onClick={handleClosePreparacionModal}>Cancelar</Button>
+          <Button variant="contained" onClick={handleGuardarPreparacion} sx={{ backgroundColor: '#4caf50', '&:hover': { backgroundColor: '#45a049', ml: 2 } }}>Guardar Preparación</Button>
         </DialogActions>
       </Dialog>
 
