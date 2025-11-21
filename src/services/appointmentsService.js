@@ -1061,12 +1061,12 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
 
         insuranceId: dataOrigin.insuranceId,
         letterOfGuarantee: dataOrigin.letterOfGuarantee,
-        status: dataOrigin.status, //cambio
+        status: dataOrigin.status, 
         typeOfAttention: dataOrigin.typeOfAttention, 
         anotacionesAdicionales: dataOrigin.anotacionesAdicionales,
         tipoProcedimientoId: dataOrigin.tipoProcedimientoId,
         urgenteId: dataOrigin.urgenteId,
-        estudioTeminadoId: 2,
+        estudioTeminadoId: dataOrigin.estudioTeminadoId,
         pdfGeneradoId: dataOrigin.informePdf,
         estructuraHtml: dataOrigin.contenido,
         informePdf: dataOrigin.informePdf,
