@@ -374,6 +374,7 @@ const cargarSalas = async () => {
                   const seguroDatos = await segurosService.getById(procedimientoDat.insuranceId);
                   const tipoAtencion = await centrosService.getSystemParameterId(procedimientoDat.typeOfPatient);
                   const tipoProced = await centrosService.getSystemParameterId(procedimientoDat.tipoProcedimientoId);
+                  const cantidadMultimedia = await archivodigitalService.searchByEstudioId(procedimientoDat.medicalscheduleid);
 
                   
                   // Transformar el estado a ID numérico, manejando tanto booleano como texto
@@ -412,7 +413,10 @@ const cargarSalas = async () => {
                     estructuraHtml: procedimientoDat.estructuraHtml,
                     informePdf: procedimientoDat.informePdf,
                     pdfGeneradoId: procedimientoDat.pdfGeneradoId,
-                    estudioTeminadoId:  procedimientoDat.estudioTeminadoId
+                    estudioTeminadoId:  procedimientoDat.estudioTeminadoId,
+                    anotacionesAdicionales: procedimientoDat.anotacionesAdicionales || '-',
+                    cantidadMultimediaEstudio: Array.isArray(cantidadMultimedia?.data) ? cantidadMultimedia.data.length : 0
+
 
                   };
                 } catch (error) {
@@ -448,7 +452,9 @@ const cargarSalas = async () => {
                     estructuraHtml: '',
                     informePdf: '',
                     pdfGeneradoId: '',
-                    estudioTeminadoId:  ''
+                    estudioTeminadoId:  '',
+                    anotacionesAdicionales: '',
+                    cantidadMultimediaEstudio: ''
                   };
                 }
               })
@@ -1859,19 +1865,24 @@ const cargarSalas = async () => {
                         </Grid>
                       </Grid>
                       <Grid container spacing={2} sx={{ mt: 2 }}>
-                        <Grid item xs={12} md={6}>
-                          <Typography variant="body2"><strong>Médico Asignado:</strong> {selectedProcedimiento.gastroenterologo}</Typography>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                          <Typography variant="body2"><strong>Médico Ref.:</strong> {selectedProcedimiento.medicoReferente}</Typography>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                          <Typography variant="body2"><strong>Fecha de Examen:</strong> {new Date(selectedProcedimiento.fechaExamen).toLocaleDateString()}</Typography>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                          <Typography variant="body2"><strong>Duracion:</strong> {selectedProcedimiento.tiempo} mins.</Typography>
-                        </Grid>
-                      </Grid>  
+                                        <Grid item xs={12} md={6}>
+                                          <Typography variant="body2"><strong>Médico Asignado:</strong> {selectedProcedimiento.gastroenterologo}</Typography>
+                                        </Grid>
+                                        <Grid item xs={12} md={6}>
+                                          <Typography variant="body2"><strong>Médico Ref.:</strong> {selectedProcedimiento.medicoReferente}</Typography>
+                                        </Grid>
+                                        <Grid item xs={12} md={6}>
+                                          <Typography variant="body2"><strong>Fecha de Examen:</strong> {new Date(selectedProcedimiento.fechaExamen).toLocaleDateString()} - {selectedProcedimiento.horaExamen}</Typography>
+                                        </Grid>
+                                        <Grid item xs={12} md={6}>
+                                          <Typography variant="body2"><strong>Duracion:</strong> {selectedProcedimiento.tiempo} mins.</Typography>
+                                        </Grid>
+                                      </Grid>  
+                                      <Grid container spacing={2} sx={{ mt: 2 }}>
+                                        <Grid item xs={12} md={6}>
+                                          <Typography variant="body2"><strong>Anotaciones Adicionales:</strong> {selectedProcedimiento.anotacionesAdicionales}</Typography>
+                                        </Grid>
+                                      </Grid>
                       <Grid container spacing={2} sx={{ mt: 2 }}>
                         <Grid item xs={12} md={6}>
                           <Typography variant="body2"><strong>Urgente:</strong> {selectedProcedimiento.urgente}</Typography>
@@ -1889,8 +1900,7 @@ const cargarSalas = async () => {
                       </Grid>
                       <Grid container spacing={2} sx={{ mt: 2 }}>  
                         <Grid item xs={12} md={6}>
-                          <Typography variant="body2"><strong>Archivos multimedia:</strong> 0 </Typography>
-                        </Grid>
+<Typography variant="body2"><strong>Archivos multimedia:</strong> {selectedProcedimiento.cantidadMultimediaEstudio} Objetos capturados en estudio.</Typography>                        </Grid>
                       </Grid>
                     </Paper>
       

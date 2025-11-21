@@ -341,7 +341,8 @@ const cargarSalas = async () => {
                     //
                     fechaExamen: procedimientoDat.appointmentDate,
                     horaExamen: procedimientoDat.hoursMedicalShedule,
-                    urgente: procedimientoDat.urgenteId == '10059' ?true: false
+                    urgente: procedimientoDat.urgenteId == '10059' ?true: false,
+                    anotacionesAdicionales: procedimientoDat.anotacionesAdicionales || '-'
 
                   };
                 } catch (error) {
@@ -370,7 +371,8 @@ const cargarSalas = async () => {
                     procedimiento: '',
                     //
                     medicoReferente: '',
-                    gastroenterologo: ''
+                    gastroenterologo: '',
+                    anotacionesAdicionales: ''
                   };
                 }
               })
@@ -1608,12 +1610,17 @@ const cargarSalas = async () => {
                     <Typography variant="body2"><strong>Médico Ref.:</strong> {selectedProcedimiento.medicoReferente}</Typography>
                   </Grid>
                   <Grid item xs={12} md={6}>
-                    <Typography variant="body2"><strong>Fecha de Examen:</strong> {new Date(selectedProcedimiento.fechaExamen).toLocaleDateString()}</Typography>
+                    <Typography variant="body2"><strong>Fecha de Examen:</strong> {new Date(selectedProcedimiento.fechaExamen).toLocaleDateString()} - {selectedProcedimiento.horaExamen}</Typography>
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <Typography variant="body2"><strong>Duracion:</strong> {selectedProcedimiento.tiempo} mins.</Typography>
                   </Grid>
                 </Grid>  
+                <Grid container spacing={2} sx={{ mt: 2 }}>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body2"><strong>Anotaciones Adicionales:</strong> {selectedProcedimiento.anotacionesAdicionales}</Typography>
+                  </Grid>
+                </Grid>
                 <Grid container spacing={2} sx={{ mt: 2 }}>
                   <Grid item xs={12} md={6}>
                     <Typography variant="body2"><strong>Urgente:</strong> {selectedProcedimiento.urgente === true ?'Sí': 'No'}</Typography>

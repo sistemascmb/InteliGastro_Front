@@ -1067,7 +1067,7 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         tipoProcedimientoId: dataOrigin.tipoProcedimientoId,
         urgenteId: dataOrigin.urgenteId,
         estudioTeminadoId: dataOrigin.estudioTeminadoId,
-        pdfGeneradoId: dataOrigin.informePdf,
+        pdfGeneradoId: dataOrigin.pdfGeneradoId == null ? 0 : dataOrigin.pdfGeneradoId,
         estructuraHtml: dataOrigin.contenido,
         informePdf: dataOrigin.informePdf,
         dictadoGuardado: dataOrigin.dictadoGuardado,
