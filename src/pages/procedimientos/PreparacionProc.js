@@ -71,6 +71,8 @@ import medicosRefService from 'services/medicosRefService';
 import archivodigitalService from 'services/archivodigitalService';
 import segurosService from 'services/segurosService';
 import preparacionService from 'services/preparacionService';
+import cie10Service from 'services/cie10Service';
+import agendadxService from 'services/agendadxService';
 
 const ParametroTexto = ({ id }) => {
   const [valor, setValor] = useState('');
@@ -326,6 +328,10 @@ const cargarSalas = async () => {
   });
 
   const [cie10Seleccionados, setCie10Seleccionados] = useState([]);
+  const [cie10Catalog, setCie10Catalog] = useState([]);
+  const [cie10SearchTerm, setCie10SearchTerm] = useState('');
+  const [cie10Loading, setCie10Loading] = useState(false);
+  const [cie10SelectedLoading, setCie10SelectedLoading] = useState(false);
 
   // Base de datos simulada de códigos CIE-10
   const codigosCie10 = [
@@ -1124,8 +1130,39 @@ const cargarSalas = async () => {
     }
   };
 
-  const handleEliminarCie10 = (id) => {
-    setCie10Seleccionados(prev => prev.filter(item => item.id !== id));
+  const handleEliminarCie10 = async (id) => {
+    try {
+      setCie10SelectedLoading(true);
+      await agendadxService.delete(id);
+      await cargarCie10Seleccionados();
+      setSnackbar({ open: true, message: 'CIE-10 eliminado', severity: 'success' });
+    } catch (error) {
+      setSnackbar({ open: true, message: 'Error al eliminar CIE-10', severity: 'error' });
+    } finally {
+      setCie10SelectedLoading(false);
+    }
+  };
+
+  const handleSeleccionarCie10Row = async (item) => {
+    try {
+      const estudioId = selectedProcedimiento?.codigo;
+      if (!estudioId) return;
+      setCie10SelectedLoading(true);
+      const existentesResp = await agendadxService.searchByAgendaDxEstudioId(estudioId);
+      const existentes = Array.isArray(existentesResp) ? existentesResp : (existentesResp?.data || []);
+      const yaExiste = existentes.some(dx => String(dx.cie10id) === String(item.id));
+      if (yaExiste) {
+        setSnackbar({ open: true, message: 'CIE-10 ya existe en el estudio', severity: 'warning' });
+      } else {
+        await agendadxService.create({ medical_ScheduleId: estudioId, cie10id: item.id, description: item.descripcion || item.description || '' });
+        setSnackbar({ open: true, message: 'CIE-10 agregado', severity: 'success' });
+      }
+      await cargarCie10Seleccionados();
+    } catch (error) {
+      setSnackbar({ open: true, message: 'Error al agregar CIE-10', severity: 'error' });
+    } finally {
+      setCie10SelectedLoading(false);
+    }
   };
 
   const handleCie10SelectChange = (codigoSeleccionado) => {
@@ -1143,6 +1180,49 @@ const cargarSalas = async () => {
     // En un sistema real, harías una llamada a la API
     handleCloseCie10Modal();
   };
+
+  useEffect(() => {
+    const cargarCie10 = async () => {
+      try {
+        setCie10Loading(true);
+        const response = await cie10Service.getAll();
+        setCie10Catalog(Array.isArray(response) ? response : (response?.data || []));
+      } catch {
+        setCie10Catalog([]);
+      } finally {
+        setCie10Loading(false);
+      }
+    };
+    if (openCie10Modal) cargarCie10();
+  }, [openCie10Modal]);
+
+  const cargarCie10Seleccionados = async () => {
+    try {
+      const estudioId = selectedProcedimiento?.codigo;
+      if (!estudioId) { setCie10Seleccionados([]); return; }
+      setCie10SelectedLoading(true);
+      const resp = await agendadxService.searchByAgendaDxEstudioId(estudioId);
+      const agendaDx = Array.isArray(resp) ? resp : (resp?.data || []);
+      const enriquecidos = await Promise.all(agendaDx.map(async (dx) => {
+        try {
+          const cie = await cie10Service.getById(dx.cie10id);
+          const ciedata = Array.isArray(cie) ? null : (cie?.data || {});
+          return { id: dx.medicalscheduledxid || dx.id, codigo: ciedata?.codigo || ciedata?.code || dx.cie10id, descripcion: ciedata?.descripcion || ciedata?.description || dx.description };
+        } catch {
+          return { id: dx.medicalscheduledxid || dx.id, codigo: dx.cie10id, descripcion: dx.description };
+        }
+      }));
+      setCie10Seleccionados(enriquecidos);
+    } catch {
+      setCie10Seleccionados([]);
+    } finally {
+      setCie10SelectedLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (openCie10Modal) { cargarCie10Seleccionados(); }
+  }, [openCie10Modal, selectedProcedimiento]);
 
   const getTipoColor = (tipo) => {
     if (!tipo) return 'default';
@@ -2345,8 +2425,8 @@ const cargarSalas = async () => {
               <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, color: '#2184be' }}>
                 Archivos Subidos
               </Typography>
-              <TableContainer component={Paper} sx={{ mt: 2 }}>
-                <Table size="small">
+              <TableContainer component={Paper} sx={{ mt: 2, maxHeight: { xs: 240, sm: 220, md: 420 }, overflow: 'auto' }}>
+                <Table size="small" stickyHeader>
                   <TableHead>
                     <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                       <TableCell><strong>Nº</strong></TableCell>
@@ -2483,28 +2563,21 @@ const cargarSalas = async () => {
               </Typography>
 
               <FieldRow>
-                <ResponsiveField label="Seleccione un CIE-10" required sx={{ flex: 2 }}>
-                  <FormControl fullWidth size="small">
-                    <Select
-                      value={cie10Form.codigoSeleccionado}
-                      onChange={(e) => handleCie10SelectChange(e.target.value)}
-                      displayEmpty
-                    >
-                      <MenuItem value="">Seleccionar código CIE-10</MenuItem>
-                      {codigosCie10.map((item) => (
-                        <MenuItem key={item.codigo} value={item.codigo}>
-                          {item.codigo} - {item.descripcion}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                <ResponsiveField label="Buscar CIE-10" sx={{ flex: 2 }}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    placeholder="Ingrese código o descripción"
+                    value={cie10SearchTerm}
+                    onChange={(e) => setCie10SearchTerm(e.target.value)}
+                    InputProps={{ startAdornment: (<Search sx={{ color: '#666', mr: 1 }} />) }}
+                  />
                 </ResponsiveField>
-
-                <ResponsiveField label=" " sx={{ flex: 1 }}>
+                {/*<ResponsiveField label=" " sx={{ flex: 1 }}>
                   <Button
                     variant="contained"
-                    onClick={handleAgregarCie10}
-                    disabled={!cie10Form.codigoSeleccionado}
+                    onClick={handleGuardarCie10}
+                    disabled={cie10Seleccionados.length === 0}
                     startIcon={<Assignment />}
                     sx={{
                       backgroundColor: '#4caf50',
@@ -2512,10 +2585,49 @@ const cargarSalas = async () => {
                       height: '40px'
                     }}
                   >
-                    Agregar
+                    Enviar
                   </Button>
-                </ResponsiveField>
+                </ResponsiveField>*/}
               </FieldRow>
+
+              <TableContainer component={Paper} sx={{ mt: 1, maxHeight: { xs: 160, sm: 220, md: 280 }, overflow: 'auto' }}>
+                <Table size="small" stickyHeader sx={{ '& .MuiTableCell-root': { py: 0.5, fontSize: '0.8rem' } }}>
+                  <TableHead>
+                    <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                      {/*<TableCell><strong>ID</strong></TableCell>*/}
+                      <TableCell><strong>Código</strong></TableCell>
+                      <TableCell><strong>Descripción</strong></TableCell>
+                      <TableCell align="center"><strong>Acciones</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {cie10Loading ? (
+                      <TableRow>
+                        <TableCell colSpan={4} align="center" sx={{ py: 2 }}>
+                          <CircularProgress size={24} />
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      (cie10Catalog || []).filter(item => {
+                        if (!cie10SearchTerm) return true;
+                        const q = cie10SearchTerm.toLowerCase();
+                        return (item.codigo || '').toLowerCase().includes(q) || (item.descripcion || '').toLowerCase().includes(q);
+                      }).map(item => (
+                        <TableRow key={`${item.id}-${item.codigo}`} hover>
+                          {/*<TableCell>{item.id}</TableCell>*/}
+                          <TableCell>{item.codigo}</TableCell>
+                          <TableCell>{item.descripcion}</TableCell>
+                          <TableCell align="center">
+                            <IconButton color="primary" size="small" onClick={() => handleSeleccionarCie10Row(item)} title="Seleccionar">
+                              <AddCircle />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
 
               <Divider sx={{ my: 3 }} />
 
@@ -2534,7 +2646,13 @@ const cargarSalas = async () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {cie10Seleccionados.length === 0 ? (
+                    {cie10SelectedLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={4} align="center" sx={{ py: 2 }}>
+                          <CircularProgress size={24} />
+                        </TableCell>
+                      </TableRow>
+                    ) : cie10Seleccionados.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={4} align="center" sx={{ py: 2 }}>
                           <Typography variant="body2" color="text.secondary">
