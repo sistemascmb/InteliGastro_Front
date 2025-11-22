@@ -381,6 +381,7 @@ const cargarSalas = async () => {
                   const tipoAtencion = await centrosService.getSystemParameterId(procedimientoDat.typeOfPatient);
                   const tipoProced = await centrosService.getSystemParameterId(procedimientoDat.tipoProcedimientoId);
                   const cantidadMultimedia = await archivodigitalService.searchByEstudioId(procedimientoDat.medicalscheduleid);
+                  const datosdelCie10 = await agendadxService.searchByAgendaDxEstudioId(procedimientoDat.medicalscheduleid);
 
                   
                   // Transformar el estado a ID numérico, manejando tanto booleano como texto
@@ -416,8 +417,8 @@ const cargarSalas = async () => {
                     urgente: procedimientoDat.urgenteId == '10059' ? true : false,
                     estudioTeminadoId: procedimientoDat.estudioTeminadoId,
                     anotacionesAdicionales: procedimientoDat.anotacionesAdicionales || '-',
-                    cantidadMultimediaEstudio: Array.isArray(cantidadMultimedia?.data) ? cantidadMultimedia.data.length : 0
-
+                    cantidadMultimediaEstudio: Array.isArray(cantidadMultimedia?.data) ? cantidadMultimedia.data.length : 0,
+                    cie10: '---'
                   };
                 } catch (error) {
                   console.error(`Error al obtener centro ${procedimientoDat.personalId}:`, error);
@@ -1616,7 +1617,7 @@ const cargarSalas = async () => {
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
                               {/*'{' + proc.cie10 + '}'*/}
-                              ()
+                              ({proc.cie10})
                             </Typography>
                             <Typography variant="body2" fontWeight="bold">
                               {'{' +proc.tipoProcedimiento+ '}'}
@@ -2639,7 +2640,7 @@ const cargarSalas = async () => {
                 <Table size="small">
                   <TableHead>
                     <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                      <TableCell><strong>ID</strong></TableCell>
+                      {/*<TableCell><strong>ID</strong></TableCell>*/}
                       <TableCell><strong>Código</strong></TableCell>
                       <TableCell><strong>Descripción</strong></TableCell>
                       <TableCell align="center"><strong>Acciones</strong></TableCell>
@@ -2663,7 +2664,7 @@ const cargarSalas = async () => {
                     ) : (
                       cie10Seleccionados.map((item) => (
                         <TableRow key={item.id} hover>
-                          <TableCell>{item.id}</TableCell>
+                          {/*<TableCell>{item.id}</TableCell>*/}
                           <TableCell>
                             <Typography variant="body2" fontWeight="bold">
                               {item.codigo}
