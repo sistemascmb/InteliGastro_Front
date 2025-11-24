@@ -4,6 +4,76 @@ import { API_ENDPOINTS } from '../constants/api';
 // Servicio para el manejo de citas médicas
 export const appointmentsService = {
   // Obtener todas las citas con filtros
+  getAll_Cons_Agendado: async (params = {}) => {
+    try {
+      console.log('🌐 Obteniendo todos los Procedimientos...');
+
+      const response = await api.get(API_ENDPOINTS.SCHEDULES.BASE, { params });
+      console.log('✅ Datos de Procedimientos recibidos:', response);
+
+      // Filtrar solo recursos no eliminados (isDeleted : false)
+const pacienteActivos = response.filter(proced => !proced.isDeleted 
+        && proced.typeOfAttention === 1
+        && (proced.status === 10062 || proced.status === 10068));
+        
+console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.length);
+
+      // Mapeamos los campos del backend a los campos del frontend
+      const mappedData = pacienteActivos.map(proced => ({
+        // IDs y referencias
+        id: proced.medicalscheduleid,
+        medicalscheduleid: proced.medicalscheduleid,
+        pacientId: proced.pacientId,
+        centroId: proced.centroId,
+        personalId: proced.personalId,
+        appointmentDate: proced.appointmentDate,
+        hoursMedicalShedule: proced.hoursMedicalShedule,
+        typeofAppointment: proced.typeofAppointment,
+        originId: proced.originId,
+        otherOrigins: proced.otherOrigins,
+
+        insuranceId: proced.insuranceId,
+        letterOfGuarantee: proced.letterOfGuarantee,
+        status: proced.status,
+        typeOfAttention: proced.typeOfAttention,
+        typeOfPatient: proced.typeOfPatient,
+        referral_doctorsId:  proced.referral_doctorsId,
+
+        //centerOfOriginId: proced.centerOfOriginId,
+        //anotherCenter: proced.anotherCenter,
+
+        procedureRoomId: proced.procedureRoomId,
+        resourcesId: proced.resourcesId,
+        studiesId: proced.studiesId,
+        anotacionesAdicionales: proced.anotacionesAdicionales,
+        tipoProcedimientoId: proced.tipoProcedimientoId,
+        urgenteId: proced.urgenteId,
+        estudioTeminadoId: proced.estudioTeminadoId,
+        pdfGeneradoId: proced.pdfGeneradoId,
+        dictadoGuardado: proced.dictadoGuardado,
+
+        estructuraHtml: proced.estructuraHtml,
+        informePdf: proced.informePdf,
+        preparacion: proced.preparacion,
+
+        // Auditoría
+        createdAt: proced.createdAt,
+        createdBy: proced.createdBy,
+        updatedAt: proced.updatedAt,
+        updatedBy: proced.updatedBy,
+        isDeleted: proced.isDeleted
+      }));
+
+      return {
+        data: mappedData,
+        status: 'success'
+      };
+
+    } catch (error) {
+      console.error('❌ Error al obtener pacientes:', error);
+      throw error;
+    }
+  },
   getAll_Proc_Agendado: async (params = {}) => {
     try {
       console.log('🌐 Obteniendo todos los Procedimientos...');

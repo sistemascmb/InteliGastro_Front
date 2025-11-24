@@ -10,6 +10,8 @@ import CitaMedica from './pages/admision/CitaMedica';
 import ProcedimientoAdmision from './pages/admision/ProcedimientoAdmision';
 
 import Agendadas from './pages/citas/Agendadas';
+import AgendadasOld from './pages/citas/AgendadasOld';
+
 import EnEspera from './pages/citas/EnEspera';
 import Finalizadas from './pages/citas/Finalizadas';
 
@@ -126,6 +128,7 @@ function App() {
                     <Route path="/admision/cita" element={<CitaMedica />} />
                     <Route path="/admision/procedimiento" element={<ProcedimientoAdmision />} />
                     <Route path="/citas/agendas" element={<Agendadas />} />
+                    <Route path="/citas/agendasold" element={<AgendadasOld />} />
                     <Route path="/citas/espera" element={<EnEspera />} />
                     <Route path="/citas/finalizadas" element={<Finalizadas />} />
                     <Route path="/procedimientos/agenda-hoy" element={<AgendaHoy />} />
