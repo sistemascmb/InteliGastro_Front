@@ -1,5 +1,3 @@
-import { API_ENDPOINTS } from '../constants/api';
-
 // Servicio para el manejo de roles
 export const rolesService = {
   // Obtener todos los roles
@@ -123,11 +121,12 @@ export const rolesService = {
       }
 
       // Formatear datos según el formato esperado por la API
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         profile_name: rolData.nombre || rolData.profile_name,
         description: rolData.descripcion || rolData.description,
         createdAt: new Date().toISOString(), // Fecha actual en formato ISO
-        createdBy: 'Jhon' // Usuario de prueba como solicitaste
+        createdBy: actor
       };
 
       console.log('📊 Datos a enviar:', formattedData);
@@ -172,12 +171,13 @@ export const rolesService = {
       }
 
       // Formatear datos según el formato esperado por la API
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         profiletypeid: parseInt(id), // ID como número
         profile_name: rolData.nombre || rolData.profile_name,
         description: rolData.descripcion || rolData.description,
         updatedAt: new Date().toISOString(), // Fecha actual en formato ISO
-        updatedBy: 'Jhon', // Usuario de prueba
+        updatedBy: actor,
         isDeleted: false // Mantener como activo
       };
 
@@ -214,7 +214,7 @@ export const rolesService = {
   },
 
   // Eliminar rol
-  delete: async (id, eliminadoPor = 'Jhon') => {
+  delete: async (id, eliminadoPor) => {
     try {
       console.log('🗑️ Eliminando rol con ID:', id);
 
@@ -223,7 +223,8 @@ export const rolesService = {
       }
 
       // Según el swagger, necesita ID y eliminadoPor
-      const url = `${process.env.REACT_APP_API_URL}/Roles/${id}?eliminadoPor=${encodeURIComponent(eliminadoPor)}`;
+      const actor = eliminadoPor || (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
+      const url = `${process.env.REACT_APP_API_URL}/Roles/${id}?eliminadoPor=${encodeURIComponent(actor)}`;
 
       console.log('🔗 URL de eliminación:', url);
 

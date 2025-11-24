@@ -1,5 +1,3 @@
-import { api } from '../utils/apiClient';
-import { API_ENDPOINTS } from '../constants/api';
 export const estudiosService = {
 
     getAll: async (params = {}) => {
@@ -129,6 +127,7 @@ export const estudiosService = {
         throw new Error(`Campos requeridos faltantes: ${missingFields.join(', ')}`);
       }
 
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         name: estudioData.name,
         abbreviation: estudioData.abbreviation,
@@ -140,7 +139,7 @@ export const estudiosService = {
         price: estudioData.price,
         
         createdAt: new Date().toISOString(),
-        createdBy: 'Arnold' // Usuario de prueba
+        createdBy: actor
       };
 
       console.log('📊 Datos a enviar:', formattedData);
@@ -184,6 +183,7 @@ export const estudiosService = {
       }
 
       // Formatear datos según el formato esperado por la API
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         studiesid: parseInt(id),
         name: estudioData.name,
@@ -195,7 +195,7 @@ export const estudiosService = {
         centroId: estudioData.centroId,
         price: estudioData.price,
         updatedAt: new Date().toISOString(),
-        updatedBy: 'Arnold',
+        updatedBy: actor,
         isDeleted: false
         
       };
@@ -244,7 +244,8 @@ export const estudiosService = {
       console.log('🔗 URL de eliminación:', url);
 
       // Enviar la solicitud DELETE con el campo eliminadoPor como un query parameter
-      const urlWithParams = `${url}?eliminadoPor=ADMIN`;
+      const eliminador = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'ADMIN'; } catch { return 'ADMIN'; } })();
+      const urlWithParams = `${url}?eliminadoPor=${encodeURIComponent(eliminador)}`;
       console.log('🔗 URL con parámetros:', urlWithParams);
 
       const response = await fetch(urlWithParams, {

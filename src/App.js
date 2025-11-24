@@ -1,8 +1,10 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import MainLayout from './components/Layout/MainLayout';
 import Home from './pages/Home';
+import ProtectedRoute from './components/Auth/ProtectedRoute';
+import Login from './pages/Login';
 
 import CitaMedica from './pages/admision/CitaMedica';
 import ProcedimientoAdmision from './pages/admision/ProcedimientoAdmision';
@@ -105,64 +107,69 @@ const theme = createTheme({
   },
 });
 
+
 function App() {
   return (
     <ThemeProvider theme={theme}>
       <Router>
-        <MainLayout>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/home" element={<Home />} />
-            <Route path="/admision/cita" element={<CitaMedica />} />
-            <Route path="/admision/procedimiento" element={<ProcedimientoAdmision />} />
-
-            <Route path="/citas/agendas" element={<Agendadas />} />
-            <Route path="/citas/espera" element={<EnEspera />} />
-            <Route path="/citas/finalizadas" element={<Finalizadas />} />
-           
-            <Route path="/procedimientos/agenda-hoy" element={<AgendaHoy />} />
-            <Route path="/procedimientos/ordenes" element={<Ordenes />} />
-            <Route path="/procedimientos/agendados" element={<Agendados />} />
-            <Route path="/procedimientos/preparacionproc" element={<PreparacionProc />} />
-            <Route path="/procedimientos/dictadoproc" element={<DictadoProc />} />
-            <Route path="/procedimientos/dictado-informe" element={<DictadoInforme />} />
-            <Route path="/procedimientos/completados" element={<Completados />} />
-            <Route path="/procedimientos/completadosold" element={<CompletadoOld />} />
-            <Route path="/procedimientos/altas" element={<Altas />} />
-
-            <Route path="/procedimientos/AltasOld" element={<AltasOld />} />
-
-            <Route path="/procedimientos/captura-imagenes" element={<CapturaImagenes />} />
-            
-            <Route path="/pacientes/pacientes" element={<Pacientes />} />
-            
-            <Route path="/info-clinica/suministros" element={<Suministros />} />
-            <Route path="/info-clinica/cie10" element={<Cie10 />} />
-            <Route path="/info-clinica/examenes" element={<Examenes />} />
-           
-            <Route path="/estadisticas/detallado" element={<Detallado />} />
-            <Route path="/estadisticas/dashboard" element={<Dashboard />} />
-            <Route path="/estadisticas/pacientes" element={<PacientesEstadisticas />} />
-            <Route path="/estadisticas/procedimientos" element={<ProcedimientosEstadisticas />} />
-            <Route path="/estadisticas/personal" element={<PersonalEstadisticas />} />
-           
-            <Route path="/administracion/centros" element={<Centros />} />
-            <Route path="/administracion/personal" element={<PersonalAdministracion />} />
-            <Route path="/administracion/horarios" element={<Horario />} />
-            <Route path="/administracion/estudios" element={<Estudios />} />
-            <Route path="/administracion/salas" element={<Salas />} />
-            <Route path="/administracion/recursos" element={<Recursos />} />
-            <Route path="/administracion/examenes" element={<ExamenesAdministracion />} />
-            <Route path="/administracion/preparacion" element={<Preparacion />} />
-            <Route path="/administracion/seguros" element={<Seguros />} />
-            <Route path="/administracion/roles" element={<Roles />} />
-            <Route path="/administracion/usuarios" element={<Usuarios />} />
-            <Route path="/administracion/plantillas" element={<Plantillas />} />
-            <Route path="/administracion/macros" element={<Macros />} />
-            <Route path="/administracion/medicos-ref" element={<MedicosRef />} />
-            <Route path="*" element={<Home />} />
-          </Routes>
-        </MainLayout>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/unauthorized" element={<div style={{ textAlign: 'center', padding: 50 }}><h2>No Autorizado</h2><p>No tienes permisos para acceder a esta página.</p></div>} />
+          <Route
+            path="/*"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/home" element={<Home />} />
+                    <Route path="/admision/cita" element={<CitaMedica />} />
+                    <Route path="/admision/procedimiento" element={<ProcedimientoAdmision />} />
+                    <Route path="/citas/agendas" element={<Agendadas />} />
+                    <Route path="/citas/espera" element={<EnEspera />} />
+                    <Route path="/citas/finalizadas" element={<Finalizadas />} />
+                    <Route path="/procedimientos/agenda-hoy" element={<AgendaHoy />} />
+                    <Route path="/procedimientos/ordenes" element={<Ordenes />} />
+                    <Route path="/procedimientos/agendados" element={<Agendados />} />
+                    <Route path="/procedimientos/preparacionproc" element={<PreparacionProc />} />
+                    <Route path="/procedimientos/dictadoproc" element={<DictadoProc />} />
+                    <Route path="/procedimientos/dictado-informe" element={<DictadoInforme />} />
+                    <Route path="/procedimientos/completados" element={<Completados />} />
+                    <Route path="/procedimientos/completadosold" element={<CompletadoOld />} />
+                    <Route path="/procedimientos/altas" element={<Altas />} />
+                    <Route path="/procedimientos/AltasOld" element={<AltasOld />} />
+                    <Route path="/procedimientos/captura-imagenes" element={<CapturaImagenes />} />
+                    <Route path="/pacientes/pacientes" element={<Pacientes />} />
+                    <Route path="/info-clinica/suministros" element={<Suministros />} />
+                    <Route path="/info-clinica/cie10" element={<Cie10 />} />
+                    <Route path="/info-clinica/examenes" element={<Examenes />} />
+                    <Route path="/estadisticas/detallado" element={<Detallado />} />
+                    <Route path="/estadisticas/dashboard" element={<Dashboard />} />
+                    <Route path="/estadisticas/pacientes" element={<PacientesEstadisticas />} />
+                    <Route path="/estadisticas/procedimientos" element={<ProcedimientosEstadisticas />} />
+                    <Route path="/estadisticas/personal" element={<PersonalEstadisticas />} />
+                    <Route path="/administracion/centros" element={<Centros />} />
+                    <Route path="/administracion/personal" element={<PersonalAdministracion />} />
+                    <Route path="/administracion/horarios" element={<Horario />} />
+                    <Route path="/administracion/estudios" element={<Estudios />} />
+                    <Route path="/administracion/salas" element={<Salas />} />
+                    <Route path="/administracion/recursos" element={<Recursos />} />
+                    <Route path="/administracion/examenes" element={<ExamenesAdministracion />} />
+                    <Route path="/administracion/preparacion" element={<Preparacion />} />
+                    <Route path="/administracion/seguros" element={<Seguros />} />
+                    <Route path="/administracion/roles" element={<Roles />} />
+                    <Route path="/administracion/usuarios" element={<Usuarios />} />
+                    <Route path="/administracion/plantillas" element={<Plantillas />} />
+                    <Route path="/administracion/macros" element={<Macros />} />
+                    <Route path="/administracion/medicos-ref" element={<MedicosRef />} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
       </Router>
     </ThemeProvider>
   );

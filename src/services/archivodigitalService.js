@@ -1,7 +1,4 @@
-import { api } from '../utils/apiClient';
-import { API_ENDPOINTS } from '../constants/api';
 import appointmentsService from './appointmentsService';
-
 // Servicio para el manejo de ArchivoDigitals
 export const archivodigitalService = {
   // Obtener todos los ArchivoDigitals
@@ -279,6 +276,7 @@ getAll_Estudio: async (params = {}) => {
         throw new Error(`Campos requeridos faltantes: ${missingFields.join(', ')}`);
       }
 
+     const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
      const formattedData = {
         //id: ArchivoDigital.digitalfileid,
         //digitalfileid: ArchivoDigital.digitalfileid,
@@ -293,7 +291,7 @@ getAll_Estudio: async (params = {}) => {
         status: archivoDigitalData.status ? '10007' : '10008', // Convert numeric value to string for Select component
            
         createdAt: new Date().toISOString(),
-        createdBy: 'Arnold' // Usuario de prueba
+        createdBy: actor
       };
 
       console.log('📊 Datos a enviar:', formattedData);
@@ -340,6 +338,7 @@ getAll_Estudio: async (params = {}) => {
         throw new Error(`Campos requeridos faltantes: ${missingFields.join(', ')}`);
       }
 
+     const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
      const formattedData = {
         //id: ArchivoDigital.digitalfileid,
         //digitalfileid: ArchivoDigital.digitalfileid,
@@ -353,7 +352,7 @@ getAll_Estudio: async (params = {}) => {
         status: archivoDigitalData.status, // Convert numeric value to string for Select component
            
         createdAt: new Date().toISOString(),
-        createdBy: 'Arnold' // Usuario de prueba
+        createdBy: actor
       };
 
       console.log('📊 Datos a enviar:', formattedData);
@@ -404,6 +403,7 @@ getAll_Estudio: async (params = {}) => {
       }
 
       // Formatear datos según el formato esperado por la API
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         digitalfileid: parseInt(id),
         date: archivoDigitalData.date,
@@ -416,7 +416,7 @@ getAll_Estudio: async (params = {}) => {
         status: archivoDigitalData.status, // Convert numeric value to string for Select component
            
         updatedAt: new Date().toISOString(),
-        updatedBy: 'Arnold',
+        updatedBy: actor,
         isDeleted: false
         
       };
@@ -466,7 +466,8 @@ getAll_Estudio: async (params = {}) => {
       console.log('🔗 URL de eliminación:', url);
 
       // Enviar la solicitud DELETE con el campo eliminadoPor como un query parameter
-      const urlWithParams = `${url}?eliminadoPor=ADMIN`;
+      const eliminador = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'ADMIN'; } catch { return 'ADMIN'; } })();
+      const urlWithParams = `${url}?eliminadoPor=${encodeURIComponent(eliminador)}`;
       console.log('🔗 URL con parámetros:', urlWithParams);
 
       const response = await fetch(urlWithParams, {
@@ -494,9 +495,6 @@ getAll_Estudio: async (params = {}) => {
       throw error;
     }
   },
-
-  
-
 };
 
 export default archivodigitalService;

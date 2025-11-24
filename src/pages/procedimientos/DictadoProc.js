@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo , useEffect} from 'react';
+import { useState, useCallback, memo , useEffect} from 'react';
 import {
   Container,
   Paper,
@@ -39,7 +39,7 @@ import {
 import {
   NavigateNext,
   Search,
-  MedicalServices,
+  
   CheckCircle,
   AddCircle,
   Schedule,
@@ -51,8 +51,7 @@ import {
   Assessment,
   Delete,
   Save,
-  ExitToAppRounded,
-  ImageSearch,
+  
   OpenInNew,
   AssignmentReturn,
   PlayArrow,
@@ -62,8 +61,7 @@ import {
  
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { appointmentsService, patientsService, staff, staffService } from 'services';
-import examenesService from 'services/examenesService';
+import { appointmentsService, patientsService, staffService } from 'services';
 import centrosService from 'services/centrosService';
 import estudiosService from 'services/estudiosService';
 import salasService from 'services/salasService';
@@ -197,6 +195,7 @@ const DictadoProc = () => {
   const [selectedProcedimiento, setSelectedProcedimiento] = useState(null);
   const [selectedPaciente, setSelectedPaciente] = useState(null);
   const [loadingPaciente, setLoadingPaciente] = useState(false);
+  const [error, setError] = useState('');
   const [selectedProc, setSelectedProc] = useState(null);
   const [openStudyImagesModal, setOpenStudyImagesModal] = useState(false);
   const [openPreparacionModal, setOpenPreparacionModal] = useState(false);

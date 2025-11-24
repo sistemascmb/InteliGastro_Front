@@ -1,5 +1,3 @@
-import { API_ENDPOINTS } from '../constants/api';
-
 // Servicio para el manejo de recursos
 export const recursosService = {
   // Obtener todos los recursos
@@ -157,6 +155,7 @@ export const recursosService = {
       }
 
       // Formatear datos según el formato esperado por la API
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         name: recursoData.nombre || recursoData.name,
         description: recursoData.descripcion || recursoData.description,
@@ -165,7 +164,7 @@ export const recursosService = {
         status: recursoData.status, // Convertir string a boolean
         procedureroomid: recursoData.locacionId, // Por defecto a sala 1 (puedes ajustar esto)
         createdAt: new Date().toISOString(),
-        createdBy: 'ARNOLD' // Usuario de prueba
+        createdBy: actor
       };
 
       console.log('📊 Datos a enviar:', formattedData);
@@ -210,6 +209,7 @@ export const recursosService = {
       }
 
       // Formatear datos según el formato esperado por la API
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         resourcesid: parseInt(id), // ID como número
         name: recursoData.nombre || recursoData.name,
@@ -219,7 +219,7 @@ export const recursosService = {
         status: recursoData.status, // Convertir string a boolean
         procedureroomid: recursoData.locacionId , // Por defecto a sala 1
         updatedAt: new Date().toISOString(),
-        updatedBy: 'Arnold', // Usuario de prueba
+        updatedBy: actor,
         isDeleted: false // Mantener como no eliminado
       };
 
@@ -256,7 +256,7 @@ export const recursosService = {
   },
 
   // Eliminar recurso
-  delete: async (id, eliminadoPor = 'Jhon') => {
+  delete: async (id, eliminadoPor) => {
     try {
       console.log('🗑️ Eliminando recurso con ID:', id);
 
@@ -265,7 +265,8 @@ export const recursosService = {
       }
 
       // Según el patrón de otros servicios, necesita ID y eliminadoPor
-      const url = `${process.env.REACT_APP_API_URL}/Recursos/${id}?eliminadoPor=${encodeURIComponent(eliminadoPor)}`;
+      const actor = eliminadoPor || (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
+      const url = `${process.env.REACT_APP_API_URL}/Recursos/${id}?eliminadoPor=${encodeURIComponent(actor)}`;
 
       console.log('🔗 URL de eliminación:', url);
 

@@ -7,6 +7,7 @@ import patientsService from './patientsService';
 import staffService from './staffService';
 import centersService from './centersService';
 import appointmentsService from './appointmentsService';
+import usuariosService from './usuariosService';
 
 // Exportar servicios con nombres completos y alias
 export {
@@ -14,6 +15,7 @@ export {
   staffService,
   centersService,
   appointmentsService,
+  usuariosService,
   // Alias más cortos
   patientsService as patients,
   staffService as staff,
@@ -105,7 +107,7 @@ export const authService = {
 
     const response = await api.post('/auth/login', { email, password });
 
-    const { accessToken, refreshToken, user } = response.data;
+    const { accessToken, refreshToken, user } = response;
 
     // Guardar tokens según preferencia del usuario
     if (rememberMe) {
@@ -118,7 +120,7 @@ export const authService = {
     // Guardar información del usuario
     localStorage.setItem('currentUser', JSON.stringify(user));
 
-    return response.data;
+    return response;
   },
 
   logout: async () => {
@@ -142,10 +144,10 @@ export const authService = {
     }
 
     const response = await api.post('/auth/refresh', { refreshToken });
-    const { accessToken } = response.data;
+    const { accessToken } = response;
 
     localStorage.setItem('authToken', accessToken);
-    return response.data;
+    return response;
   },
 
   verify: async () => {

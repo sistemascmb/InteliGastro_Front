@@ -214,6 +214,7 @@ export const staffService = {
         throw new Error('Todos los campos de ubicación (país, departamento, provincia y distrito) son obligatorios');
       }
 
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         centroId: personalData.centroId,
         documento: personalData.documento,
@@ -242,7 +243,7 @@ export const staffService = {
         cabeceraPlantilla: personalData.cabeceraPlantilla,
 
         createdAt: new Date().toISOString(),
-        createdBy: 'Arnold' // Usuario de prueba
+        createdBy: actor
       };
 
       console.log('📊 Datos a enviar:', formattedData);
@@ -288,6 +289,7 @@ export const staffService = {
       }
 
       // Formatear datos según el formato esperado por la API
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         personalid: parseInt(id),
         centroId: personalData.centroId,
@@ -317,7 +319,7 @@ export const staffService = {
         cabeceraPlantilla: personalData.cabeceraPlantilla,
         
         updatedAt: new Date().toISOString(),
-        updatedBy: 'Arnold',
+        updatedBy: actor,
         isDeleted: false
         
       };
@@ -368,7 +370,8 @@ export const staffService = {
       console.log('🔗 URL de eliminación:', url);
 
       // Enviar la solicitud DELETE con el campo eliminadoPor como un query parameter
-      const urlWithParams = `${url}?eliminadoPor=ADMIN`;
+      const eliminador = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'ADMIN'; } catch { return 'ADMIN'; } })();
+      const urlWithParams = `${url}?eliminadoPor=${encodeURIComponent(eliminador)}`;
       console.log('🔗 URL con parámetros:', urlWithParams);
 
       const response = await fetch(urlWithParams, {

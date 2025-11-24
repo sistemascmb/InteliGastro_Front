@@ -1,4 +1,42 @@
 export const usuariosService = {
+  login: async ({ usuario, contraseña }) => {
+    if (!usuario || !contraseña) {
+      const e = new Error('Ingrese usuario y contraseña');
+      e.statusCode = 400;
+      e.details = 'Campos requeridos faltantes';
+      throw e;
+    }
+    const url = `http://192.168.1.55:8090/api/SystemUsers/login`;
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario, contraseña })
+      });
+      if (!response.ok) {
+        let errorBody = null;
+        try { errorBody = await response.json(); } catch {}
+        const e = new Error(errorBody?.message || 'Acceso no autorizado');
+        e.statusCode = errorBody?.statusCode || response.status;
+        e.details = errorBody?.details || 'Credenciales inválidas.';
+        throw e;
+      }
+      const data = await response.json();
+      const user = {
+        userid: data.userid,
+        usuario: data.usuario,
+        profiletypeid: data.profiletypeid,
+        profile_name: data.profile_name
+      };
+      try {
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        localStorage.setItem('authToken', 'system-user');
+      } catch {}
+      return { data: user, status: 'success' };
+    } catch (error) {
+      throw error;
+    }
+  },
       getAll: async (params = {}) => {
         try {
             console.log('🌐 Obteniendo todos las SystemUsers...');
@@ -135,6 +173,7 @@ export const usuariosService = {
         throw new Error(`Campos requeridos faltantes: ${missingFields.join(', ')}`);
       }
 
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         profiletypeid: userData.profiletypeid,
         personalid: userData.personalid,
@@ -144,7 +183,7 @@ export const usuariosService = {
         estado: userData.estado,
      
         createdAt: new Date().toISOString(),
-        createdBy: 'Arnold' // Usuario de prueba
+        createdBy: actor
       };
 
       console.log('📊 Datos a enviar:', formattedData);
@@ -188,6 +227,7 @@ export const usuariosService = {
       }
 
       // Formatear datos según el formato esperado por la API
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         userid: parseInt(id),
         profiletypeid: userData.profiletypeid,
@@ -197,7 +237,7 @@ export const usuariosService = {
         contraseñaC: userData.contraseñaC, 
         estado: userData.estado,
         updatedAt: new Date().toISOString(),
-        updatedBy: 'Arnold',
+        updatedBy: actor,
         isDeleted: false
         
       };
@@ -246,7 +286,8 @@ export const usuariosService = {
       console.log('🔗 URL de eliminación:', url);
 
       // Enviar la solicitud DELETE con el campo eliminadoPor como un query parameter
-      const urlWithParams = `${url}?eliminadoPor=ADMIN`;
+      const eliminador = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'ADMIN'; } catch { return 'ADMIN'; } })();
+      const urlWithParams = `${url}?eliminadoPor=${encodeURIComponent(eliminador)}`;
       console.log('🔗 URL con parámetros:', urlWithParams);
 
       const response = await fetch(urlWithParams, {

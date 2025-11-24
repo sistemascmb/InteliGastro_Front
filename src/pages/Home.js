@@ -308,7 +308,7 @@ const Home = () => {
       <Box sx={{ textAlign: 'center', mt: 6, py: 3 }}>
         <Divider sx={{ mb: 2 }} />
         <Typography variant="body2" color="text.secondary">
-          © 2025 - Intellicare Peru
+          © 2025 - CLINICA MARIA BELEN
         </Typography>
       </Box>
     </Container>

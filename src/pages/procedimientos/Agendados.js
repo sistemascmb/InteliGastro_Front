@@ -179,6 +179,7 @@ const Agendados = () => {
   const [selectedProcedimiento, setSelectedProcedimiento] = useState(null);
   const [selectedPaciente, setSelectedPaciente] = useState(null);
   const [loadingPaciente, setLoadingPaciente] = useState(false);
+  const [error, setError] = useState('');
 
   const [medicosD, setMedicosCargados] = useState([]);
   const [salaD, setSalaCargados] = useState([]);

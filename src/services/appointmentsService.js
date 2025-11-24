@@ -514,6 +514,7 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         throw new Error(`Campos requeridos faltantes: ${missingFields.join(', ')}`);
       }
 
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         pacientId: appointmentData.pacientId,
         centroId: appointmentData.centroId,
@@ -540,7 +541,7 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
 
 
         createdAt: new Date().toISOString(),
-        createdBy: 'Arnold' // Usuario de prueba
+        createdBy: actor
       };
 
       console.log('📊 Datos a enviar:', formattedData);
@@ -586,6 +587,7 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         throw new Error(`Campos requeridos faltantes: ${missingFields.join(', ')}`);
       }
 
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         pacientId: appointmentData.pacientId,
         centroId: appointmentData.centroId,
@@ -618,7 +620,7 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         preparacion: 'null',
 
         createdAt: new Date().toISOString(),
-        createdBy: 'Arnold' // Usuario de prueba
+        createdBy: actor
       };
 
       console.log('📊 Datos a enviar:', formattedData);
@@ -718,6 +720,7 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
       }
 
       // Formatear datos según el formato esperado por la API
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         medicalscheduleid: parseInt(id),
         pacientId: dataOrigin.pacientId,
@@ -751,7 +754,7 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         preparacion: dataOrigin.preparacion,
 
         updatedAt: new Date().toISOString(),
-        updatedBy: 'Arnold',
+        updatedBy: actor,
         isDeleted: false
         
       };
@@ -797,6 +800,7 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         throw new Error('ID del Agenda es requerido');
       }
 
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         medicalscheduleid: parseInt(id),
         pacientId: dataOrigin.pacientId,
@@ -828,7 +832,7 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
 
 
         updatedAt: new Date().toISOString(),
-        updatedBy: 'Arnold',
+        updatedBy: actor,
         isDeleted: false
       };
 
@@ -869,6 +873,7 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
       }
 
       // Formatear datos según el formato esperado por la API
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         medicalscheduleid: parseInt(id),
         pacientId: dataOrigin.pacientId,
@@ -902,7 +907,7 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         informePdf: dataOrigin.informePdf,
 
         updatedAt: new Date().toISOString(),
-        updatedBy: 'Arnold',
+        updatedBy: actor,
         isDeleted: false
         
       };
@@ -984,7 +989,7 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         dictadoGuardado: 1,
 
         updatedAt: new Date().toISOString(),
-        updatedBy: 'Arnold',
+        updatedBy: (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })(),
         isDeleted: false
         
       };
@@ -1066,7 +1071,7 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         preparacion: dataOrigin.preparacion,
 
         updatedAt: new Date().toISOString(),
-        updatedBy: 'Arnold',
+        updatedBy: (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })(),
         isDeleted: false
         
       };

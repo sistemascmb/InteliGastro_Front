@@ -141,7 +141,7 @@ export const macrosService = {
         selectAll: mamcroData.selectAll,
      
         createdAt: new Date().toISOString(),
-        createdBy: 'Arnold' // Usuario de prueba
+        createdBy: (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })()
       };
 
       console.log('📊 Datos a enviar:', formattedData);
@@ -194,7 +194,7 @@ export const macrosService = {
         selectAll: mamcroData.selectAll,
 
         updatedAt: new Date().toISOString(),
-        updatedBy: 'Arnold',
+        updatedBy: (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })(),
         isDeleted: false
         
       };
@@ -243,7 +243,8 @@ export const macrosService = {
       console.log('🔗 URL de eliminación:', url);
 
       // Enviar la solicitud DELETE con el campo eliminadoPor como un query parameter
-      const urlWithParams = `${url}?eliminadoPor=ADMIN`;
+      const eliminador = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'ADMIN'; } catch { return 'ADMIN'; } })();
+      const urlWithParams = `${url}?eliminadoPor=${encodeURIComponent(eliminador)}`;
       console.log('🔗 URL con parámetros:', urlWithParams);
 
       const response = await fetch(urlWithParams, {

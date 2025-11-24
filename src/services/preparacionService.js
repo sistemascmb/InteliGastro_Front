@@ -1,5 +1,3 @@
-import { API_ENDPOINTS } from '../constants/api';
-
 // Servicio para el manejo de preparaciones
 export const preparacionService = {
   // Obtener todas las preparaciones
@@ -133,11 +131,12 @@ export const preparacionService = {
       }
 
       // Formatear datos según el formato esperado por la API
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         description: preparacionData.descripcion || preparacionData.description,
         status: preparacionData.estado === 'activo', // Convertir string a boolean
         createdAt: new Date().toISOString(),
-        createdBy: 'Arnold' // Usuario de prueba
+        createdBy: actor
       };
 
       console.log('📊 Datos a enviar:', formattedData);
@@ -182,12 +181,13 @@ export const preparacionService = {
       }
 
       // Formatear datos según el formato esperado por la API
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         preparationid: parseInt(id), // ID como número
         description: preparacionData.descripcion || preparacionData.description,
         status: preparacionData.estado === 'activo', // Convertir string a boolean
         updatedAt: new Date().toISOString(),
-        updatedBy: 'Arnold', // Usuario de prueba
+        updatedBy: actor,
         isDeleted: false // Mantener como no eliminado
       };
 
@@ -224,7 +224,7 @@ export const preparacionService = {
   },
 
   // Eliminar preparación
-  delete: async (id, eliminadoPor = 'Arnold') => {
+  delete: async (id, eliminadoPor) => {
     try {
       console.log('🗑️ Eliminando preparación con ID:', id);
 
@@ -233,7 +233,8 @@ export const preparacionService = {
       }
 
       // Según el patrón de otros servicios, necesita ID y eliminadoPor
-      const url = `${process.env.REACT_APP_API_URL}/Preparacion/${id}?eliminadoPor=${encodeURIComponent(eliminadoPor)}`;
+      const actor = eliminadoPor || (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
+      const url = `${process.env.REACT_APP_API_URL}/Preparacion/${id}?eliminadoPor=${encodeURIComponent(actor)}`;
 
       console.log('🔗 URL de eliminación:', url);
 

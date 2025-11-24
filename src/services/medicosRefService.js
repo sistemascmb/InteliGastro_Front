@@ -139,6 +139,7 @@ export const medicosRefService = {
         throw new Error(`Campos requeridos faltantes: ${missingFields.join(', ')}`);
       }
 
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         names: medicoRefData.names,
         surnames: medicoRefData.surnames,
@@ -149,7 +150,7 @@ export const medicosRefService = {
         phoneNumber: medicoRefData.phoneNumber,
      
         createdAt: new Date().toISOString(),
-        createdBy: 'Arnold' // Usuario de prueba
+        createdBy: actor
       };
 
       console.log('📊 Datos a enviar:', formattedData);
@@ -193,6 +194,7 @@ export const medicosRefService = {
       }
 
       // Formatear datos según el formato esperado por la API
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         referraldoctorsd: parseInt(id),
         names: medicoRefData.names,
@@ -203,7 +205,7 @@ export const medicosRefService = {
         status: medicoRefData.status,
         phoneNumber: medicoRefData.phoneNumber,
         updatedAt: new Date().toISOString(),
-        updatedBy: 'Arnold' // Usuario de prueba
+        updatedBy: actor
       };
 
       console.log('📊 Datos a enviar:', formattedData);

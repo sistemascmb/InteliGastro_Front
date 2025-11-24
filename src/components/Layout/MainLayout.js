@@ -12,7 +12,8 @@ import {
   Logout as LogoutIcon
 } from '@mui/icons-material';
 import Sidebar from './Sidebar';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { authService } from '../../services';
 
 // CONFIGURACIÓN: Ancho del sidebar cuando está abierto (280px)
 const drawerWidth = 280;
@@ -21,6 +22,7 @@ const MainLayout = ({ children }) => {
   // ESTADO: Controla si el sidebar está abierto (true) o cerrado (false)
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const location = useLocation();
+  const navigate = useNavigate();
   
   // Forzar ocultar el sidebar en la página de Captura de Imágenes
   const isSidebarForcedClosed = location.pathname === '/procedimientos/captura-imagenes';
@@ -31,6 +33,15 @@ const MainLayout = ({ children }) => {
     setSidebarOpen(!sidebarOpen);
   };
 
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+    } finally {
+      navigate('/login', { replace: true });
+    }
+  };
+
+  const currentUser = authService.getCurrentUser();
   return (
     <Box sx={{ display: 'flex', height: '100vh' }}>
         <CssBaseline />
@@ -125,7 +136,21 @@ const MainLayout = ({ children }) => {
               
               {/* EMAIL DEL USUARIO: Mostrar quién está logueado*/}
               <Typography variant="body2" sx={{ color: '#666', fontSize: '14px' }}>
-                usuario@clinica.com {/* DATOS: Email del usuario actual - CONECTAR CON BACKEND */}
+                {currentUser ? currentUser.usuario : 'Usuario'}
+              </Typography>
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  color: '#2184be',
+                  fontWeight: 'bold',
+                  fontSize: '12px',
+                  px: 1.5,
+                  py: 0.5,
+                  border: '1px solid #2184be',
+                  borderRadius: '12px'
+                }}
+              >
+                {currentUser ? currentUser.profile_name : 'Perfil'}
               </Typography>
               
               {/* SIGLAS CMB: Clínica María Belén*/}
@@ -158,7 +183,7 @@ const MainLayout = ({ children }) => {
                     borderColor: '#d0d7de' // Mantener color del borde
                   }
                 }}
-                // onClick={handleLogout} // TODO: AGREGAR función de logout aquí
+                onClick={handleLogout}
               >
                 Cerrar Sesión {/* TEXTO: Label del botón*/}
               </Button>

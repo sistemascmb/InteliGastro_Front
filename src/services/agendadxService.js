@@ -1,5 +1,3 @@
-import { API_ENDPOINTS } from '../constants/api';
-
 // Servicio para el manejo de códigos AgendaDx
 export const agendadxService = {
   // Obtener todos los códigos AgendaDx
@@ -95,13 +93,14 @@ export const agendadxService = {
       }
 
       // Formatear datos según el formato esperado por la API
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         medical_ScheduleId: AgendaDxData.medical_ScheduleId,
         cie10id: AgendaDxData.cie10id,
         description: AgendaDxData.description,
         
         createdAt: new Date().toISOString(),
-        createdBy: 'Jhon' // Usuario de prueba
+        createdBy: actor
       };
 
       console.log('📊 Datos a enviar:', formattedData);
@@ -146,6 +145,7 @@ export const agendadxService = {
       }
 
       // Formatear datos según el formato esperado por la API
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         medicalscheduledxid: parseInt(id),
         medical_ScheduleId: AgendaDxData.medical_ScheduleId,
@@ -153,7 +153,7 @@ export const agendadxService = {
         description: AgendaDxData.description,
 
         updatedAt: new Date().toISOString(),
-        updatedBy: 'Jhon',
+        updatedBy: actor,
         isDeleted: false // Mantener como no eliminado
       };
 
@@ -190,7 +190,7 @@ export const agendadxService = {
   },
 
   // Eliminar código AgendaDx
-  delete: async (id, eliminadoPor = 'Jhon') => {
+  delete: async (id, eliminadoPor) => {
     try {
       console.log('🗑️ Eliminando código AgendaDx con ID:', id);
 
@@ -199,7 +199,8 @@ export const agendadxService = {
       }
 
       // Según el swagger, necesita ID y eliminadoPor
-      const url = `${process.env.REACT_APP_API_URL}/AgendaDx/${id}?eliminadoPor=${encodeURIComponent(eliminadoPor)}`;
+      const actor = eliminadoPor || (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
+      const url = `${process.env.REACT_APP_API_URL}/AgendaDx/${id}?eliminadoPor=${encodeURIComponent(actor)}`;
 
       console.log('🔗 URL de eliminación:', url);
 

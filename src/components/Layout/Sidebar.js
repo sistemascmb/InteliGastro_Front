@@ -6,7 +6,6 @@ import {
   ListItemIcon,
   ListItemText,
   Collapse,
-  patch,
 } from '@mui/material';
 import logoClinica from '../../assets/images/logo-clinica.png';
 import {
@@ -33,10 +32,20 @@ import {
   PersonSearch,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { authService } from '../../services';
 
 const Sidebar = () => {
   const navigate = useNavigate();
   const [openMenus, setOpenMenus] = useState({});
+
+  const currentUser = authService.getCurrentUser();
+  const isAdmin = currentUser?.profiletypeid === 1 || currentUser?.profile_name === 'Administrador';
+  const profileNameNorm = (currentUser?.profile_name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const roleNorm = (currentUser?.role || '').toLowerCase().trim();
+  const isDoctor = roleNorm === 'doctor' || /medico/.test(profileNameNorm);
+  const isEnfermera = roleNorm === 'nurse' || /enfermer[ao]/.test(profileNameNorm);
+  const isAdmision = roleNorm === 'admisionista' || /admisionista/.test(profileNameNorm);
+
 
   const handleMenuClick = (menuName) => {
     setOpenMenus(prev => ({
@@ -45,7 +54,7 @@ const Sidebar = () => {
     }));
   };
 
-  const menuItems = [
+  const menuItemsBase = [
     {
       title: 'Admisión',
       icon: <PersonAdd />,
@@ -59,23 +68,19 @@ const Sidebar = () => {
       icon: <CalendarToday />,
       children: [
         { title: 'Agendadas', path: '/citas/agendas' },
-        { title: 'En Espera', path: '/citas/espera' },
-        { title: 'Finalizadas', path: '/citas/finalizadas' }
+        //{ title: 'En Espera', path: '/citas/espera' },
+        //{ title: 'Finalizadas', path: '/citas/finalizadas' }
       ]
     },
     {
       title: 'Procedimientos',
       icon: <MedicalServices />,
       children: [
-        /*{ title: 'Agenda de Hoy', path: '/procedimientos/agenda-hoy' },*/
-        /*{ title: 'Ordenes', path: '/procedimientos/ordenes' },*/
         { title: 'Agendados', path: '/procedimientos/agendados' },
         { title: 'Procedimiento', path: '/procedimientos/preparacionproc' },
         { title: 'Dictado', path: '/procedimientos/dictadoproc' },
         { title: 'Completados', path: '/procedimientos/completados' },
-        //{ title: 'CompletadoOld', path: '/procedimientos/completadosold' },
-        { title: 'Altas', path: '/procedimientos/altas' },
-        //{ title: 'AltasOld', path: '/procedimientos/altasold' }
+        { title: 'Altas', path: '/procedimientos/altas' }
       ]
     },
     {
@@ -83,8 +88,7 @@ const Sidebar = () => {
       icon: <People />,
       children: [
         { title: 'Nuevo Paciente', path: '/pacientes/pacientes' }
-      ],
-
+      ]
     },
     {
       title: 'Inf. Clínica',
@@ -92,21 +96,18 @@ const Sidebar = () => {
       children: [
         { title: 'Examenes', path: '/info-clinica/examenes' },
         { title: 'Suministros', path: '/info-clinica/suministros' },
-        { title: 'CIE-10', path: '/info-clinica/cie10' },
+        { title: 'CIE-10', path: '/info-clinica/cie10' }
       ]
     },
     {
       title: 'Estadísticas',
       icon: <BarChart />,
-      children:[
+      children: [
         { title: 'Detallado', path: '/estadisticas/detallado' },
-        { title: 'Dashboard', path: '/estadisticas/dashboard' },
-        /*{ title: 'Pacientes', path: '/estadisticas/pacientes' },*/
-        /*{ title: 'Procedimientos', path: '/estadisticas/procedimientos' },*/
-        /*{ title: 'Personal', path: '/estadisticas/personal' }*/
+        { title: 'Dashboard', path: '/estadisticas/dashboard' }
       ]
     },
-    {
+    isAdmin ? {
       title: 'Administración',
       icon: <Settings />,
       children: [
@@ -125,8 +126,63 @@ const Sidebar = () => {
         { title: 'Macros', icon: <Code />, path: '/administracion/macros' },
         { title: 'Médicos Ref.', icon: <PersonSearch />, path: '/administracion/medicos-ref' }
       ]
-    }
+    } : null
   ];
+
+  let menuItems = menuItemsBase.filter(Boolean);
+  if (isDoctor) {
+    menuItems = menuItems.filter(item => !['Admisión', 'Citas', 'Estadísticas'].includes(item.title));
+    menuItems = menuItems.map(item => {
+      if (item.title === 'Procedimientos') {
+        return {
+          ...item,
+          children: item.children.filter(child => ['Procedimiento', 'Dictado', 'Completados'].includes(child.title))
+        };
+      }
+      if (item.title === 'Inf. Clínica') {
+        return {
+          ...item,
+          children: item.children.filter(child => ['Examenes', 'CIE-10'].includes(child.title))
+        };
+      }
+      return item;
+    });
+  } else if (isEnfermera) {
+    menuItems = menuItems.filter(item => !['Admisión', 'Citas', 'Estadísticas', 'Administración'].includes(item.title));
+    menuItems = menuItems.map(item => {
+      if (item.title === 'Inf. Clínica') {
+        return {
+          ...item,
+          children: item.children.filter(child => ['Examenes'].includes(child.title))
+        };
+      }
+      if (item.title === 'Procedimientos') {
+        return {
+          ...item,
+          children: item.children.filter(child => ['Agendados', 'Completados'].includes(child.title))
+        };
+      }
+      return item;
+    });
+  }
+  else if (isAdmision) {
+    menuItems = menuItems.filter(item => !['Estadísticas', 'Administración'].includes(item.title));
+    menuItems = menuItems.map(item => {
+      if (item.title === 'Inf. Clínica') {
+        return {
+          ...item,
+          children: item.children.filter(child => ['Examenes'].includes(child.title))
+        };
+      }
+      if (item.title === 'Procedimientos') {
+        return {
+          ...item,
+          children: item.children.filter(child => ['Agendados', 'Completados'].includes(child.title))
+        };
+      }
+      return item;
+    });
+  }
 
   const renderMenuItem = (item, level = 0) => {
     const hasChildren = item.children && item.children.length > 0;
@@ -235,7 +291,7 @@ const Sidebar = () => {
         
         {/* Menú que continúa después del logo */}
         <List sx={{ pt: 1 }}>
-          {menuItems.map((item) => renderMenuItem(item))}
+          {menuItems.filter(Boolean).map((item) => renderMenuItem(item))}
         </List>
       </Box>
     </Box>

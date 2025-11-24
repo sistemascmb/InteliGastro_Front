@@ -157,6 +157,7 @@ const Examenes = () => {
   const [studyImagesLoading, setStudyImagesLoading] = useState(false);
   
   const [openEmailModal, setOpenEmailModal] = useState(false);
+  const [error, setError] = useState('');
 
   const [medicosD, setMedicosCargados] = useState([]);
   const [salaD, setSalaCargados] = useState([]);
@@ -250,8 +251,6 @@ const cargarSalas = async () => {
   });
 
   const [cie10Seleccionados, setCie10Seleccionados] = useState([]);
-
-  const [error, setError] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
 
   // Base de datos simulada de códigos CIE-10

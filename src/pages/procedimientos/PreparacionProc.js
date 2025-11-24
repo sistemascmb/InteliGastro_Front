@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo , useEffect} from 'react';
+import { useState, useCallback, memo , useEffect} from 'react';
 import {
   Container,
   Paper,
@@ -51,7 +51,7 @@ import {
   Assessment,
   Delete,
   Save,
-  ContentPasteSearch,
+  
   ImageSearch,
   FactCheckRounded,
   BedroomChild,
@@ -61,8 +61,7 @@ import {
   Download
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { appointmentsService, patientsService, staff, staffService } from 'services';
-import examenesService from 'services/examenesService';
+import { appointmentsService, patientsService, staffService } from 'services';
 import centrosService from 'services/centrosService';
 import estudiosService from 'services/estudiosService';
 import salasService from 'services/salasService';

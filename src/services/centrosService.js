@@ -1,6 +1,3 @@
-import Horario from 'pages/administracion/Horario';
-import { API_ENDPOINTS } from '../constants/api';
-import { ubigeoService } from './ubigeoService';
 import { format } from 'date-fns';
 
 // Servicio para el manejo de centros
@@ -197,6 +194,7 @@ export const centrosService = {
       }
 
       // Formatear datos según el formato esperado por la API
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         nombre: centroData.nombre,
         descripcion: centroData.descripcion,
@@ -212,7 +210,7 @@ export const centrosService = {
         ruc: centroData.ruc || "20000000000", // RUC por defecto si no se proporciona
         status: true, // Siempre activo al crear
         createdAt: new Date().toISOString(),
-        createdBy: 'Jhon' // Usuario de prueba
+        createdBy: actor
       };
 
       console.log('📊 Datos a enviar:', formattedData);
@@ -257,6 +255,7 @@ export const centrosService = {
       }
 
       // Formatear datos según el formato esperado por la API
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         centroid: parseInt(id),
         nombre: centroData.nombre,
@@ -273,7 +272,7 @@ export const centrosService = {
         ruc: centroData.ruc || "20000000000",
         status: centroData.estado === 'activo' || true,
         updatedAt: new Date().toISOString(),
-        updatedBy: 'Jhon',
+        updatedBy: actor,
         isDeleted: false
       };
 
@@ -322,7 +321,8 @@ export const centrosService = {
       console.log('🔗 URL de eliminación:', url);
 
       // Enviar la solicitud DELETE con el campo eliminadoPor como un query parameter
-      const urlWithParams = `${url}?eliminadoPor=ADMIN`;
+      const eliminador = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'ADMIN'; } catch { return 'ADMIN'; } })();
+      const urlWithParams = `${url}?eliminadoPor=${encodeURIComponent(eliminador)}`;
       console.log('🔗 URL con parámetros:', urlWithParams);
 
       const response = await fetch(urlWithParams, {

@@ -1,5 +1,3 @@
-import { API_ENDPOINTS } from '../constants/api';
-
 // Servicio para el manejo de seguros
 export const segurosService = {
   // Obtener todos los seguros
@@ -140,6 +138,7 @@ export const segurosService = {
       }
 
       // Formatear datos según el formato esperado por la API
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         name: seguroData.nombre || seguroData.name,
         identification: seguroData.identificacion || seguroData.identification,
@@ -147,7 +146,7 @@ export const segurosService = {
         adress: seguroData.direccion || seguroData.adress,
         status: seguroData.estado === 'activo', // Convertir string a boolean
         createdAt: new Date().toISOString(),
-        createdBy: 'Arnold' // Usuario de prueba como solicitaste
+        createdBy: actor
       };
 
       console.log('📊 Datos a enviar:', formattedData);
@@ -192,6 +191,7 @@ export const segurosService = {
       }
 
       // Formatear datos según el formato esperado por la API
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         insuranceid: parseInt(id), // ID como número
         name: seguroData.nombre || seguroData.name,
@@ -200,7 +200,7 @@ export const segurosService = {
         adress: seguroData.direccion || seguroData.adress,
         status: seguroData.estado === 'activo', // Convertir string a boolean
         updatedAt: new Date().toISOString(),
-        updatedBy: 'Arnold', // Usuario de prueba
+        updatedBy: actor,
         isDeleted: false // Mantener como no eliminado
       };
 
@@ -237,7 +237,7 @@ export const segurosService = {
   },
 
   // Eliminar seguro
-  delete: async (id, eliminadoPor = 'Arnold') => {
+  delete: async (id, eliminadoPor) => {
     try {
       console.log('🗑️ Eliminando seguro con ID:', id);
 
@@ -246,7 +246,8 @@ export const segurosService = {
       }
 
       // Según el swagger, necesita ID y eliminadoPor
-      const url = `${process.env.REACT_APP_API_URL}/Seguros/${id}?eliminadoPor=${encodeURIComponent(eliminadoPor)}`;
+      const actor = eliminadoPor || (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
+      const url = `${process.env.REACT_APP_API_URL}/Seguros/${id}?eliminadoPor=${encodeURIComponent(actor)}`;
 
       console.log('🔗 URL de eliminación:', url);
 

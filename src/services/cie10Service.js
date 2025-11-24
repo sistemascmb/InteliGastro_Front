@@ -1,5 +1,3 @@
-import { API_ENDPOINTS } from '../constants/api';
-
 // Servicio para el manejo de códigos CIE10
 export const cie10Service = {
   // Obtener todos los códigos CIE10
@@ -120,13 +118,14 @@ export const cie10Service = {
       }
 
       // Formatear datos según el formato esperado por la API
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         code: cie10Data.codigo || cie10Data.code,
         description: cie10Data.descripcion || cie10Data.description,
         genderId: cie10Data.genero || cie10Data.generoId || cie10Data.genderId || 3, // Por defecto 3 ("Ambos")
         status: true, // Siempre activo al crear
         createdAt: new Date().toISOString(),
-        createdBy: 'Jhon' // Usuario de prueba
+        createdBy: actor
       };
 
       console.log('📊 Datos a enviar:', formattedData);
@@ -171,6 +170,7 @@ export const cie10Service = {
       }
 
       // Formatear datos según el formato esperado por la API
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
       const formattedData = {
         cieid: parseInt(id),
         code: cie10Data.codigo || cie10Data.code,
@@ -178,7 +178,7 @@ export const cie10Service = {
         genderId: cie10Data.genero || cie10Data.generoId || cie10Data.genderId || 3,
         status: cie10Data.estado === 'activo' || cie10Data.status !== false, // Mantener como activo por defecto
         updatedAt: new Date().toISOString(),
-        updatedBy: 'Jhon',
+        updatedBy: actor,
         isDeleted: false // Mantener como no eliminado
       };
 
@@ -215,7 +215,7 @@ export const cie10Service = {
   },
 
   // Eliminar código CIE10
-  delete: async (id, eliminadoPor = 'Jhon') => {
+  delete: async (id, eliminadoPor) => {
     try {
       console.log('🗑️ Eliminando código CIE10 con ID:', id);
 
@@ -224,7 +224,8 @@ export const cie10Service = {
       }
 
       // Según el swagger, necesita ID y eliminadoPor
-      const url = `${process.env.REACT_APP_API_URL}/Cie10/${id}?eliminadoPor=${encodeURIComponent(eliminadoPor)}`;
+      const actor = eliminadoPor || (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
+      const url = `${process.env.REACT_APP_API_URL}/Cie10/${id}?eliminadoPor=${encodeURIComponent(actor)}`;
 
       console.log('🔗 URL de eliminación:', url);
 
