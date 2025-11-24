@@ -319,6 +319,23 @@ const cargarSalas = async () => {
                   const tipoAtencion = await centrosService.getSystemParameterId(procedimientoDat.typeOfPatient);
                   const tipoProced = await centrosService.getSystemParameterId(procedimientoDat.tipoProcedimientoId);
                   
+                  const datosdelCie10 = await agendadxService.searchByAgendaDxEstudioId(procedimientoDat.medicalscheduleid);
+                  const listaCie10 = Array.isArray(datosdelCie10) ? datosdelCie10 : (datosdelCie10?.data || []);
+                  const cie10Pairs = await Promise.all((listaCie10 || []).map(async (dx) => {
+                    try {
+                      const cie = await cie10Service.getById(dx.cie10id);
+                      const c = Array.isArray(cie) ? null : (cie?.data || {});
+                      const code = c?.codigo || c?.code || '';
+                      const desc = c?.descripcion || c?.description || '';
+                      return [code, desc].filter(Boolean).join(':');
+                    } catch {
+                      const code = String(dx.cie10id || '');
+                      const desc = dx.description || '';
+                      return [code, desc].filter(Boolean).join(':');
+                    }
+                  }));
+                  const cie10Concatenado = (cie10Pairs || []).filter(Boolean).join(' / ');
+
                   // Transformar el estado a ID numérico, manejando tanto booleano como texto
                   
                   return {
@@ -350,7 +367,9 @@ const cargarSalas = async () => {
                     fechaExamen: procedimientoDat.appointmentDate,
                     horaExamen: procedimientoDat.hoursMedicalShedule,
                     urgente: procedimientoDat.urgenteId == '10059' ?true: false,
-                    anotacionesAdicionales: procedimientoDat.anotacionesAdicionales || '-'
+                    anotacionesAdicionales: procedimientoDat.anotacionesAdicionales || '-',
+                    cie10: cie10Concatenado
+
 
                   };
                 } catch (error) {
@@ -1430,7 +1449,8 @@ const cargarSalas = async () => {
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
                               {/*'{' + proc.cie10 + '}'*/}
-                              ()
+                               ({proc.cie10})
+
                             </Typography>
                             <Typography variant="body2" fontWeight="bold">
                               {'{' +proc.tipoProcedimiento+ '}'}

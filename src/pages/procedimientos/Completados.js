@@ -66,6 +66,7 @@ import medicosRefService from 'services/medicosRefService';
 import segurosService from 'services/segurosService';
 import { PdfTools } from './DictadoInforme';
 import archivodigitalService from 'services/archivodigitalService';
+import agendadxService from 'services/agendadxService';
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
@@ -293,6 +294,23 @@ const cargarSalas = async () => {
                   const cantidadMultimedia = await archivodigitalService.searchByEstudioId(procedimientoDat.medicalscheduleid);
                   // Transformar el estado a ID numérico, manejando tanto booleano como texto
                   
+                  const datosdelCie10 = await agendadxService.searchByAgendaDxEstudioId(procedimientoDat.medicalscheduleid);
+                  const listaCie10 = Array.isArray(datosdelCie10) ? datosdelCie10 : (datosdelCie10?.data || []);
+                  const cie10Pairs = await Promise.all((listaCie10 || []).map(async (dx) => {
+                    try {
+                      const cie = await cie10Service.getById(dx.cie10id);
+                      const c = Array.isArray(cie) ? null : (cie?.data || {});
+                      const code = c?.codigo || c?.code || '';
+                      const desc = c?.descripcion || c?.description || '';
+                      return [code, desc].filter(Boolean).join(':');
+                    } catch {
+                      const code = String(dx.cie10id || '');
+                      const desc = dx.description || '';
+                      return [code, desc].filter(Boolean).join(':');
+                    }
+                  }));
+                  const cie10Concatenado = (cie10Pairs || []).filter(Boolean).join(' / ');
+
                   return {
                     ...procedimientoDat,
                     //
@@ -324,7 +342,8 @@ const cargarSalas = async () => {
                     urgente: procedimientoDat.urgenteId == '10059' ?true: false,
                     fechaCompletado: procedimientoDat.updatedAt,
                     anotacionesAdicionales: procedimientoDat.anotacionesAdicionales || '-',
-                    cantidadMultimediaEstudio: Array.isArray(cantidadMultimedia?.data) ? cantidadMultimedia.data.length : 0
+                    cantidadMultimediaEstudio: Array.isArray(cantidadMultimedia?.data) ? cantidadMultimedia.data.length : 0,
+                    cie10: cie10Concatenado
 
 
                   };
@@ -1420,7 +1439,7 @@ const cargarSalas = async () => {
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
                               {/*'{' + proc.cie10 + '}'*/}
-                              ()
+                              ({proc.cie10})
                             </Typography>
                             <Typography variant="body2" fontWeight="bold">
                               {'{' +proc.tipoProcedimiento+ '}'}
