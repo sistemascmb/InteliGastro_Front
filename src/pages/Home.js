@@ -43,7 +43,7 @@ const Home = () => {
         >
           Bienvenido a{' '}
           <Box component="span" sx={{ color: '#2184be' }}>
-            INTELLISUITE
+            CMB
           </Box>
         </Typography>
       </Box>
@@ -87,7 +87,7 @@ const Home = () => {
             position: 'relative'
           }}
         >
-          Sistema de Gestión Médica Avanzado
+          Sistema de Gestión de Procedimientos Gastroenterológicos
         </Typography>
       </Box>
 
