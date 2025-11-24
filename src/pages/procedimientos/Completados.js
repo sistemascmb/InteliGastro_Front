@@ -57,7 +57,6 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { appointmentsService, patientsService, staff, staffService } from 'services';
-import examenesService from 'services/examenesService';
 import centrosService from 'services/centrosService';
 import estudiosService from 'services/estudiosService';
 import salasService from 'services/salasService';

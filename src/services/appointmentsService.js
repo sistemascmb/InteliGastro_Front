@@ -71,6 +71,80 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
       throw error;
     }
   },
+  getAll_Proc_Buscados: async ({ medicalscheduleid, names, lastNames, dni } = {}) => {
+    try {
+      const hasAnyFilter =
+        (medicalscheduleid !== undefined && medicalscheduleid !== null && String(medicalscheduleid).trim() !== '') ||
+        (names && String(names).trim() !== '') ||
+        (lastNames && String(lastNames).trim() !== '') ||
+        (dni && String(dni).trim() !== '');
+
+      if (!hasAnyFilter) {
+        throw new Error('Debe proporcionar al menos uno de los filtros: medicalscheduleid, nombres, apellidos o DNI.');
+      }
+
+      const params = {};
+      if (medicalscheduleid !== undefined && medicalscheduleid !== null && String(medicalscheduleid).trim() !== '') {
+        params.medicalscheduleid = parseInt(medicalscheduleid, 10);
+      }
+      if (names && String(names).trim() !== '') {
+        params.names = String(names).trim();
+      }
+      if (lastNames && String(lastNames).trim() !== '') {
+        params.lastNames = String(lastNames).trim();
+      }
+      if (dni && String(dni).trim() !== '') {
+        params.dni = String(dni).trim();
+      }
+
+      const response = await api.get('/Agenda/search/studies', { params });
+
+      const notDeleted = Array.isArray(response) ? response.filter((item) => item && item.isDeleted === false) : [];
+
+      const mappedData = notDeleted.map((proced) => ({
+        id: proced.medicalscheduleid,
+        medicalscheduleid: proced.medicalscheduleid,
+        pacientId: proced.pacientId,
+        centroId: proced.centroId,
+        personalId: proced.personalId,
+        appointmentDate: proced.appointmentDate,
+        hoursMedicalShedule: proced.hoursMedicalShedule,
+        insuranceId: proced.insuranceId,
+        letterOfGuarantee: proced.letterOfGuarantee,
+        status: proced.status,
+        typeOfAttention: proced.typeOfAttention,
+        typeOfPatient: proced.typeOfPatient,
+        referral_doctorsId: proced.referral_doctorsId,
+        centerOfOriginId: proced.centerOfOriginId,
+        anotherCenter: proced.anotherCenter,
+        procedureRoomId: proced.procedureRoomId,
+        resourcesId: proced.resourcesId,
+        studiesId: proced.studiesId,
+        anotacionesAdicionales: proced.anotacionesAdicionales,
+        tipoProcedimientoId: proced.tipoProcedimientoId,
+        urgenteId: proced.urgenteId,
+        estudioTeminadoId: proced.estudioTeminadoId,
+        pdfGeneradoId: proced.pdfGeneradoId,
+        dictadoGuardado: proced.dictadoGuardado,
+        estructuraHtml: proced.estructuraHtml,
+        informePdf: proced.informePdf,
+        preparacion: proced.preparacion,
+        createdAt: proced.createdAt,
+        createdBy: proced.createdBy,
+        updatedAt: proced.updatedAt,
+        updatedBy: proced.updatedBy,
+        isDeleted: proced.isDeleted
+      }));
+
+      return {
+        data: mappedData,
+        status: 'success'
+      };
+    } catch (error) {
+      console.error('❌ Error al buscar procedimientos:', error);
+      throw error;
+    }
+  },
   getAll_Proc_Preparacion: async (params = {}) => {
     try {
       console.log('🌐 Obteniendo todos los Procedimientos...');
