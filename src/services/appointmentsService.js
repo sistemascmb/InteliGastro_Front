@@ -283,6 +283,80 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
       throw error;
     }
   },
+  getAll_Proc_Buscados_Fechas: async ({ startDate, endDate } = {}) => {
+    try {
+      const fmt = (v) => {
+        if (!v) return '';
+        if (v instanceof Date) {
+          const dd = String(v.getDate()).padStart(2, '0');
+          const mm = String(v.getMonth() + 1).padStart(2, '0');
+          const yyyy = v.getFullYear();
+          return `${dd}/${mm}/${yyyy}`;
+        }
+        const s = String(v).trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+          const [yyyy, mm, dd] = s.split('-');
+          return `${dd}/${mm}/${yyyy}`;
+        }
+        return s;
+      };
+
+      const s = fmt(startDate);
+      const e = fmt(endDate);
+      if (!s || !e) {
+        throw new Error('Debe proporcionar startDate y endDate en formato DD/MM/YYYY o YYYY-MM-DD.');
+      }
+
+      const params = { startDate: s, endDate: e };
+      const response = await api.get('/Agenda/search/date-range', { params });
+
+      const notDeleted = Array.isArray(response) ? response.filter((item) => item && item.isDeleted === false) : [];
+      const procedimientos = notDeleted.filter((proced) => proced.typeOfAttention === 2);
+
+      const mappedData = procedimientos.map((proced) => ({
+        id: proced.medicalscheduleid,
+        medicalscheduleid: proced.medicalscheduleid,
+        pacientId: proced.pacientId,
+        centroId: proced.centroId,
+        personalId: proced.personalId,
+        appointmentDate: proced.appointmentDate,
+        hoursMedicalShedule: proced.hoursMedicalShedule,
+        insuranceId: proced.insuranceId,
+        letterOfGuarantee: proced.letterOfGuarantee,
+        status: proced.status,
+        typeOfAttention: proced.typeOfAttention,
+        typeOfPatient: proced.typeOfPatient,
+        referral_doctorsId: proced.referral_doctorsId,
+        centerOfOriginId: proced.centerOfOriginId,
+        anotherCenter: proced.anotherCenter,
+        procedureRoomId: proced.procedureRoomId,
+        resourcesId: proced.resourcesId,
+        studiesId: proced.studiesId,
+        anotacionesAdicionales: proced.anotacionesAdicionales,
+        tipoProcedimientoId: proced.tipoProcedimientoId,
+        urgenteId: proced.urgenteId,
+        estudioTeminadoId: proced.estudioTeminadoId,
+        pdfGeneradoId: proced.pdfGeneradoId,
+        dictadoGuardado: proced.dictadoGuardado,
+        estructuraHtml: proced.estructuraHtml,
+        informePdf: proced.informePdf,
+        preparacion: proced.preparacion,
+        createdAt: proced.createdAt,
+        createdBy: proced.createdBy,
+        updatedAt: proced.updatedAt,
+        updatedBy: proced.updatedBy,
+        isDeleted: proced.isDeleted
+      }));
+
+      return {
+        data: mappedData,
+        status: 'success'
+      };
+    } catch (error) {
+      console.error('❌ Error al buscar procedimientos por fechas:', error);
+      throw error;
+    }
+  },
   getAll_Proc_Preparacion: async (params = {}) => {
     try {
       console.log('🌐 Obteniendo todos los Procedimientos...');

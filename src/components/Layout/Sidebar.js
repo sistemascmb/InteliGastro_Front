@@ -68,7 +68,7 @@ const Sidebar = () => {
       icon: <CalendarToday />,
       children: [
         { title: 'Agendadas', path: '/citas/agendas' },
-        //{ title: 'AgendadasOld', path: '/citas/agendasold' },
+        { title: 'AgendadasOld', path: '/citas/agendasold' },
         //{ title: 'En Espera', path: '/citas/espera' },
         //{ title: 'Finalizadas', path: '/citas/finalizadas' }
       ]
@@ -114,7 +114,7 @@ const Sidebar = () => {
       children: [
         { title: 'Centros', icon: <Business />, path: '/administracion/centros' },
         { title: 'Personal', icon: <People />, path: '/administracion/personal' },
-        { title: 'Horarios', icon: <Schedule />, path: '/administracion/horarios' },
+        //{ title: 'Horarios', icon: <Schedule />, path: '/administracion/horarios' },
         { title: 'Estudios', icon: <LocalHospital />, path: '/administracion/estudios' },
         { title: 'Salas', icon: <MeetingRoom />, path: '/administracion/salas' },
         { title: 'Recursos', icon: <Inventory />, path: '/administracion/recursos' },
@@ -149,12 +149,18 @@ const Sidebar = () => {
       return item;
     });
   } else if (isEnfermera) {
-    menuItems = menuItems.filter(item => !['Admisión', 'Citas', 'Procedimientos', 'Estadísticas', 'Administración'].includes(item.title));
+    menuItems = menuItems.filter(item => !['Admisión', 'Citas', 'Estadísticas', 'Administración'].includes(item.title));
     menuItems = menuItems.map(item => {
       if (item.title === 'Inf. Clínica') {
         return {
           ...item,
           children: item.children.filter(child => ['Examenes'].includes(child.title))
+        };
+      }
+      if (item.title === 'Procedimientos') {
+        return {
+          ...item,
+          children: item.children.filter(child => ['Agendados', 'Completados'].includes(child.title))
         };
       }
       return item;

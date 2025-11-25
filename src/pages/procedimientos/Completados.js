@@ -1458,12 +1458,9 @@ const cargarSalas = async () => {
                         <TableCell>
                           <Box>
                             <Typography variant="body2" fontWeight="bold">
-                              {new Date(proc.fechaExamen).toLocaleDateString('es-ES', {
-                                weekday: 'short',
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric'
-                              })}
+                       {new Date(proc.fechaExamen).toLocaleDateString()} 
+
+   
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
                               HORA: {proc.horaExamen} 

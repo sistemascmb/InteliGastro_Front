@@ -34,6 +34,8 @@ import Suministros from './pages/info-clinica/Suministros';
 import Cie10 from './pages/info-clinica/Cie10';
 
 import Detallado from './pages/estadisticas/Detallado';
+import DetalladoOld from './pages/estadisticas/DetalladoOld';
+
 import Dashboard from './pages/estadisticas/Dashboard';
 import PacientesEstadisticas from './pages/estadisticas/Pacientes';
 import ProcedimientosEstadisticas from './pages/estadisticas/Procedimientos';
@@ -147,6 +149,8 @@ function App() {
                     <Route path="/info-clinica/cie10" element={<Cie10 />} />
                     <Route path="/info-clinica/examenes" element={<Examenes />} />
                     <Route path="/estadisticas/detallado" element={<Detallado />} />
+                    <Route path="/estadisticas/detalladoold" element={<DetalladoOld />} />
+
                     <Route path="/estadisticas/dashboard" element={<Dashboard />} />
                     <Route path="/estadisticas/pacientes" element={<PacientesEstadisticas />} />
                     <Route path="/estadisticas/procedimientos" element={<ProcedimientosEstadisticas />} />
