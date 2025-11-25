@@ -852,7 +852,7 @@ const cargarSalas = async () => {
       status: 10067,
     };
 
-    const procedimientoActualizado = await appointmentsService.update_Estado_Proc(selectedProcedimiento.id, procedimientoCompletado);
+    const procedimientoActualizado = await appointmentsService.update_Estado_Cons(selectedProcedimiento.id, procedimientoCompletado);
     
     console.log('✅ Procedimiento cancelado:', procedimientoActualizado);
 
@@ -879,13 +879,13 @@ const cargarSalas = async () => {
       ...rescheduleForm,
       status: 10068,
       personalId: rescheduleForm.medico,
-      procedureRoomId: rescheduleForm.sala,
-      resourcesId: rescheduleForm.equipo,
+      //procedureRoomId: rescheduleForm.sala,
+      //resourcesId: rescheduleForm.equipo,
       appointmentDate: rescheduleForm.fecha,
       hoursMedicalShedule: rescheduleForm.hora
     };
     
-    const procedimientoActualizado = await appointmentsService.update_Sala_med_equipo_fecha_hora_Proc(rescheduleForm.id, procedimientoCompletado);
+    const procedimientoActualizado = await appointmentsService.update_Sala_med_equipo_fecha_hora_Cons(rescheduleForm.id, procedimientoCompletado);
     
     console.log('✅ Procedimiento cancelado:', procedimientoActualizado);
     await cargarProcedimientos();
@@ -1121,6 +1121,18 @@ const cargarSalas = async () => {
     }
   };
 
+  const getTipoColorTipo = (tipo) => {
+    if (!tipo) return 'default';
+    //const tipoNum = parseInt(tipo);
+    switch (tipo) {
+      case 'Nueva': return 'secondary';
+      case 'Control': return 'info';
+      case 'Resultados': return 'warning';
+
+      default: return 'default';
+    }
+  };
+
   // Función para obtener el label del tipo
   const getTipoLabel = (tipo) => {
     if (!tipo) return 'No definido';
@@ -1350,7 +1362,7 @@ const cargarSalas = async () => {
                 <TableHead>
                   <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                     <TableCell><strong>Indicadores</strong></TableCell>
-                    <TableCell><strong>Examen</strong></TableCell>
+                    <TableCell><strong>Examen</strong></TableCell>    
                     <TableCell><strong>Paciente</strong></TableCell>
                     <TableCell><strong>Centro</strong></TableCell>
                     <TableCell><strong>Tipo</strong></TableCell>
@@ -1440,7 +1452,11 @@ const cargarSalas = async () => {
                         <TableCell>
                           <Box>
                             <Typography variant="body2">
-                              {proc.tipoAtencion}
+                              <Chip
+                                label={proc.tipoAtencion}
+                                color={getTipoColorTipo(proc.tipoAtencion)}
+                                size="small"
+                              />
                             </Typography>
                             
                           </Box>
@@ -1796,11 +1812,11 @@ const cargarSalas = async () => {
         </DialogTitle>
         <DialogContent sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="body1">
-            ¿Está seguro de que desea cancelar el examen de{' '}
-            <strong>"{selectedProcedimiento?.paciente?.nombre}"</strong>?
+            ¿Está seguro de que desea cancelar Atención?
+            <strong>"{selectedProcedimiento?.nombre}"</strong>
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-            Procedimiento: {selectedProcedimiento?.procedimiento}
+            Tipo Atencion: {selectedProcedimiento?.tipoAtencion}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             Fecha: {selectedProcedimiento?.fechaExamen ? new Date(selectedProcedimiento.fechaExamen).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'} - {selectedProcedimiento?.horaExamen || '—'}
@@ -1854,7 +1870,7 @@ const cargarSalas = async () => {
             <>
               <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
                 <strong>Paciente:</strong> {selectedProcedimiento?.nombre || '—'} -
-                <strong> Procedimiento:</strong> {selectedProcedimiento?.procedimiento}
+                <strong> Tipo Atencion:</strong> {selectedProcedimiento?.tipoAtencion}
               </Typography>
               <Divider sx={{ mb: 3 }} />
 
@@ -1877,6 +1893,7 @@ const cargarSalas = async () => {
                   </FormControl>
                 </ResponsiveField>
 
+                {/*
                 <ResponsiveField label="Sala" required>
                   <FormControl fullWidth size="small">
                     <Select
@@ -1910,6 +1927,7 @@ const cargarSalas = async () => {
                     </Select>
                   </FormControl>
                 </ResponsiveField>
+                */}
               </FieldRow>
 
               <Divider sx={{ my: 3 }} />
@@ -1954,7 +1972,7 @@ const cargarSalas = async () => {
           <Button
             variant="contained"
             onClick={handleConfirmReschedule}
-            disabled={!rescheduleForm.medico || !rescheduleForm.sala || !rescheduleForm.equipo || !rescheduleForm.fecha || !rescheduleForm.hora}
+            disabled={!rescheduleForm.medico  || !rescheduleForm.fecha || !rescheduleForm.hora}
             startIcon={<Schedule />}
             sx={{
               backgroundColor: '#4caf50',
@@ -2176,7 +2194,7 @@ const cargarSalas = async () => {
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <Typography variant="body2">
-                      <strong>Procedimiento:</strong> {selectedProcedimiento.procedimiento}
+                      <strong>Tipo Atencion:</strong> {selectedProcedimiento.tipoAtencion}
                     </Typography>
                   </Grid>
                   <Grid item xs={12} md={6}>
@@ -2334,6 +2352,7 @@ const cargarSalas = async () => {
           >
             Cerrar
           </Button>
+          {/*
           <Button
             variant="contained"
             onClick={handleGuardarCie10}
@@ -2346,6 +2365,7 @@ const cargarSalas = async () => {
           >
             Guardar
           </Button>
+          */}
         </DialogActions>
       </Dialog>
 

@@ -35,6 +35,7 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         insuranceId: proced.insuranceId,
         letterOfGuarantee: proced.letterOfGuarantee,
         status: proced.status,
+
         typeOfAttention: proced.typeOfAttention,
         typeOfPatient: proced.typeOfPatient,
         referral_doctorsId:  proced.referral_doctorsId,
@@ -42,11 +43,11 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         //centerOfOriginId: proced.centerOfOriginId,
         //anotherCenter: proced.anotherCenter,
 
-        procedureRoomId: proced.procedureRoomId,
-        resourcesId: proced.resourcesId,
-        studiesId: proced.studiesId,
+        //procedureRoomId: proced.procedureRoomId,
+        //resourcesId: proced.resourcesId,
+        //studiesId: proced.studiesId,
         anotacionesAdicionales: proced.anotacionesAdicionales,
-        tipoProcedimientoId: proced.tipoProcedimientoId,
+        //tipoProcedimientoId: proced.tipoProcedimientoId,
         urgenteId: proced.urgenteId,
         estudioTeminadoId: proced.estudioTeminadoId,
         pdfGeneradoId: proced.pdfGeneradoId,
@@ -777,6 +778,94 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
     return await api.post(API_ENDPOINTS.APPOINTMENTS.BASE, formattedData);
   },
 
+  update_Estado_Cons: async (id, pacienteData) => {
+    try {
+      const urlOrigin = `${process.env.REACT_APP_API_URL}/Agenda/${id}`;
+      const responseOrigin = await fetch(urlOrigin);
+      const dataOrigin = await responseOrigin.json();
+
+      console.log('📝 Actualizando Agenda con ID:', id);
+
+      if (!id) {
+        throw new Error('ID del Agenda es requerido');
+      }
+
+      // Formatear datos según el formato esperado por la API
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
+      const formattedData = {
+        medicalscheduleid: parseInt(id),
+        pacientId: dataOrigin.pacientId,
+        centroId: dataOrigin.centroId,
+        personalId: dataOrigin.personalId,
+        appointmentDate: dataOrigin.appointmentDate,
+        hoursMedicalShedule: dataOrigin.hoursMedicalShedule,
+
+        typeofAppointment: dataOrigin.typeofAppointment,
+        originId: dataOrigin.originId,
+        otherOrigins: dataOrigin.otherOrigins,
+
+        otherOrigins : dataOrigin.otherOrigins,
+        typeOfPatient: dataOrigin.typeOfPatient,
+        referral_doctorsId: dataOrigin.referral_doctorsId,
+        centerOfOriginId: dataOrigin.centerOfOriginId,
+        anotherCenter: dataOrigin.anotherCenter,
+        procedureRoomId: dataOrigin.procedureRoomId,
+        resourcesId: dataOrigin.resourcesId,
+        studiesId: dataOrigin.studiesId,
+
+        insuranceId: dataOrigin.insuranceId,
+        letterOfGuarantee: dataOrigin.letterOfGuarantee,
+        status: pacienteData.status, //cambio
+        typeOfAttention: dataOrigin.typeOfAttention, 
+        anotacionesAdicionales: dataOrigin.anotacionesAdicionales,
+        tipoProcedimientoId: dataOrigin.tipoProcedimientoId,
+        urgenteId: dataOrigin.urgenteId,
+        estudioTeminadoId: dataOrigin.estudioTeminadoId,
+        
+        pdfGeneradoId: dataOrigin.PdfGeneradoId,
+        dictadoGuardado: dataOrigin.dictadoGuardado,
+        estructuraHtml: dataOrigin.estructuraHtml,
+        informePdf: dataOrigin.informePdf,
+        preparacion: dataOrigin.preparacion,
+
+        updatedAt: new Date().toISOString(),
+        updatedBy: actor,
+        isDeleted: false
+        
+      };
+
+      console.log('📊 Datos a enviar para actualizar:', formattedData);
+
+      const url = `${process.env.REACT_APP_API_URL}/Agenda/${id}`;
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formattedData)
+      });
+
+      console.log('🔗 Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Error response:', errorText);
+        throw new Error(`Error ${response.status}: ${response.statusText} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Agenda actualizado exitosamente:', data);
+
+      return {
+        data: data,
+        status: 'success'
+      };
+    } catch (error) {
+      console.error('❌ Error al actualizar Agenda:', error);
+      throw error;
+    }
+  },
+
   update_Estado_Proc: async (id, pacienteData) => {
     try {
       const urlOrigin = `${process.env.REACT_APP_API_URL}/Agenda/${id}`;
@@ -952,6 +1041,10 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         appointmentDate: pacienteData.appointmentDate,
         hoursMedicalShedule: pacienteData.hoursMedicalShedule,
 
+        //typeofAppointment: proced.typeofAppointment,
+        //originId: proced.originId,
+        //otherOrigins: proced.otherOrigins,
+
         otherOrigins : dataOrigin.otherOrigins,
         typeOfPatient: dataOrigin.typeOfPatient,
         referral_doctorsId: dataOrigin.referral_doctorsId,
@@ -960,6 +1053,95 @@ console.log('✅ Procedimientos activos (isDeleted: false):', pacienteActivos.le
         procedureRoomId: pacienteData.procedureRoomId,
         resourcesId: pacienteData.resourcesId,
         studiesId: dataOrigin.studiesId,
+
+        insuranceId: dataOrigin.insuranceId,
+        letterOfGuarantee: dataOrigin.letterOfGuarantee,
+        status: pacienteData.status, //cambio
+        typeOfAttention: dataOrigin.typeOfAttention, 
+        anotacionesAdicionales: dataOrigin.anotacionesAdicionales,
+        tipoProcedimientoId: dataOrigin.tipoProcedimientoId,
+        urgenteId: dataOrigin.urgenteId,
+        estudioTeminadoId: 0,
+        pdfGeneradoId: 0,
+        dictadoGuardado: dataOrigin.dictadoGuardado,
+        preparacion: dataOrigin.preparacion,
+
+        estructuraHtml: dataOrigin.estructuraHtml,
+        informePdf: dataOrigin.informePdf,
+
+        updatedAt: new Date().toISOString(),
+        updatedBy: actor,
+        isDeleted: false
+        
+      };
+
+      console.log('📊 Datos a enviar para actualizar:', formattedData);
+
+      const url = `${process.env.REACT_APP_API_URL}/Agenda/${id}`;
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formattedData)
+      });
+
+      console.log('🔗 Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Error response:', errorText);
+        throw new Error(`Error ${response.status}: ${response.statusText} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Agenda actualizado exitosamente:', data);
+
+      return {
+        data: data,
+        status: 'success'
+      };
+    } catch (error) {
+      console.error('❌ Error al actualizar Agenda:', error);
+      throw error;
+    }
+  },
+
+  update_Sala_med_equipo_fecha_hora_Cons: async (id, pacienteData) => {
+    try {
+      const urlOrigin = `${process.env.REACT_APP_API_URL}/Agenda/${id}`;
+      const responseOrigin = await fetch(urlOrigin);
+      const dataOrigin = await responseOrigin.json();
+
+      console.log('📝 Actualizando Agenda con ID:', id);
+
+      if (!id) {
+        throw new Error('ID del Agenda es requerido');
+      }
+
+      // Formatear datos según el formato esperado por la API
+      const actor = (() => { try { const u = JSON.parse(localStorage.getItem('currentUser')||'null'); return u?.usuario || 'USUARIO'; } catch { return 'USUARIO'; } })();
+      const formattedData = {
+        medicalscheduleid: parseInt(id),
+        pacientId: dataOrigin.pacientId,
+        centroId: dataOrigin.centroId,
+        personalId: pacienteData.personalId,
+        appointmentDate: pacienteData.appointmentDate,
+        hoursMedicalShedule: pacienteData.hoursMedicalShedule,
+
+        typeofAppointment: dataOrigin.typeofAppointment,
+        originId: dataOrigin.originId,
+        otherOrigins: dataOrigin.otherOrigins,
+        
+        otherOrigins : dataOrigin.otherOrigins,
+        typeOfPatient: dataOrigin.typeOfPatient,
+        referral_doctorsId: dataOrigin.referral_doctorsId,
+        centerOfOriginId: dataOrigin.centerOfOriginId,
+        anotherCenter: dataOrigin.anotherCenter,
+        
+        //procedureRoomId: pacienteData.procedureRoomId,
+        //resourcesId: pacienteData.resourcesId,
+        //studiesId: dataOrigin.studiesId,
 
         insuranceId: dataOrigin.insuranceId,
         letterOfGuarantee: dataOrigin.letterOfGuarantee,
