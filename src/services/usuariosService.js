@@ -6,7 +6,7 @@ export const usuariosService = {
       e.details = 'Campos requeridos faltantes';
       throw e;
     }
-    const url = `http://192.168.1.55:8090/api/SystemUsers/login`;
+    const url = `/api/SystemUsers/login`;
     try {
       const response = await fetch(url, {
         method: 'POST',

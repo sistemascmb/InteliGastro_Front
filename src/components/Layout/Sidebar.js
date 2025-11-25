@@ -68,7 +68,7 @@ const Sidebar = () => {
       icon: <CalendarToday />,
       children: [
         { title: 'Agendadas', path: '/citas/agendas' },
-        { title: 'AgendadasOld', path: '/citas/agendasold' },
+        //{ title: 'AgendadasOld', path: '/citas/agendasold' },
         //{ title: 'En Espera', path: '/citas/espera' },
         //{ title: 'Finalizadas', path: '/citas/finalizadas' }
       ]
