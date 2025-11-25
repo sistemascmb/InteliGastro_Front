@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo , useEffect} from 'react';
+import React, { useState, useCallback, memo , useEffect, useMemo } from 'react';
 import {
   Container,
   Paper,
@@ -20,6 +20,7 @@ import {
   Select,
   MenuItem,
   InputAdornment,
+  TablePagination,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -177,6 +178,9 @@ const EstadisticasDetallado = () => {
 
   // Estado para los procedimientos agendados
   const [procedimientosAgendados, setProcedimientosAgendados] = useState([]);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [cellWrap, setCellWrap] = useState('nowrap');
 
   const cargarProcedimientos = async () => {
         try {
@@ -476,6 +480,30 @@ const EstadisticasDetallado = () => {
     return cumpleFechaInicio && cumpleFechaFin && cumpleBusqueda;
   });
 
+  const pagedProcedimientos = useMemo(() => {
+    const start = page * rowsPerPage;
+    const end = start + rowsPerPage;
+    return procedimientosFiltrados.slice(start, end);
+  }, [procedimientosFiltrados, page, rowsPerPage]);
+
+  const headerHeight = 56;
+  const rowHeight = 48;
+  const maxRowsNoScroll = 10;
+  const tableBodyHeight = headerHeight + maxRowsNoScroll * rowHeight;
+  const shouldScrollByTotal = procedimientosFiltrados.length > maxRowsNoScroll;
+  const shouldScrollBySelection = rowsPerPage > maxRowsNoScroll;
+  const containerOverflowY = (shouldScrollByTotal || shouldScrollBySelection) ? 'auto' : 'hidden';
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    const val = parseInt(event.target.value, 10);
+    setRowsPerPage(val);
+    setPage(0);
+  };
+
   const handleExportExcel = () => {
     const headers = [
       'Examen#', 'Estado', 'Paciente', 'Centro', 'Seguro', 'Sala', 'Recurso', 'Procedimiento', 'Duracion', ' CIE-10 ', 'Plan', 'Médico', 'Méd. Ref.', 'Fecha Examen', 'Hora Examen', 'Fecha Creacion', 'Hora Creacion', 'Usuario Creacion', 'Fecha Finalizado', 'Hora Finalizado', 'Usuario Finalizado'
@@ -770,36 +798,14 @@ const EstadisticasDetallado = () => {
               />
             </ResponsiveField>
 
-            
-          {/*
-            <ResponsiveField label="Buscar Paciente" sx={{ flex: 3 }}>
-              <TextField
-                fullWidth
-                placeholder="Buscar por nombre del paciente..."
-                value={filters.searchTerm}
-                onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
-                size="small"
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search sx={{ color: '#666' }} />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: '#f8f9fa',
-                    '&:hover': {
-                      backgroundColor: '#e9ecef',
-                    },
-                    '&.Mui-focused': {
-                      backgroundColor: '#fff',
-                    }
-                  }
-                }}
-              />
+            <ResponsiveField label="Celdas" sx={{ flex: 1 }}>
+              <FormControl fullWidth size="small">
+                <Select value={cellWrap} onChange={(e) => setCellWrap(e.target.value)} displayEmpty>
+                  <MenuItem value={"nowrap"}>Una línea</MenuItem>
+                  <MenuItem value={"normal"}>Multilínea</MenuItem>
+                </Select>
+              </FormControl>
             </ResponsiveField>
-*/}
            <ResponsiveField label=" " sx={{ flex: 2 }}>
              <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
                <Button
@@ -842,9 +848,9 @@ const EstadisticasDetallado = () => {
           <SectionHeader title={`Estadísticas Detalladas  (${procedimientosFiltrados.length})`} />
 
           {/* Tabla con scroll */}
-          <Box sx={{ flex: 1, overflow: 'auto' }}>
-            <TableContainer sx={{ height: '100%' }}>
-              <Table stickyHeader sx={{ '& .MuiTableCell-root': { whiteSpace: 'nowrap' } }}>
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <TableContainer sx={{ flex: '0 0 auto', height: `${tableBodyHeight}px`, overflowY: containerOverflowY, overflowX: 'auto' }}>
+              <Table stickyHeader sx={{ '& .MuiTableCell-root': { whiteSpace: cellWrap } }}>
                 <TableHead>
                   <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                     <TableCell sx={{ minWidth: 80 }}><strong>Examen#</strong></TableCell>
@@ -886,7 +892,7 @@ const EstadisticasDetallado = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    procedimientosFiltrados.map((proc) => (
+                    pagedProcedimientos.map((proc) => (
                       <TableRow key={proc.id} hover>
                         <TableCell>
                           <Typography variant="body2" fontWeight="bold">
@@ -963,6 +969,18 @@ const EstadisticasDetallado = () => {
                 </TableBody>
               </Table>
             </TableContainer>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
+              <TablePagination
+                component="div"
+                count={procedimientosFiltrados.length}
+                page={page}
+                onPageChange={handleChangePage}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+                rowsPerPageOptions={[10, 25, 50, 100]}
+                labelRowsPerPage="Filas por página"
+              />
+            </Box>
           </Box>
         </Paper>
       </Box>
