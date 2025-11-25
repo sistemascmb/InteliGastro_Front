@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, useCallback, memo, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -14,14 +14,21 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Grid
+  Grid,
+  FormControl,
+  Select,
+  MenuItem
 } from '@mui/material';
 import {
   NavigateNext,
   BarChart as BarChartIcon,
-  Timeline
+  Timeline,
+  Download
 } from '@mui/icons-material';
+import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
+import { appointmentsService } from 'services';
+import estudiosService from 'services/estudiosService';
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
@@ -80,7 +87,7 @@ FieldRow.displayName = 'FieldRow';
 
 // Componente simple de gráfico de barras
 const SimpleBarChart = ({ data, title }) => {
-  const maxValue = Math.max(...data.map(d => Math.max(d.completados, d.cancelados)));
+  const maxValue = Math.max(1, ...data.map(d => Math.max(d.completados, d.cancelados)));
   const chartHeight = 280;
   const barWidth = 32;
   const spacing = 15;
@@ -217,8 +224,8 @@ const SimplePieChart = ({ data, title }) => {
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 2 }}>
         <svg viewBox="0 0 180 180" style={{ width: "100%", height: "auto", maxWidth: "400px" }}>
           {data.map((item, index) => {
-            const percentage = (item.cantidad / total) * 100;
-            const angle = (item.cantidad / total) * 360;
+            const percentage = total > 0 ? (item.cantidad / total) * 100 : 0;
+            const angle = total > 0 ? (item.cantidad / total) * 360 : 0;
 
             const x1 = centerX + radius * Math.cos((currentAngle * Math.PI) / 180);
             const y1 = centerY + radius * Math.sin((currentAngle * Math.PI) / 180);
@@ -288,47 +295,209 @@ const SimplePieChart = ({ data, title }) => {
 const Dashboard = () => {
   const navigate = useNavigate();
 
-  // Estado para el rango de fechas
-  const [dateRange, setDateRange] = useState({
-    fechaInicio: '2024-01-01',
-    fechaFin: '2024-12-31'
-  });
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const years = Array.from({ length: 7 }, (_, i) => currentYear - 5 + i);
 
-  // Datos simulados para el gráfico de barras (Completados vs Cancelados por mes)
-  const [barChartData] = useState([
-    { mes: 'Ene', completados: 45, cancelados: 8 },
-    { mes: 'Feb', completados: 52, cancelados: 12 },
-    { mes: 'Mar', completados: 38, cancelados: 6 },
-    { mes: 'Abr', completados: 61, cancelados: 15 },
-    { mes: 'May', completados: 48, cancelados: 9 },
-    { mes: 'Jun', completados: 55, cancelados: 11 },
-    { mes: 'Jul', completados: 42, cancelados: 7 },
-    { mes: 'Ago', completados: 58, cancelados: 13 },
-    { mes: 'Sep', completados: 47, cancelados: 10 },
-    { mes: 'Oct', completados: 53, cancelados: 8 },
-    { mes: 'Nov', completados: 49, cancelados: 14 },
-    { mes: 'Dic', completados: 44, cancelados: 6 }
-  ]);
+  const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  const [barChartData, setBarChartData] = useState(monthNames.map(m => ({ mes: m, completados: 0, cancelados: 0 })));
 
   // Datos simulados para el gráfico circular (Exámenes por tipo de procedimiento)
-  const [pieChartData] = useState([
-    { tipo: 'Endoscopia', cantidad: 245 },
-    { tipo: 'Laparoscopia', cantidad: 89 },
-    { tipo: 'Hepatología', cantidad: 156 },
-    { tipo: 'Gastroscopia', cantidad: 132 }
-  ]);
+  const [pieChartData, setPieChartData] = useState([]);
 
-  // Función para manejar cambios en el rango de fechas
-  const handleDateRangeChange = useCallback((field, value) => {
-    setDateRange(prev => ({ ...prev, [field]: value }));
-  }, []);
+  const handleGenerarGraficos = useCallback(async () => {
+    const startDate = `${selectedYear}-01-01`;
+    const endDate = `${selectedYear}-12-31`;
+    const res = await appointmentsService.getAll_Proc_Buscados_Fechas({ startDate, endDate });
+    const list = Array.isArray(res?.data) ? res.data : [];
+    const counters = monthNames.map((mes) => ({ mes, completados: 0, cancelados: 0 }));
+    list.forEach((p) => {
+      const d = p?.appointmentDate ? new Date(p.appointmentDate) : null;
+      if (!d || Number.isNaN(d.getTime())) return;
+      const m = d.getMonth();
+      const statusCode = Number(p?.status);
+      if (statusCode === 10065) counters[m].completados += 1;
+      else if (statusCode === 10067) counters[m].cancelados += 1;
+    });
+    setBarChartData(counters);
 
-  // Función para generar los gráficos
-  const handleGenerarGraficos = () => {
-    console.log('Generando gráficos para el rango:', dateRange);
-    // Aquí simularíamos la actualización de datos basado en el rango de fechas
-    alert(`Gráficos generados para el período: ${dateRange.fechaInicio} a ${dateRange.fechaFin}`);
+    const completed = list.filter((p) => Number(p?.status) === 10065);
+    const byStudy = new Map();
+    completed.forEach((p) => {
+      const id = p?.studiesId;
+      if (id == null) return;
+      byStudy.set(id, (byStudy.get(id) || 0) + 1);
+    });
+    const uniqueIds = Array.from(byStudy.keys());
+    const namesMap = new Map();
+    await Promise.all(uniqueIds.map(async (id) => {
+      try {
+        const r = await estudiosService.getById(id);
+        const name = r?.data?.name || String(id);
+        namesMap.set(id, name);
+      } catch {
+        namesMap.set(id, String(id));
+      }
+    }));
+    const pieData = uniqueIds.map((id) => ({ tipo: namesMap.get(id) || String(id), cantidad: byStudy.get(id) || 0 }));
+    setPieChartData(pieData.sort((a, b) => b.cantidad - a.cantidad));
+  }, [selectedYear]);
+
+  const handleDownloadBarChartImage = () => {
+    const width = 1200;
+    const height = 400;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = '#2184be';
+    ctx.font = 'bold 18px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Exámenes Completados vs Cancelados por Mes (${selectedYear})`, width / 2, 30);
+    const marginLeft = 60;
+    const marginBottom = 60;
+    const marginTop = 50;
+    const marginRight = 20;
+    const chartW = width - marginLeft - marginRight;
+    const chartH = height - marginTop - marginBottom;
+    const maxVal = Math.max(1, ...barChartData.map(d => Math.max(d.completados, d.cancelados)));
+    const groupCount = barChartData.length;
+    const groupWidth = chartW / groupCount;
+    const barWidth = Math.min(32, groupWidth / 3);
+    ctx.strokeStyle = '#dddddd';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(marginLeft, marginTop);
+    ctx.lineTo(marginLeft, marginTop + chartH);
+    ctx.lineTo(marginLeft + chartW, marginTop + chartH);
+    ctx.stroke();
+    barChartData.forEach((item, i) => {
+      const gx = marginLeft + i * groupWidth + groupWidth / 2;
+      const compH = (item.completados / maxVal) * (chartH - 20);
+      const cancH = (item.cancelados / maxVal) * (chartH - 20);
+      ctx.fillStyle = '#2184be';
+      ctx.fillRect(gx - barWidth - 4, marginTop + chartH - compH, barWidth, compH);
+      ctx.fillStyle = '#2184be';
+      ctx.font = 'bold 11px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(String(item.completados), gx - barWidth - 4 + barWidth / 2, marginTop + chartH - compH - 8);
+      ctx.fillStyle = '#f44336';
+      ctx.fillRect(gx + 4, marginTop + chartH - cancH, barWidth, cancH);
+      ctx.fillStyle = '#f44336';
+      ctx.fillText(String(item.cancelados), gx + 4 + barWidth / 2, marginTop + chartH - cancH - 8);
+      ctx.fillStyle = '#333333';
+      ctx.font = 'bold 11px Arial';
+      ctx.fillText(item.mes, gx, marginTop + chartH + 16);
+    });
+    const legendY = height - 24;
+    ctx.fillStyle = '#2184be';
+    ctx.fillRect(marginLeft, legendY - 10, 12, 12);
+    ctx.fillStyle = '#333';
+    ctx.font = '11px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText('Completados', marginLeft + 18, legendY);
+    ctx.fillStyle = '#f44336';
+    ctx.fillRect(marginLeft + 130, legendY - 10, 12, 12);
+    ctx.fillStyle = '#333';
+    ctx.fillText('Cancelados', marginLeft + 148, legendY);
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = `completados_cancelados_${selectedYear}.png`;
+    a.click();
   };
+
+  const handleDownloadBarTableExcel = () => {
+    const headers = ['Mes', 'Completados', 'Cancelados', 'Total'];
+    const rows = barChartData.map(i => [i.mes, i.completados, i.cancelados, i.completados + i.cancelados]);
+    const totalsRow = [
+      'TOTAL',
+      barChartData.reduce((sum, item) => sum + item.completados, 0),
+      barChartData.reduce((sum, item) => sum + item.cancelados, 0),
+      barChartData.reduce((sum, item) => sum + item.completados + item.cancelados, 0)
+    ];
+    const aoa = [headers, ...rows, totalsRow];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Resumen');
+    XLSX.writeFile(wb, `resumen_mensual_${selectedYear}.xlsx`);
+  };
+
+  const handleDownloadPieChartImage = () => {
+    const width = 800;
+    const height = 500;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = '#2184be';
+    ctx.font = 'bold 18px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Exámenes por Tipo de Procedimiento (${selectedYear})`, width / 2, 30);
+    const colors = ['#2184be', '#4caf50', '#ff9800', '#f44336', '#9c27b0'];
+    const total = pieChartData.reduce((s, i) => s + i.cantidad, 0) || 1;
+    let angle = -Math.PI / 2;
+    const cx = 240;
+    const cy = 260;
+    const r = 160;
+    pieChartData.forEach((item, idx) => {
+      const frac = item.cantidad / total;
+      const next = angle + frac * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, r, angle, next);
+      ctx.closePath();
+      ctx.fillStyle = colors[idx % colors.length];
+      ctx.fill();
+      angle = next;
+    });
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 40, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#dddddd';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    let lx = 460;
+    let ly = 120;
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'left';
+    pieChartData.forEach((item, idx) => {
+      const pct = total > 0 ? ((item.cantidad / total) * 100).toFixed(1) : '0.0';
+      ctx.fillStyle = colors[idx % colors.length];
+      ctx.fillRect(lx, ly - 10, 12, 12);
+      ctx.fillStyle = '#333';
+      ctx.fillText(`${item.tipo}: ${item.cantidad} (${pct}%)`, lx + 18, ly);
+      ly += 22;
+      if (ly > height - 40) {
+        ly = 120;
+        lx += 280;
+      }
+    });
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = `procedimientos_${selectedYear}.png`;
+    a.click();
+  };
+
+  const handleDownloadPieTableExcel = () => {
+    const total = pieChartData.reduce((sum, item) => sum + item.cantidad, 0);
+    const headers = ['Tipo de Procedimiento', 'Cantidad', 'Porcentaje'];
+    const rows = pieChartData.map(i => [i.tipo, i.cantidad, total ? `${((i.cantidad / total) * 100).toFixed(1)}%` : '0.0%']);
+    const totalsRow = ['TOTAL', total, '100.0%'];
+    const aoa = [headers, ...rows, totalsRow];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Distribución');
+    XLSX.writeFile(wb, `procedimientos_${selectedYear}.xlsx`);
+  };
+
+  useEffect(() => {
+    handleGenerarGraficos();
+  }, []);
 
   return (
     <Container maxWidth={false} sx={{ py: 1, px: 2, width: '100%', maxWidth: 'none' }}>
@@ -362,7 +531,7 @@ const Dashboard = () => {
         <Typography color="text.primary">Dashboard</Typography>
       </Breadcrumbs>
 
-      {/* Header con rango de fechas */}
+      {/* Header: selección de año */}
       <Paper sx={{ p: 3, mb: 3, boxShadow: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
           <Timeline sx={{ color: '#2184be', mr: 2, fontSize: 32 }} />
@@ -371,50 +540,16 @@ const Dashboard = () => {
           </Typography>
         </Box>
 
-        {/* Controles de Rango de Fechas */}
+        {/* Controles de Año */}
         <FieldRow>
-          <ResponsiveField label="Fecha Inicio" required>
-            <TextField
-              fullWidth
-              type="date"
-              value={dateRange.fechaInicio}
-              onChange={(e) => handleDateRangeChange('fechaInicio', e.target.value)}
-              size="small"
-              InputLabelProps={{ shrink: true }}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: '#f8f9fa',
-                  '&:hover': {
-                    backgroundColor: '#e9ecef',
-                  },
-                  '&.Mui-focused': {
-                    backgroundColor: '#fff',
-                  }
-                }
-              }}
-            />
-          </ResponsiveField>
-
-          <ResponsiveField label="Fecha Fin" required>
-            <TextField
-              fullWidth
-              type="date"
-              value={dateRange.fechaFin}
-              onChange={(e) => handleDateRangeChange('fechaFin', e.target.value)}
-              size="small"
-              InputLabelProps={{ shrink: true }}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: '#f8f9fa',
-                  '&:hover': {
-                    backgroundColor: '#e9ecef',
-                  },
-                  '&.Mui-focused': {
-                    backgroundColor: '#fff',
-                  }
-                }
-              }}
-            />
+          <ResponsiveField label="Año" required>
+            <FormControl fullWidth size="small">
+              <Select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))}>
+                {years.map((y) => (
+                  <MenuItem key={y} value={y}>{y}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </ResponsiveField>
 
           <ResponsiveField label=" " sx={{ flex: 1 }}>
@@ -441,6 +576,10 @@ const Dashboard = () => {
         {/* Gráfico de Barras - Completados vs Cancelados */}
         <Grid item xs={12}>
           <Paper sx={{ boxShadow: 3, mb: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, p: 1 }}>
+              <Button variant="outlined" startIcon={<Download />} onClick={handleDownloadBarChartImage}>Descargar gráfico</Button>
+              <Button variant="outlined" startIcon={<Download />} onClick={handleDownloadBarTableExcel}>Descargar tabla</Button>
+            </Box>
             <SimpleBarChart
               data={barChartData}
               title="Exámenes Completados vs Cancelados por Mes"
@@ -517,6 +656,10 @@ const Dashboard = () => {
       {/* Sección de Gráfico Circular y Tabla */}
         <Grid item xs={12}>
           <Paper sx={{ boxShadow: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, p: 1 }}>
+              <Button variant="outlined" startIcon={<Download />} onClick={handleDownloadPieChartImage}>Descargar gráfico</Button>
+              <Button variant="outlined" startIcon={<Download />} onClick={handleDownloadPieTableExcel}>Descargar tabla</Button>
+            </Box>
             <SimplePieChart
               data={pieChartData}
               title="Exámenes por Tipo de Procedimiento"

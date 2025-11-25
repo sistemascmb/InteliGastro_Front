@@ -127,18 +127,19 @@ const Home = () => {
           ═══════════════════════════════════════════════════════════════════ */}
       <Box
         sx={{
-          height: 400, // TAMAÑO: 400px de altura como especificado
+          height: 400,
           borderRadius: 2,
-          // TODO: Reemplazar con imagen médica real cuando esté disponible
-          background: 'linear-gradient(135deg, #2184be 0%, #1565c0 50%, #0d47a1 100%)',
+          backgroundImage: 'url(https://medicinasa.com.br/investimentos-cepon/cepon-2/)',
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center',
+          backgroundColor: '#000',
           position: 'relative',
           overflow: 'hidden',
           mb: 4,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          // PATRÓN: Fondo decorativo médico con cruces
-          backgroundImage: 'url("data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.1"%3E%3Cpath d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")',
           '&::before': {
             content: '""',
             position: 'absolute',
@@ -146,7 +147,7 @@ const Home = () => {
             left: 0,
             right: 0,
             bottom: 0,
-            background: 'radial-gradient(circle at 20% 80%, rgba(255,255,255,0.2) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.15) 0%, transparent 50%)',
+            background: 'rgba(0,0,0,0.35)'
           }
         }}
       >
@@ -175,7 +176,7 @@ const Home = () => {
       </Box>
 
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        {(12 - chartCols) > 0 && (
+        
         <Grid item xs={12} md={12 - chartCols}>
           <Grid container spacing={3} direction="column">
             <Grid item xs={12}>
@@ -216,46 +217,9 @@ const Home = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12}>
-              <Card 
-                elevation={2}
-                sx={{ 
-                  minHeight: 150,
-                  border: '1px solid rgba(0,0,0,0.12)',
-                  borderRadius: 2,
-                  cursor: 'pointer',
-                  transition: 'transform 0.2s, box-shadow 0.2s',
-                  '&:hover': {
-                    transform: 'translateY(-2px)',
-                    boxShadow: 4
-                  }
-                }}
-              >
-                <CardContent sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Box>
-                      <Typography variant="h6" color="text.secondary" gutterBottom>
-                        Examenes Completados
-                      </Typography>
-                      <Typography 
-                        variant="h2" 
-                        sx={{ 
-                          fontWeight: 'bold', 
-                          color: '#2184be',
-                          fontSize: 48
-                        }}
-                      >
-                        {completadosHoy}
-                      </Typography>
-                    </Box>
-                    <AssignmentTurnedIn sx={{ fontSize: 48, color: '#2184be', opacity: 0.7 }} />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
+            
           </Grid>
         </Grid>
-        )}
         <Grid item xs={12} md={chartCols}>
           <Card 
             elevation={2}
@@ -323,6 +287,48 @@ const Home = () => {
               </Box>
             </CardContent>
           </Card>
+        </Grid>
+        <Grid item xs={12} md={12 - chartCols}>
+          <Grid container spacing={3} direction="column">
+            
+            <Grid item xs={12}>
+              <Card 
+                elevation={2}
+                sx={{ 
+                  minHeight: 150,
+                  border: '1px solid rgba(0,0,0,0.12)',
+                  borderRadius: 2,
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: 4
+                  }
+                }}
+              >
+                <CardContent sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box>
+                      <Typography variant="h6" color="text.secondary" gutterBottom>
+                        Examenes Completados
+                      </Typography>
+                      <Typography 
+                        variant="h2" 
+                        sx={{ 
+                          fontWeight: 'bold', 
+                          color: '#2184be',
+                          fontSize: 48
+                        }}
+                      >
+                        {completadosHoy}
+                      </Typography>
+                    </Box>
+                    <AssignmentTurnedIn sx={{ fontSize: 48, color: '#2184be', opacity: 0.7 }} />
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
         </Grid>
       </Grid>
 
