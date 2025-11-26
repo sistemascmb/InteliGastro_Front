@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Box, Container, Typography, TextField, Button, InputAdornment, Alert, Grid, FormControlLabel, Checkbox, Divider, Link, Paper } from '@mui/material';
+import { Box, Container, Typography, TextField, Button, InputAdornment, Alert, Grid, FormControlLabel, Checkbox, Divider, Paper } from '@mui/material';
 import { Person, Lock } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { usuariosService } from '../services';
 import mariaBelenImg from '../assets/images/MariaBelen.png';
+import logoClinica from '../assets/images/Logo (turquesa)  (1).png';
 
 const Login = () => {
   const [usuario, setUsuario] = useState('');
@@ -42,7 +43,7 @@ const Login = () => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: '#e6f0ff',
+      backgroundColor: '#ffffffff',
     }}
   >
     <Paper
@@ -78,7 +79,8 @@ const Login = () => {
           }}
         >
           <Box sx={{ textAlign: 'center', mb: 3 }}>
-            <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#000' }}>
+            <img src={logoClinica} alt="Logo clínica" style={{ width: 220, height: 220, objectFit: 'contain', display: 'inline-block', marginBottom: -50, marginTop: -80 }} />
+            <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#000', mt: 0, lineHeight: 1.1 }}>
               Bienvenidos
             </Typography>
           </Box>
@@ -88,14 +90,15 @@ const Login = () => {
               {error}
             </Alert>
           )}
+          {/*
 
           <Box sx={{ mb: 2 }}>
             <Button variant="outlined" fullWidth>
               Login con Google
             </Button>
           </Box>
-
-          <Divider sx={{ my: 2 }}>O ingrese con email</Divider>
+*/}
+          <Divider sx={{ my: 2 }}>Ingresa tus credenciales</Divider>
 
           <Box
             component="form"
@@ -134,9 +137,10 @@ const Login = () => {
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <FormControlLabel control={<Checkbox size="small" />} label="Mantener sesión" />
-              <Link href="#" underline="hover" sx={{ fontSize: 13 }}>
+              
+              {/*<Link href="#" underline="hover" sx={{ fontSize: 13 }}>
                 Olvidé mi contraseña
-              </Link>
+              </Link>*/}
             </Box>
 
             <Button
@@ -148,7 +152,7 @@ const Login = () => {
             >
               {loading ? 'Ingresando...' : 'Ingresar'}
             </Button>
-
+{/*
             <Box sx={{ textAlign: 'center', mt: 2 }}>
               <Typography variant="body2" color="text.secondary">
                 ¿No tienes cuenta?{' '}
@@ -156,7 +160,7 @@ const Login = () => {
                   Regístrate
                 </Link>
               </Typography>
-            </Box>
+            </Box>*/}
           </Box>
         </Box>
       </Grid>
@@ -172,7 +176,7 @@ const Login = () => {
           alignItems: 'center',
           justifyContent: 'center',
           p: { xs: 2, md: 4 },
-          backgroundColor: '#f5f9ff',
+          backgroundColor: '#ffffffff',
           borderLeft: { md: '1px solid #d9dee7' },
           order: { xs: 1, md: 2 }, // En móvil, la imagen va arriba (ajusta si prefieres abajo)
         }}
