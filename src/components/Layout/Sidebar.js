@@ -68,7 +68,7 @@ const Sidebar = () => {
       icon: <CalendarToday />,
       children: [
         { title: 'Agendadas', path: '/citas/agendas' },
-        { title: 'AgendadasOld', path: '/citas/agendasold' },
+        //{ title: 'AgendadasOld', path: '/citas/agendasold' },
         //{ title: 'En Espera', path: '/citas/espera' },
         //{ title: 'Finalizadas', path: '/citas/finalizadas' }
       ]
@@ -132,7 +132,7 @@ const Sidebar = () => {
 
   let menuItems = menuItemsBase.filter(Boolean);
   if (isDoctor) {
-    menuItems = menuItems.filter(item => !['Admisión', 'Citas', 'Estadísticas'].includes(item.title));
+    menuItems = menuItems.filter(item => !['Admisión', 'Citas'].includes(item.title));
     menuItems = menuItems.map(item => {
       if (item.title === 'Procedimientos') {
         return {
@@ -149,7 +149,7 @@ const Sidebar = () => {
       return item;
     });
   } else if (isEnfermera) {
-    menuItems = menuItems.filter(item => !['Admisión', 'Citas', 'Estadísticas', 'Administración'].includes(item.title));
+    menuItems = menuItems.filter(item => !['Admisión', 'Estadísticas', 'Administración'].includes(item.title));
     menuItems = menuItems.map(item => {
       if (item.title === 'Inf. Clínica') {
         return {

@@ -1752,7 +1752,7 @@ const cargarSalas = async () => {
                               <IconButton
                                 color="secondary"
                                   size="small"
-                                  title="Pasar Paciente a Dictado"
+                                  title="Pasar Paciente a Completado"
                                   onClick={() => handlePacienteDictado(proc)}
                                       >
                                   <AssignmentReturn />
