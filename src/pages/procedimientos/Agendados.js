@@ -1804,7 +1804,7 @@ const cargarSalas = async () => {
         <DialogContent sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="body1">
             ¿Está seguro de que desea cancelar el examen de{' '}
-            <strong>"{selectedProcedimiento?.paciente?.nombre}"</strong>?
+            <strong>"{selectedProcedimiento?.nombre}"</strong>?
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
             Procedimiento: {selectedProcedimiento?.procedimiento}
