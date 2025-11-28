@@ -29,8 +29,6 @@ import {
   CircularProgress,
   Alert
 } from '@mui/material';
-import medicosRefService from '../../services/medicosRefService';
-import centrosService from '../../services/centrosService';
 import {
   NavigateNext,
   Add,
@@ -42,6 +40,8 @@ import {
   Visibility
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import medicosRefService from '../../services/medicosRefService';
+import centrosService from '../../services/centrosService';
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (

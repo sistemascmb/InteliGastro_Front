@@ -43,12 +43,12 @@ import {
   LocationOn
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { patientsService } from '../../services/patientsService';
-import { centrosService } from '../../services/centrosService';
-import { staffService } from '../../services/staffService';
-import { segurosService } from '../../services/segurosService';
-import { appointmentsService } from '../../services/appointmentsService';
 import { toast } from 'react-toastify';
+import { patientsService } from 'services/patientsService';
+import { centrosService } from 'services/centrosService';
+import { staffService } from 'services/staffService';
+import { segurosService } from 'services/segurosService';
+import { appointmentsService } from 'services/appointmentsService';
 import { medicosRefService } from 'services/medicosRefService';
 import { salasService } from 'services/salasService';
 import { recursosService } from 'services/recursosService';
@@ -111,6 +111,7 @@ FieldRow.displayName = 'FieldRow';
 
 const ProcedimientoAdmision = () => {
   const navigate = useNavigate();
+  const [error, setError] = useState('');
 
   // Estado del stepper
   const [activeStep, setActiveStep] = useState(0);
@@ -120,6 +121,7 @@ const ProcedimientoAdmision = () => {
   const [medicosD, setMedicosCargados] = useState([]);
   const [seguroD, setSeguroCargados] = useState([]);
   const [tipopacD, setSTipoPacienteCargados] = useState([]);
+  const [tipocitaD, setTipoCitaCargados] = useState([]);
   const [procedenciaD, setProcedenciaCargados] = useState([]);
   const [cartagarantiaD, setCartaGarantiaCargados] = useState([]);
   const [medicosRefD, setMedicosRefCargados] = useState([]);

@@ -42,13 +42,13 @@ import {
   Home,
   LocationOn
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
-import { patientsService } from '../../services/patientsService';
-import { centrosService } from '../../services/centrosService';
-import { staffService } from '../../services/staffService';
-import { segurosService } from '../../services/segurosService';
-import { appointmentsService } from '../../services/appointmentsService';
 import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
+import { patientsService } from 'services/patientsService';
+import { centrosService } from 'services/centrosService';
+import { staffService } from 'services/staffService';
+import { segurosService } from 'services/segurosService';
+import { appointmentsService } from 'services/appointmentsService';
 
 
 // Componente de header de sección
@@ -108,6 +108,7 @@ FieldRow.displayName = 'FieldRow';
 
 const CitaMedica = () => {
   const navigate = useNavigate();
+  const [error, setError] = useState('');
 
   // Estado del stepper
   const [activeStep, setActiveStep] = useState(0);

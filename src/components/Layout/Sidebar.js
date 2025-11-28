@@ -7,7 +7,6 @@ import {
   ListItemText,
   Collapse,
 } from '@mui/material';
-import logoClinica from '../../assets/images/logo-clinica.png';
 import {
   PersonAdd,
   CalendarToday,
@@ -32,6 +31,7 @@ import {
   PersonSearch,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import logoClinica from '../../assets/images/logo-clinica.png';
 import { authService } from '../../services';
 
 const Sidebar = () => {

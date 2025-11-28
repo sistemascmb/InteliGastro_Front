@@ -1,12 +1,12 @@
 import React from 'react';
 import { Container, Paper, Breadcrumbs, Link, Box, Typography, Button, Divider, Accordion, AccordionSummary, AccordionDetails, Dialog, DialogTitle, DialogContent, DialogActions, ImageList, ImageListItem, CircularProgress, Snackbar, Alert } from '@mui/material';
 import { NavigateNext, Assignment, ExpandMore } from '@mui/icons-material';
-import { RichTextEditor } from '../administracion/Plantillas';
 import { plantillaService } from 'services/plantillasService';
 import { archivodigitalService } from 'services/archivodigitalService';
 import { patientsService } from 'services/patientsService';
 import { staffService } from 'services/staffService';
 import { appointmentsService } from 'services';
+import { RichTextEditor } from '../administracion/Plantillas';
 
 const FALLBACK_INFORME_HTML = '<p><strong>Dictado de informe</strong></p><p>Inicie el dictado aquí...</p>';
 const ITEM_HEIGHT = 100;

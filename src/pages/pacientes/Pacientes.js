@@ -40,9 +40,9 @@ import {
   Search
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { patientsService } from '../../services/patientsService';
-import { centrosService } from '../../services/centrosService';
-import { ubigeoService } from '../../services/ubigeoService';
+import { patientsService } from 'services/patientsService';
+import { centrosService } from 'services/centrosService';
+import { ubigeoService } from 'services/ubigeoService';
 
 // Componente para mostrar el valor de un parámetro
 const ParametroTexto = ({ id }) => {
@@ -854,7 +854,6 @@ const Pacientes = () => {
               gender: paciente.gender,
               statusMarital : paciente.statusMarital,
               nationality: paciente.nationality,
-              centroId: paciente.centroId,
               address: paciente.address,
               pais: paciente.pais || '',
               department: '',  // Se establecerá después de la validación
@@ -862,7 +861,7 @@ const Pacientes = () => {
               district: '',      // Se establecerá después de cargar los distritos
               phoneNumber: paciente.phoneNumber,
               email: paciente.email,
-              status: paciente.status == '10007' ? 10007: 10008, // Usar el ID numérico del estado
+              status: paciente.status === '10007' ? 10007 : 10008,
               medicalHistory: paciente.medicalHistory,
             };
             setEditFormData(initialFormData);
@@ -1126,43 +1125,6 @@ const getUbicacionTexto = (paciente) => {
       );
     };
 
-const [parametrosCache, setParametrosCache] = useState({});
-
-     const getParametroTexto = (id) => {
-       const [valor, setValor] = useState('');
-
-       useEffect(() => {
-         const cargarParametro = async () => {
-           try {
-             if (!id) return;
-             
-             // Si ya tenemos el valor en cache, lo usamos
-             if (parametrosCache[id]) {
-               setValor(parametrosCache[id]);
-               return;
-             }
-
-             const response = await centrosService.getSystemParameterId(id);
-             const nuevoValor = response.data.value1;
-             
-             // Actualizamos el cache
-             setParametrosCache(prev => ({
-               ...prev,
-               [id]: nuevoValor
-             }));
-             
-             setValor(nuevoValor);
-           } catch (error) {
-             console.error('Error al obtener parámetro:', error);
-             setValor('No especificado');
-           }
-         };
-
-         cargarParametro();
-       }, [id]);
-
-       return valor;
-     };
   // Función para cambiar tab
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);

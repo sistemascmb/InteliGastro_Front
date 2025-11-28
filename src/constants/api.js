@@ -1,9 +1,9 @@
 // Configuración de constantes para APIs
 export const API_CONFIG = {
-  BASE_URL: process.env.REACT_APP_API_URL || 'http://localhost:8000',
-  TIMEOUT: 10000, // 10 segundos
+  BASE_URL: (process.env.REACT_APP_API_URL || 'http://localhost:8000').replace(/\/$/, ''),
+  TIMEOUT: 10000,
   RETRY_ATTEMPTS: 3,
-  RETRY_DELAY: 1000 // 1 segundo
+  RETRY_DELAY: 1000
 };
 
 // Endpoints de la API

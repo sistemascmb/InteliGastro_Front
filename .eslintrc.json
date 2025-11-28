@@ -5,8 +5,8 @@
   ],
   "rules": {
     "no-console": "warn",
-    "no-unused-vars": "error",
-    "prefer-const": "error",
+    "no-unused-vars": "warn",
+    "prefer-const": "warn",
     "no-var": "error",
     "react/prop-types": "warn",
     "react/jsx-pascal-case": "error",

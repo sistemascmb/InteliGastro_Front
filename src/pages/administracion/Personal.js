@@ -1100,43 +1100,6 @@ const cargarDepartamentos = async () => {
       );
     };
 
-    const [parametrosCache, setParametrosCache] = useState({});
-
-     const getParametroTexto = (id) => {
-       const [valor, setValor] = useState('');
-
-       useEffect(() => {
-         const cargarParametro = async () => {
-           try {
-             if (!id) return;
-             
-             // Si ya tenemos el valor en cache, lo usamos
-             if (parametrosCache[id]) {
-               setValor(parametrosCache[id]);
-               return;
-             }
-
-             const response = await centrosService.getSystemParameterId(id);
-             const nuevoValor = response.data.value1;
-             
-             // Actualizamos el cache
-             setParametrosCache(prev => ({
-               ...prev,
-               [id]: nuevoValor
-             }));
-             
-             setValor(nuevoValor);
-           } catch (error) {
-             console.error('Error al obtener parámetro:', error);
-             setValor('No especificado');
-           }
-         };
-
-         cargarParametro();
-       }, [id]);
-
-       return valor;
-     };
 
 
   // Función para cambiar tab

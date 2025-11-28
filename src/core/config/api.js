@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { getEnvVar } from './env';
 
-const API_BASE_URL = getEnvVar('REACT_APP_API_URL', 'http://localhost:8000/api/v1');
+const API_BASE_URL = String(getEnvVar('REACT_APP_API_URL', 'http://localhost:8000/api/v1')).replace(/\/$/, '');
 const API_TIMEOUT = getEnvVar('REACT_APP_API_TIMEOUT', 10000);
 
 export const apiClient = axios.create({

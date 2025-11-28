@@ -47,9 +47,9 @@ import {
   Visibility
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import macrosService from 'services/macrosService';
 import { staffService } from '../../services/staffService';
 import { centrosService } from '../../services/centrosService';
-import macrosService from 'services/macrosService';
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
   <Box

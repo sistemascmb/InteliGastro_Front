@@ -4,11 +4,11 @@ import { Container, Paper, Box, Typography, Divider, Grid, Button, ImageList, Im
 import { PhotoCamera, FiberManualRecord, Stop, Delete as DeleteIcon, Fullscreen, FullscreenExit, ExitToApp } from '@mui/icons-material';
 import PauseIcon from '@mui/icons-material/Pause';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import apiService from '../../shared/services/api-client';
+import { archivodigitalService } from 'services/archivodigitalService';
+import { fileUtils as itemToBlob } from 'services/fileUtils';
 import { useTheme } from '@mui/material/styles';
 import { List } from 'react-window';
-import { fileUtils as itemToBlob } from '../../services/fileUtils';
-import { archivodigitalService } from 'services/archivodigitalService';
+import apiService from '../../shared/services/api-client';
 
 function getExtensionFromMime(mimeType) {
   if (!mimeType) return 'bin';
@@ -119,12 +119,13 @@ const CapturaImagenes = () => {
    // Puente de captura nativo (opcional)
    const defaultBridgeHost = process.env.REACT_APP_CAPTURE_BRIDGE_HOST || 'localhost:8765';
   const isHttpsApp = (typeof window !== 'undefined' && window?.location?.protocol === 'https:');
+  const bridgeEnabled = String(process.env.REACT_APP_CAPTURE_BRIDGE_ENABLED || 'false').toLowerCase() === 'true';
   const [bridgeHostname, bridgePortFromHost] = String(defaultBridgeHost).split(':');
   const defaultHttpPort = Number(bridgePortFromHost || 8765);
   const httpsPortEnv = process.env.REACT_APP_CAPTURE_BRIDGE_PORT_HTTPS ? Number(process.env.REACT_APP_CAPTURE_BRIDGE_PORT_HTTPS) : (defaultHttpPort === 8765 ? 8766 : defaultHttpPort);
   const httpPortEnv = process.env.REACT_APP_CAPTURE_BRIDGE_PORT ? Number(process.env.REACT_APP_CAPTURE_BRIDGE_PORT) : defaultHttpPort;
   const bridgePort = isHttpsApp ? httpsPortEnv : httpPortEnv;
-  const hostFallback = (typeof window !== 'undefined' && window.location?.hostname) ? window.location.hostname : 'localhost';
+  const hostFallback = (typeof window !== 'undefined' && window.location?.hostname) ? window.location.hostname : '127.0.0.1';
   const captureBridgeBaseUrl = process.env.REACT_APP_CAPTURE_BRIDGE_URL || `${isHttpsApp ? 'https' : 'http'}://${bridgeHostname || hostFallback}:${bridgePort}`;
   const [storageFolderPath, setStorageFolderPath] = useState('');
   const [storageFolderName, setStorageFolderName] = useState('');
@@ -214,7 +215,7 @@ const CapturaImagenes = () => {
         setMediaDevicesInfo([]);
         return;
       }
-      const isSecure = window.isSecureContext || location.hostname === 'localhost';
+      const isSecure = window.isSecureContext || (typeof window !== 'undefined' && window.location && window.location.hostname === 'localhost');
       if (!isSecure) {
         setMediaDevicesError('Se requiere ejecutar en HTTPS o localhost para acceder a cámara/micrófono.');
         setMediaDevicesInfo([]);
@@ -1132,6 +1133,11 @@ const CapturaImagenes = () => {
   useEffect(() => {
     const connectBridge = async () => {
       if (sourceType !== 'device') return;
+      if (!bridgeEnabled) {
+        setBridgeAvailable(false);
+        setBridgeStreamUrl('');
+        return;
+      }
       if (!forceBridge && videoDevices.length > 0) {
         setBridgeAvailable(false);
         setBridgeStreamUrl('');

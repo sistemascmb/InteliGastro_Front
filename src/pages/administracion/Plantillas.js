@@ -771,15 +771,17 @@ const cargarPersonal = async () => {
 
   // Función para manejar cambios en asignación de personal
   const handlePersonalChange = useCallback((personalId) => {
-    setFormData(prev => ({
-      ...prev,
-      personalSeleccionado: prev.personalSeleccionado.includes(personalId)
+    setFormData(prev => {
+      const nextSeleccionado = prev.personalSeleccionado.includes(personalId)
         ? prev.personalSeleccionado.filter(id => id !== personalId)
-        : [...prev.personalSeleccionado, personalId]
-    }));
-        setSelectAllPersonal(value.length === personales.length);
-
-  }, []);
+        : [...prev.personalSeleccionado, personalId];
+      setSelectAllPersonal(nextSeleccionado.length === personalList.length);
+      return {
+        ...prev,
+        personalSeleccionado: nextSeleccionado
+      };
+    });
+  }, [personalList]);
 
   // Función para seleccionar/deseleccionar todo el personal
   //const handleSelectAllPersonal = useCallback((selectAll) => {

@@ -1,7 +1,7 @@
 // Servicio UBIGEO - Códigos oficiales del Perú
 // Basado en el estándar INEI (Instituto Nacional de Estadística e Informática)
 
-import centrosService from "./centrosService";
+import { centrosService } from "./centrosService";
 
 export const ubigeoService = {
   // Países

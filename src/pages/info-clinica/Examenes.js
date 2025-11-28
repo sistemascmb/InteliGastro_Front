@@ -63,9 +63,10 @@ import salasService from 'services/salasService';
 import recursosService from 'services/recursosService';
 import medicosRefService from 'services/medicosRefService';
 import segurosService from 'services/segurosService';
-import { PdfTools } from '../procedimientos/DictadoInforme';
 import archivodigitalService from 'services/archivodigitalService';
 import agendadxService from 'services/agendadxService';
+import { cie10Service } from 'services/cie10Service';
+import { PdfTools } from '../procedimientos/DictadoInforme';
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (

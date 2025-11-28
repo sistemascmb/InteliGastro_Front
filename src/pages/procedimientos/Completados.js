@@ -63,9 +63,10 @@ import salasService from 'services/salasService';
 import recursosService from 'services/recursosService';
 import medicosRefService from 'services/medicosRefService';
 import segurosService from 'services/segurosService';
-import { PdfTools } from './DictadoInforme';
 import archivodigitalService from 'services/archivodigitalService';
 import agendadxService from 'services/agendadxService';
+import { cie10Service } from 'services/cie10Service';
+import { PdfTools } from './DictadoInforme';
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (
@@ -124,6 +125,7 @@ FieldRow.displayName = 'FieldRow';
 
 const DictadoProc = () => {
   const navigate = useNavigate();
+  const [error, setError] = useState('');
 
   // Estado para filtros de búsqueda
   const today = new Date();

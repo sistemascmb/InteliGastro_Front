@@ -62,6 +62,7 @@ import recursosService from 'services/recursosService';
 import medicosRefService from 'services/medicosRefService';
 import segurosService from 'services/segurosService';
 import agendadxService from 'services/agendadxService';
+import { cie10Service } from 'services/cie10Service';
 
 const ParametroTexto = ({ id }) => {
   const [valor, setValor] = useState('');
@@ -158,6 +159,7 @@ FieldRow.displayName = 'FieldRow';
 
 const Altas = () => {
   const navigate = useNavigate();
+  const [error, setError] = useState('');
 
   // Estado para filtros de búsqueda
   const today = new Date();

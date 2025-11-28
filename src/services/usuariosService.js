@@ -6,7 +6,7 @@ export const usuariosService = {
       e.details = 'Campos requeridos faltantes';
       throw e;
     }
-    const url = `/api/SystemUsers/login`;
+    const url = `${process.env.REACT_APP_API_URL}/SystemUsers/login`;
     try {
       const response = await fetch(url, {
         method: 'POST',

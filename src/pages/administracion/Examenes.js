@@ -38,9 +38,9 @@ import {
   Search,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import examenesService from 'services/examenesService';
 import { salasService } from '../../services/salasService';
 import { centrosService } from '../../services/centrosService';
-import examenesService from 'services/examenesService';
 
 // Componente de header de sección
 const SectionHeader = ({ title }) => (

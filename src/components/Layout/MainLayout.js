@@ -11,9 +11,9 @@ import {
   Business as BusinessIcon,
   Logout as LogoutIcon
 } from '@mui/icons-material';
-import Sidebar from './Sidebar';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { authService } from '../../services';
+import Sidebar from './Sidebar';
 
 // CONFIGURACIÓN: Ancho del sidebar cuando está abierto (280px)
 const drawerWidth = 280;
